@@ -4,8 +4,13 @@ project(UNMATCHED)
 
 set(CMAKE_CXX_STANDARD 17)
 
-include_directories(include)
+include_directories(
+    include
+    include/cards
+    include/core
+    include/entities
+)
 
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 add_executable(a ${SOURCES})

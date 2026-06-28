@@ -4,72 +4,20 @@
 
 using namespace std;
 
-Hero::Hero()
+Hero::Hero(): Charactore("", 0, 0, 0)
 {
 }
 
-
-std::string Hero::get_name()
+void Hero::showHeroes() const
 {
-    return name;
+    cout << "\n                               HEROES\n";
+    cout << "┌────┬───────────┬────┬────────┬──────┬──────────┬─────────────────┐\n";
+    cout << "│ No │ Name      │ HP │ Range  │ Move │ Sidekick │ Play Style      │\n";
+    cout << "├────┼───────────┼────┼────────┼──────┼──────────┼─────────────────┤\n";
+    cout << "│ 1  │ Sherlock  │ 16 │ Melee  │  2   │ Watson   │ Control         │\n";
+    cout << "│ 2  │ Dracula   │ 13 │ Melee  │  2   │ Sisters  │ Aggressive      │\n";
+    cout << "└────┴───────────┴────┴────────┴──────┴──────────┴─────────────────┘\n";
 }
-
-int Hero::get_hp()
-{
-    return Hp;
-}
-
-int Hero::get_ability()
-{
-    return Ability;
-}
-
-int Hero::get_move()
-{
-    return move;
-}
-
-int Hero::get_attack()
-{
-    return attack;
-}
-
-bool Hero::get_isAlive()
-{
-    return isAlive;
-}
-
-
-void Hero::set_name(std::string name)
-{
-    this->name = name;
-}
-
-void Hero::set_hp(int hp)
-{
-    Hp = hp;
-}
-
-void Hero::set_ability(int ability)
-{
-    Ability = ability;
-}
-
-void Hero::set_move(int move)
-{
-    this->move = move;
-}
-
-void Hero::set_attack(int attack)
-{
-    this->attack = attack;
-}
-
-void Hero::set_isAlive(bool isAlive)
-{
-    this->isAlive = isAlive;
-}
-
 
 Hero::~Hero()
 {

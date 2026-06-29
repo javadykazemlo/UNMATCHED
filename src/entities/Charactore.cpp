@@ -23,6 +23,12 @@ int Charactore::get_hp() const
     return Hp;
 }
 
+int Charactore::get_Maxhp() const
+{
+    return MaxHp;
+}
+
+
 int Charactore::get_move() const
 {
     return move;
@@ -49,6 +55,35 @@ bool Charactore::checkalive() const
         return true;
     }
 }
+
+
+
+void Charactore::takeDamage(int defend , int attack) 
+{
+    if (Hp > 0 &&  attack > defend)
+    {
+        Hp -= attack ;
+
+        if(Hp < 0) 
+        {
+            Hp = 0;
+        }
+    }
+    
+}
+
+
+void Charactore::heal(int boost ) 
+{
+    Hp += boost;
+    if(Hp > MaxHp) 
+    {
+        Hp = MaxHp;
+    }
+}
+
+
+
 
 void Charactore::set_name(const std::string& name)
 {

@@ -6,6 +6,7 @@ class Charactore
 private:
     std::string name;
     int Hp;
+    int MaxHp;
     int move;
     int attack;
     bool isAlive;
@@ -15,12 +16,15 @@ public:
 
     std::string get_name() const;
     int get_hp() const;
+    int get_Maxhp() const;
     int get_move() const;
     int get_attack() const;
     bool get_isAlive() const;
     bool checkalive() const;
 
     virtual void ability() = 0;
+    void takeDamage(int damage ,int attack) ;
+    void heal(int amount) ;
 
     void set_name(const std::string& name);
     void set_hp(int hp);

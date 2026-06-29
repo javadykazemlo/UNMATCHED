@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <iomanip>
 #include "Deck.hpp"
 
 using namespace std;
@@ -488,5 +489,81 @@ std::vector<Card> Deck::getCardsDR() const
     return cardsDR;
 }
 
-Deck::~Deck() 
-{}
+
+void Deck::showCard(const Card& card) const {
+    std::cout << "┌────────────────────────────────────────────────────┐\n";
+    std::cout << "│ " << std::left << std::setw(50) << card.name << "│\n";
+    std::cout << "├────────────────────────────────────────────────────┤\n";
+    std::cout << "│ " << std::left << std::setw(50) << (card.owner + " · " + card.type) << "│\n";
+    std::cout << "├────────────────────────────────────────────────────┤\n";
+    
+    if (card.type == "Attack") {
+        std::cout << "│ " << std::left << std::setw(50) << ("Attack: " + std::to_string(card.attack)) << "│\n";
+    } else if (card.type == "Defense") {
+        std::cout << "│ " << std::left << std::setw(50) << ("Defense: " + std::to_string(card.defense)) << "│\n";
+    } else if (card.type == "Versatile") {
+        std::cout << "│ " << std::left << std::setw(50) << ("Attack/Defense: " + std::to_string(card.attack) + "/" + std::to_string(card.defense)) << "│\n";
+    }
+    
+    if (!card.timing.empty()) {
+        std::cout << "│ " << std::left << std::setw(50) << ("Timing: " + card.timing) << "│\n";
+    }
+    
+    std::cout << "│ " << std::left << std::setw(50) << ("Boost: " + std::to_string(card.boost)) << "│\n";
+    std::cout << "│ " << std::left << std::setw(50) << ("Quantity: x" + std::to_string(card.quantity)) << "│\n";
+    
+    if (card.isExtra) {
+        std::cout << "│ " << std::left << std::setw(50) << "★ Extra Card" << "│\n";
+    }
+    
+    std::cout << "├────────────────────────────────────────────────────┤\n";
+    
+    // نمایش اثر در چند خط
+    std::string effect = card.effect;
+    int maxWidth = 48;
+    while (effect.length() > maxWidth) {
+        int space = effect.rfind(' ', maxWidth);
+        if (space == std::string::npos) space = maxWidth;
+        std::cout << "│ " << std::left << std::setw(50) << effect.substr(0, space) << "│\n";
+        effect = effect.substr(space + 1);
+    }
+    if (!effect.empty()) {
+        std::cout << "│ " << std::left << std::setw(50) << effect << "│\n";
+    }
+    
+    std::cout << "└────────────────────────────────────────────────────┘\n";
+}
+
+void Deck::showDeck() const {
+    // نمایش کارت‌های شرلوک
+    std::cout << "\n═══════════════════════════════════════════════════════\n";
+    std::cout << "  SHERLOCK HOLMES DECK (" << cardsSH.size() << " cards)\n";
+    std::cout << "═══════════════════════════════════════════════════════\n\n";
+    
+    for (size_t i = 0; i < cardsSH.size(); i++) {
+        std::cout << "[" << i + 1 << "]\n";
+        showCard(cardsSH[i]);
+        std::cout << "\n";
+    }
+    
+    // نمایش کارت‌های دراکولا
+    std::cout << "\n═══════════════════════════════════════════════════════\n";
+    std::cout << "  DRACULA DECK (" << cardsDR.size() << " cards)\n";
+    std::cout << "═══════════════════════════════════════════════════════\n\n";
+    
+    for (size_t i = 0; i < cardsDR.size(); i++) {
+        std::cout << "[" << i + 1 << "]\n";
+        showCard(cardsDR[i]);
+        std::cout << "\n";
+    }
+}
+
+std::vector<Card> Deck::getCardsSH() const {
+    return cardsSH;
+}
+
+std::vector<Card> Deck::getCardsDR() const {
+    return cardsDR;
+}
+
+Deck::~Deck() {}

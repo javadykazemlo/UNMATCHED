@@ -10,12 +10,8 @@ Deck::~Deck()
 {
 
 }
-#include "Deck.hpp"
 
-Deck::Deck() 
-{
 
-}
 
 void Deck::SherlockDeck() 
 {
@@ -479,15 +475,7 @@ void Deck::DraculaDeck()
     }
 }
 
-std::vector<Card> Deck::getCardsSH() const 
-{
-    return cardsSH;
-}
 
-std::vector<Card> Deck::getCardsDR() const 
-{
-    return cardsDR;
-}
 
 
 void Deck::showCard(const Card& card) const {

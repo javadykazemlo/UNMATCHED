@@ -17,4 +17,3 @@ public:
     std::vector<Card> getCardsDR() const;
     ~Deck();
 };
-

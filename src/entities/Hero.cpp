@@ -4,7 +4,7 @@
 
 using namespace std;
 
-Hero::Hero(): Charactore("", 0, 0, 0)
+Hero::Hero(): Character("", 0, 0, 0)
 {
 }
 

@@ -55,7 +55,7 @@ int Player::getAge() const
     return Age;
 }
 
-std::string Player::getCharacterName() const
+string Player::getCharacterName() const
 {
     return CharacterName;
 }

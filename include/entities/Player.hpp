@@ -26,4 +26,6 @@ public:
 
     std::string getName() const;
     int getAge() const; 
+    std::string getCharacterName() const;
+
 };

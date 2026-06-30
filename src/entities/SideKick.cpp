@@ -4,7 +4,7 @@
 
 using namespace std;
 
-SideKick::SideKick(): Charactore("", 0, 0, 0)
+SideKick::SideKick(): Character("", 0, 0, 0)
 {
 }
 

@@ -1,8 +1,8 @@
 #pragma once
-#include "Charactore.hpp"
+#include "Character.hpp"
 #include <string>
 
-class Hero: public Charactore
+class Hero: public Character
 {
 private:
 

@@ -36,7 +36,7 @@ int main()
 
 	int first;
     int second;
-	if(player[0].getAge() >= player[1].getAge()) 
+	if(player[0].getAge() <= player[1].getAge()) 
     {
 		first = 0;
         second = 1;
@@ -56,6 +56,12 @@ int main()
     cout << player[first].getName() << ", choose your Character: ";
     cin >> cha;
     
+    while(cha != 1 && cha != 2)
+    {
+        cout << "Enter a valid option(4 or 15): ";
+        cin >> cha;
+    }
+
     int pos[2];
     cout << player[first].getName() << ", choose your Character position(4 or 15): ";
     cin >> pos[0];
@@ -65,6 +71,7 @@ int main()
         cout << "Enter a valid option(4 or 15): ";
         cin >> pos[0];
     }
+
     
     if(pos[0] == 4)
     {
@@ -74,26 +81,37 @@ int main()
     {
         pos[1] = 4;
     }
-
-
+    
+    Bord bord;
+    Controller k;
+    cout << "-----------------------------------------------";
     if(cha == 1)
     {
-	    player[first].chooseCharacter(1 , pos[0]);
-        player[first].setCharacterName("Dracula");
-
-        player[second].chooseCharacter(2 , pos[1]);
-        player[second].setCharacterName("Shelock");
+        player[first].chooseCharacter(1);
+        bord.addCharacter( pos[0] , "Dracula" );
+        k.plaseSidekicks(1);
+        
+        player[second].chooseCharacter(2);
+        bord.addCharacter( pos[1] , "Shelock" );
+        k.plaseSidekicks(2);
     }
-	else 
+	else
     {
-        player[first].chooseCharacter(2 , pos[0]);
-        player[first].setCharacterName("Shelock");
-
-        player[second].chooseCharacter(1 , pos[1]);
-        player[second].setCharacterName("Dracula");
+        player[first].chooseCharacter(2);
+        bord.addCharacter( pos[0] , "Shelock" );
+        k.plaseSidekicks(2);
+        
+        player[second].chooseCharacter(1);
+        bord.addCharacter( pos[1] , "Dracula" );
+        k.plaseSidekicks(1);
     }
 
-    Bord bord;
+
+
+    
+    cout << player[first].getName() << " chose " << player[first].getHero()->getName() << " and starts at spaces " << pos[0] << ".\n"; 
+    cout << player[second].getName() << " chose " << player[second].getHero()->getName() << " and starts at spaces " << pos[1] << ".\n"; 
+    
     
         
 

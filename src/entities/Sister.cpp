@@ -1,14 +1,16 @@
 #include <iostream>
 #include <string>
-#include "SideKick.hpp"
+#include <vector>
+#include "Sister.hpp"
 
 using namespace std;
 
-SideKick::SideKick(): Character("", 0, 0, 0)
+Sister::Sister(string name): Character(name , 1 , 2 , 0)
 {
 }
 
-void SideKick::showSideKicks() const
+
+void Sister::showSister() const
 {
     cout << "\n                     SIDEKICKS\n";
     cout << "┌────┬────────────────┬───────────┬────┬────────┬──────┐\n";
@@ -21,10 +23,10 @@ void SideKick::showSideKicks() const
     cout << "└────┴────────────────┴───────────┴────┴────────┴──────┘\n";
 }
 
-void SideKick::ability()
+void Sister::ability()
 {
 }
 
-SideKick::~SideKick()
+Sister::~Sister()
 {
 }

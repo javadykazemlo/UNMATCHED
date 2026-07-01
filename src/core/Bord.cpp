@@ -88,15 +88,18 @@ bool Bord::checkzone(int zo)
     return false;
 }
 
-vector<int> Bord::getCellThisZone(int zo)
+vector<int> Bord::getCellThisZone(vector<int> zon)
 {
     vector<int> result;
 
-    for (int i = 0; i < 32; i++)
+    for(int j = 0 ; j < zon.size() ; j++)
     {
-        if (find(spaces[i].zone.begin(),spaces[i].zone.end(),zo) != spaces[i].zone.end())
+        for (int i = 0; i < 32; i++)
         {
-            result.push_back(i);
+            if ((find(spaces[i].zone.begin(),spaces[i].zone.end(),zon[j]) != spaces[i].zone.end() ) && !spaces[i].Character)
+            {
+                result.push_back(i);
+            }
         }
     }
     return result;
@@ -122,15 +125,27 @@ void Bord::deletCharacter(int c)
 }
 
 
-vector<int> Bord::getAdjacent(int cell) const
+vector<int> Bord::getAdjacent(string character) const
 {
-    return spaces[cell].adjacent;
-
+    for (int i = 0; i < 32; i++)
+    {
+        if(spaces[i].CharacterName == character )
+        {
+            return spaces[i].adjacent;
+        }
+    }
+    
 }
 
-vector<int> Bord::getZone(int cell) const
+vector<int> Bord::getZone(string character) const
 {
-    return spaces[cell].zone;
+    for (int i = 0; i < 32; i++)
+    {
+        if(spaces[i].CharacterName == character)
+        {
+            return spaces[i].zone;
+        }
+    }
 
 }
 

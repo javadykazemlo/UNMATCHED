@@ -1,7 +1,11 @@
 #pragma once
+#include <iostream>
+#include <string>
 #include <vector>
-#include "Card.hpp"
-#include "Character.hpp"
+#include "core/Bord.hpp"
+#include "core/Player.hpp"
+#include "entities/Character.hpp"
+#include "cards/Deck.hpp"
 
 class Controller
 {
@@ -17,8 +21,8 @@ public:
     void selectCard_DR()const;
     bool end_game() const;
     std::vector<Card> get_burn_Cards( ) const;
+  
+    void plaseSidekicks(int cha);
 
     ~Controller();
 };
-
-

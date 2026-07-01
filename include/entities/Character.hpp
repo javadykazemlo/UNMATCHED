@@ -4,33 +4,34 @@
 class Character
 {
 private:
-    std::string name;
+    std::string Name;
     int Hp;
     int MaxHp;
-    int move;
-    int attack;
-    bool isAlive;
+    int Move;
+    int Attack;
+    bool IsAlive;
 
 public:
     Character(const std::string& name, int hp, int move, int attack);
 
-    std::string get_name() const;
-    int get_hp() const;
-    int get_Maxhp() const;
-    int get_move() const;
-    int get_attack() const;
-    bool get_isAlive() const;
-    bool checkalive() const;
-
+    
     virtual void ability() = 0;
+    bool checkalive() const;
     void takeDamage(int damage ,int attack) ;
     void heal(int amount) ;
-
-    void set_name(const std::string& name);
-    void set_hp(int hp);
-    void set_move(int move);
-    void set_attack(int attack);
-    void set_isAlive(bool isAlive);
+    
+    void setName(const std::string& name);
+    void setHp(int hp);
+    void setMove(int move);
+    void setAttack(int attack);
+    void setIsAlive(bool isAlive);
+    
+    std::string getName() const;
+    int getHp() const;
+    int getMaxhp() const;
+    int getMove() const;
+    int getAttack() const;
+    bool getIsAlive() const;
 
     virtual ~Character();
 };

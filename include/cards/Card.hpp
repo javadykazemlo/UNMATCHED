@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 
-struct Card {
+struct Card 
+{
     std::string name;
     std::string owner;
     std::string type;

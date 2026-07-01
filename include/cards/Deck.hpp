@@ -12,8 +12,8 @@ public:
     void SherlockDeck();
     void DraculaDeck();
     void showDeck() const;
+    void showCard(const Card& card) const;
     std::vector<Card> getCardsSH() const;
     std::vector<Card> getCardsDR() const;
     ~Deck();
 };
-

@@ -89,21 +89,21 @@ int main()
     {
         player[first].chooseCharacter(1);
         bord.addCharacter( pos[0] , "Dracula" );
-        k.plaseSidekicks(1);
+        k.plaseSidekicks(1 , bord);
         
         player[second].chooseCharacter(2);
         bord.addCharacter( pos[1] , "Shelock" );
-        k.plaseSidekicks(2);
+        k.plaseSidekicks(2 , bord);
     }
 	else
     {
         player[first].chooseCharacter(2);
         bord.addCharacter( pos[0] , "Shelock" );
-        k.plaseSidekicks(2);
+        k.plaseSidekicks(2 , bord);
         
         player[second].chooseCharacter(1);
         bord.addCharacter( pos[1] , "Dracula" );
-        k.plaseSidekicks(1);
+        k.plaseSidekicks(1 , bord);
     }
 
 

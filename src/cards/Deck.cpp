@@ -5,10 +5,9 @@
 
 using namespace std;
 
-Deck::~Deck()
-
+Deck::Deck()
 {
-
+    
 }
 
 

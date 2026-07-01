@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
-#include "controller.hpp"
+#include "Controller.hpp"
 
 using namespace std;
 
@@ -99,7 +99,9 @@ vector<Card> Controller::get_burn_Cards() const
     return burncards;
 }
 
-void Controller::plaseSidekicks(int cha)
+
+
+void Controller::plaseSidekicks(int cha , Bord bord)
 {
     vector<int> zon;
     vector<int> space;

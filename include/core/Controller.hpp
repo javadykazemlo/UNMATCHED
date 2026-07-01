@@ -11,7 +11,6 @@ class Controller
 {
 private:
     std::vector<Card> burncards;
-
 public:
     Controller();
 
@@ -22,7 +21,7 @@ public:
     bool end_game() const;
     std::vector<Card> get_burn_Cards( ) const;
   
-    void plaseSidekicks(int cha);
+    void plaseSidekicks(int cha , Bord bord);
 
     ~Controller();
 };

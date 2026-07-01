@@ -6,43 +6,13 @@ using namespace std;
 
 Character::Character(const std::string& name, int hp, int move, int attack)
 {
-    this->name = name;
+    this->Name = name;
     this->Hp = hp;
-    this->move = move;
-    this->attack = attack;
-    this->isAlive = true;
+    this->Move = move;
+    this->Attack = attack;
+    this->IsAlive = true;
 }
 
-std::string Character::get_name() const
-{
-    return name;
-}
-
-int Character::get_hp() const
-{
-    return Hp;
-}
-
-int Character::get_Maxhp() const
-{
-    return MaxHp;
-}
-
-
-int Character::get_move() const
-{
-    return move;
-}
-
-int Character::get_attack() const
-{
-    return attack;
-}
-
-bool Character::get_isAlive() const
-{
-    return isAlive;
-}
 
 bool Character::checkalive() const
 {
@@ -63,7 +33,7 @@ void Character::takeDamage(int defend , int attack)
     if (Hp > 0 &&  attack > defend)
     {
         Hp -= attack ;
-
+        
         if(Hp < 0) 
         {
             Hp = 0;
@@ -85,29 +55,60 @@ void Character::heal(int boost )
 
 
 
-void Character::set_name(const std::string& name)
+void Character::setName(const std::string& name)
 {
-    this->name = name;
+    this->Name = name;
 }
 
-void Character::set_hp(int hp)
+void Character::setHp(int hp)
 {
     Hp = hp;
 }
 
-void Character::set_move(int move)
+void Character::setMove(int move)
 {
-    this->move = move;
+    this->Move = move;
 }
 
-void Character::set_attack(int attack)
+void Character::setAttack(int attack)
 {
-    this->attack = attack;
+    this->Attack = attack;
 }
 
-void Character::set_isAlive(bool isAlive)
+void Character::setIsAlive(bool isAlive)
 {
-    this->isAlive = isAlive;
+    this->IsAlive = isAlive;
+}
+
+std::string Character::getName() const
+{
+    return Name;
+}
+
+int Character::getHp() const
+{
+    return Hp;
+}
+
+int Character::getMaxhp() const
+{
+    return MaxHp;
+}
+
+
+int Character::getMove() const
+{
+    return Move;
+}
+
+int Character::getAttack() const
+{
+    return Attack;
+}
+
+bool Character::getIsAlive() const
+{
+    return IsAlive;
 }
 
 Character::~Character()

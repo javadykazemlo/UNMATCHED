@@ -1,0 +1,75 @@
+#include <iostream>
+#include <string>
+#include "Player.hpp"
+#include "entities/Dracula.hpp"
+#include "entities/Sherlock.hpp"
+#include "entities/Sister.hpp"
+#include "entities/Dr_watson.hpp"
+
+
+using namespace std;
+
+Player::Player()
+{
+}
+
+
+void Player::chooseCharacter(int choose)
+{
+    switch (choose)
+    {
+        case 1://Dracula
+            fighters.push_back(new Dracula());
+            fighters.push_back(new Sister("Sister Agatha"));
+            fighters.push_back(new Sister("Sister Beatrix"));
+            fighters.push_back(new Sister("Sister Carmilla"));
+
+            deck = new Deck();
+
+            break;
+        
+        case 2://Sherlock
+            fighters.push_back(new Sherlock());
+            fighters.push_back(new Dr_watson());
+
+            deck = new Deck();
+
+            break;
+    }
+}
+
+
+void Player::setName(const string& n) 
+{
+    name = n;
+}
+
+void Player::setAge(const int& a) 
+{
+    Age = a;
+}
+
+string Player::getName() const
+{
+    return name;
+}
+ 
+int Player::getAge() const
+{
+    return Age;
+}
+
+Character* Player::getHero() const
+{
+    return fighters[0];
+}
+
+Character* Player::getsidekick(int i) const
+{
+    return fighters[i];
+}
+
+Player::~Player()
+{
+    
+}

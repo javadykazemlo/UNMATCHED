@@ -20,13 +20,13 @@ public:
     
 
     bool checkzone(int z);
-    std::vector<int> getCellThisZone(int zo);
+    std::vector<int> getCellThisZone(std::vector<int> zon);
 
-    void addCharacter(int, string name);
+    void addCharacter(int, std::string name);
     void deletCharacter(int);
 
-    std::vector<int> getAdjacent(int cell) const;
-    std::vector<int> getZone(int cell) const;
+    std::vector<int> getAdjacent(std::string) const;
+    std::vector<int> getZone(std::string) const;
     bool getSpaceStatus(int cell) const;
     std::string getCharacterName(int cell) const;
 

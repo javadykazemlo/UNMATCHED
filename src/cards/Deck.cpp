@@ -3,12 +3,6 @@
 #include "Deck.hpp"
 
 using namespace std;
-
-Deck::~Deck()
-
-{
-
-}
 #include "Deck.hpp"
 
 Deck::Deck() 
@@ -478,6 +472,11 @@ void Deck::DraculaDeck()
     }
 }
 
+void Deck::showDeck() const
+{
+
+}
+
 std::vector<Card> Deck::getCardsSH() const 
 {
     return cardsSH;
@@ -489,4 +488,6 @@ std::vector<Card> Deck::getCardsDR() const
 }
 
 Deck::~Deck() 
-{}
+{
+
+}

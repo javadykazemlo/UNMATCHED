@@ -14,8 +14,6 @@ private:
     int Age;
 
     std::vector<Character*> fighters;
-    Deck* deck;
-    std::vector<Card*> hand;
 public:
     Player();
     void chooseCharacter(int );

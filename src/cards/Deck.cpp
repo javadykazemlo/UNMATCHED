@@ -544,6 +544,53 @@ void Deck::showDeck_DR() const
     }
 }
 
+void Deck::cardHandSH()
+{
+    cardSH.clear();
+    if (cardsSH.empty()) 
+    {
+        cout << "Deck is empty! Cannot draw cards.\n";
+        return;
+    }
+
+    srand(time(0));
+    
+    int count = 5;
+
+    for (int i = 0; i < count; i++) 
+    {
+        int rn = rand() % cardsSH.size();
+        cardDR.push_back(cardsSH[rn]);
+    }
+    
+    cout << count << " cards drawn to hand successfully!\n";
+
+}
+
+
+void Deck::cardHandDR()
+{
+
+    cardDR.clear();
+    if (cardsDR.empty()) 
+    {
+        cout << "Deck is empty! Cannot draw cards.\n";
+        return;
+    }
+
+    srand(time(0));
+    
+    int count = 5;
+
+    for (int i = 0; i < count; i++) 
+    {
+        int rn = rand() % cardsDR.size();
+        cardDR.push_back(cardsSH[rn]);
+    }
+    
+    cout << count << " cards drawn to hand successfully!\n";
+
+}
 
 
 

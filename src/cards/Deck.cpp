@@ -4,13 +4,10 @@
 #include "Deck.hpp"
 
 using namespace std;
-
-Deck::Deck()
+Deck::Deck(std::vector<Card>& sh, std::vector<Card>& dr): cardsSH(sh), cardsDR(dr)
 {
     
 }
-
-
 
 void Deck::SherlockDeck() 
 {

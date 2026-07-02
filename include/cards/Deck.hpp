@@ -9,7 +9,7 @@ private:
     std::vector<Card> &cardsDR;
 
 public:
-    Deck();
+    Deck(std::vector<Card>& sh, std::vector<Card>& dr);
     void SherlockDeck();
     void DraculaDeck();
     void showDeck_SH() const;

@@ -7,8 +7,8 @@ private:
 
     std::vector<Card> &cardsSH;
     std::vector<Card> &cardsDR;
-    std::vector<Card> cardSH;
-    std::vector<Card> cardDR;
+    std::vector<Card> HandSH;
+    std::vector<Card> HandDR;
 
 public:
     Deck(std::vector<Card>& sh, std::vector<Card>& dr);

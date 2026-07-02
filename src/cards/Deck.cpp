@@ -546,7 +546,7 @@ void Deck::showDeck_DR() const
 
 void Deck::cardHandSH()
 {
-    cardSH.clear();
+    HandSH.clear();
     if (cardsSH.empty()) 
     {
         cout << "Deck is empty! Cannot draw cards.\n";
@@ -560,7 +560,9 @@ void Deck::cardHandSH()
     for (int i = 0; i < count; i++) 
     {
         int rn = rand() % cardsSH.size();
-        cardDR.push_back(cardsSH[rn]);
+        HandSH.push_back(cardsSH[rn]);
+        cardsSH.erase(cardsSH.begin() + rn);
+
     }
     
     cout << count << " cards drawn to hand successfully!\n";
@@ -571,7 +573,7 @@ void Deck::cardHandSH()
 void Deck::cardHandDR()
 {
 
-    cardDR.clear();
+    HandDR.clear();
     if (cardsDR.empty()) 
     {
         cout << "Deck is empty! Cannot draw cards.\n";
@@ -585,7 +587,9 @@ void Deck::cardHandDR()
     for (int i = 0; i < count; i++) 
     {
         int rn = rand() % cardsDR.size();
-        cardDR.push_back(cardsSH[rn]);
+        HandDR.push_back(cardsSH[rn]);
+        cardsSH.erase(cardsSH.begin() + rn);
+        
     }
     
     cout << count << " cards drawn to hand successfully!\n";
@@ -603,6 +607,19 @@ vector<Card> &Deck::getCardsDR()
 {
     return cardsDR;
 }
+
+
+std::vector<Card> Deck::getCardsH()
+{
+    return HandSH;
+}
+
+
+std::vector<Card> Deck::getCardDR()
+{
+    return HandDR;
+}
+
 
 Deck::~Deck() 
 {

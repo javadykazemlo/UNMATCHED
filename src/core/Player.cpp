@@ -17,8 +17,8 @@ Player::Player()
 void Player::chooseCharacter(int choose)
 {
     
-    std::vector<Card> shCards;
-    std::vector<Card> drCards;
+        std::vector<Card> shCards;
+        std::vector<Card> drCards;
     switch (choose)
     {
         case 1://Dracula

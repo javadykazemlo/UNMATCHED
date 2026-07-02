@@ -62,19 +62,7 @@ void Controller::showBurnCards() const
 }
 
 
-
-void Controller::selectCard_SH()const
-{
-
-
-
-
-
-}
-
-
-
-void Controller::selectCard_DR()const
+void dispaly_card()
 {
 
 
@@ -84,20 +72,6 @@ void Controller::selectCard_DR()const
 
 
 
-bool Controller::end_game() const
-{
-
-
-
-
-    
-}
-
-
-vector<Card> Controller::get_burn_Cards() const
-{
-    return burncards;
-}
 
 
 
@@ -152,6 +126,34 @@ void Controller::plaseSidekicks(int cha , Bord bord)
             break;
     }
 
+}
+
+
+
+bool Controller::end_game(Player& p1, Player& p2) const
+{
+    Character* hero1 = p1.getHero();
+    Character* hero2 = p2.getHero();
+
+    if (!hero1->checkalive() || !hero2->checkalive())
+    {
+        cout << "GAME OVER\n";
+
+        if (!hero1->checkalive())
+            cout << hero2->getName() << " wins!\n";
+        else
+            cout << hero1->getName() << " wins!\n";
+
+        return true;
+    }
+
+    return false;
+}
+
+
+vector<Card> Controller::get_burn_Cards() const
+{
+    return burncards;
 }
 
 

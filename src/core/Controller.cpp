@@ -11,30 +11,62 @@ Controller::Controller()
 
 
 
-void Controller::Resolve_Combat(vector<Card>& deck,int index,int attack,int defend)
+void Controller::resolveCombat(Card& attackCard, Card& defenseCard, Player& attacker, Player& defender) 
 {
-    if (attack > defend)
+    
+    int attackValue = 0;
+    int defenseValue = 0;
+    
+    if (attackCard.type == "Attack" || attackCard.type == "Versatile") 
     {
-        cout << "Attacker wins.\n";
-        cout << "Damage ---> " << attack - defend << endl;
-    }
-    else if (attack < defend)
+        attackValue = attackCard.attack;
+    } 
+    else 
     {
-        cout << "Defender blocks the attack.\n";
+        attackValue = attackCard.boost;
     }
-    else
+    
+    if (defenseCard.type == "Defense" || defenseCard.type == "Versatile") 
     {
-        cout << "Equal attack and defense.\n";
-    }
-    if (index < 0 || index >= deck.size())
+        defenseValue = defenseCard.defense;
+    } 
+    else 
     {
-        cout << "Invalid card index!\n";
-        return;
+        defenseValue = defenseCard.boost;
     }
-    burncards.push_back(deck[index]);
-
-    deck.erase(deck.begin() + index);
+    
+    cout << "\n═══════════════════════════════════════════════════════\n";
+    cout << "  ⚔️ RESOLVING COMBAT ⚔️\n";
+    cout << "═══════════════════════════════════════════════════════\n";
+    
+    cout << "\n🔹 ATTACKER (" << attacker.getName() << "):\n";
+    attacker.getDeck()->showCard(attackCard);
+    
+    cout << "\n🔸 DEFENDER (" << defender.getName() << "):\n";
+    defender.getDeck()->showCard(defenseCard);
+    
+    cout << "\n📊 COMBAT RESULT:\n";
+    cout << "  ⚔️ Attack  : " << attackValue << "\n";
+    cout << "  🛡️ Defense : " << defenseValue << "\n";
+    
+    if (attackValue > defenseValue) 
+    {
+        int damage = attackValue - defenseValue;
+        cout << "\n💥 " << attacker.getName() << " deals " << damage << " damage!\n";
+        defender.getHero()->takeDamage(defenseValue, attackValue);
+        cout << "  " << defender.getName() << " HP: " << defender.getHero()->getHp() 
+        << "/" << defender.getHero()->getMaxhp() << "\n";
+    }
+    else if (attackValue < defenseValue) 
+    {
+        cout << "\n🛡️ " << defender.getName() << " blocks the attack!\n";
+    } 
+    else 
+    {
+        cout << "\n⚖️ Equal values! No damage.\n";
+    }
 }
+
 
 
 void Controller::showBurnCards() const
@@ -62,42 +94,49 @@ void Controller::showBurnCards() const
 }
 
 
-
-void Controller::selectCard_SH()const
+void Controller::startCombat(Player& attacker, Player& defender)
 {
-
-
-
-
-
-}
-
-
-
-void Controller::selectCard_DR()const
-{
-
-
-
-
-}
-
-
-
-bool Controller::end_game() const
-{
-
-
-
-
+    cout << "\n" << attacker.getName() << " - Select ATTACK card:\n";
+    attacker.getDeck()->showHandSH();
     
+    int chooseDR;
+    Card* attackCard = nullptr;
+    do {
+        cout << "Enter card number (1-" << attacker.getDeck()->getHandSHSize() << "): ";
+        cin >> chooseDR;
+        attackCard = attacker.getDeck()->selectAndRemoveFromHandSH(chooseDR - 1);
+        if (attackCard == nullptr) {
+            cout << "Invalid choice! Try again.\n";
+        }
+    } 
+    while (attackCard == nullptr);
+
+
+
+    cout << "\n" << defender.getName() << " - Select DEFENSE card:\n";
+    defender.getDeck()->showHandDR();
+    
+    int chooseSH;
+    Card* defenseCard = nullptr;
+    do {
+        cout << "Enter card number (1-" << defender.getDeck()->getHandDRSize() << "): ";
+        cin >> chooseSH;
+        defenseCard = defender.getDeck()->selectAndRemoveFromHandDR(chooseSH - 1);
+        if (defenseCard == nullptr) {
+            cout << "Invalid choice! Try again.\n";
+        }
+    } 
+    while (defenseCard == nullptr);
+
+
+    resolveCombat(*attackCard, *defenseCard, attacker, defender);
+    
+    burncards.push_back(*attackCard);
+    burncards.push_back(*defenseCard);
 }
 
 
-vector<Card> Controller::get_burn_Cards() const
-{
-    return burncards;
-}
+
 
 
 
@@ -152,6 +191,34 @@ void Controller::plaseSidekicks(int cha , Bord bord)
             break;
     }
 
+}
+
+
+
+bool Controller::end_game(Player& p1, Player& p2) const
+{
+    Character* hero1 = p1.getHero();
+    Character* hero2 = p2.getHero();
+
+    if (!hero1->checkalive() || !hero2->checkalive())
+    {
+        cout << "GAME OVER\n";
+
+        if (!hero1->checkalive())
+            cout << hero2->getName() << " wins!\n";
+        else
+            cout << hero1->getName() << " wins!\n";
+
+        return true;
+    }
+
+    return false;
+}
+
+
+vector<Card> Controller::get_burn_Cards() const
+{
+    return burncards;
 }
 
 

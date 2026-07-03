@@ -544,8 +544,104 @@ void Deck::showDeck_DR() const
     }
 }
 
+void Deck::cardHandSH()
+{
+    HandSH.clear();
+    if (cardsSH.empty()) 
+    {
+        cout << "Deck is empty! Cannot draw cards.\n";
+        return;
+    }
+
+    
+    int count = 5;
+
+    for (int i = 0; i < count; i++) 
+    {
+        int rn = rand() % cardsSH.size();
+        HandSH.push_back(cardsSH[rn]);
+        cardsSH.erase(cardsSH.begin() + rn);
+
+    }
+    
+    cout << count << " cards drawn to hand successfully!\n";
+
+}
 
 
+void Deck::cardHandDR()
+{
+
+    HandDR.clear();
+    if (cardsDR.empty()) 
+    {
+        cout << "Deck is empty! Cannot draw cards.\n";
+        return;
+    }
+
+    
+    int count = 5;
+
+    for (int i = 0; i < count; i++) 
+    {
+        int rn = rand() % cardsDR.size();
+        HandDR.push_back(cardsSH[rn]);
+        cardsSH.erase(cardsSH.begin() + rn);
+        
+    }
+    
+    cout << count << " cards drawn to hand successfully!\n";
+
+}
+
+
+
+
+Card* Deck::selectAndRemoveFromHandSH(int index) 
+{
+    if (index < 0 || index >= HandSH.size()) 
+    {
+        return nullptr;
+    }
+    
+    Card* selectedCard = &HandSH[index];
+    HandSH.erase(HandSH.begin() + index);
+    return selectedCard;
+}
+
+Card* Deck::selectAndRemoveFromHandDR(int index) 
+{
+    if (index < 0 || index >= HandDR.size()) 
+    {
+        return nullptr;
+    }
+    
+    Card* selectedCard = &HandDR[index];
+    HandDR.erase(HandDR.begin() + index);
+    return selectedCard;
+}
+
+
+bool Deck::isHandSHEmpty() const 
+{
+    return HandSH.empty();
+}
+
+bool Deck::isHandDREmpty() const 
+{
+    return HandDR.empty(); 
+}
+
+int  Deck::getHandSHSize() const 
+{
+    return HandSH.size(); 
+}
+
+
+int  Deck::getHandDRSize() const 
+{ 
+    return HandDR.size();
+}
 
 vector<Card> &Deck::getCardsSH() 
 {
@@ -556,6 +652,19 @@ vector<Card> &Deck::getCardsDR()
 {
     return cardsDR;
 }
+
+
+std::vector<Card> Deck::getCardsH()
+{
+    return HandSH;
+}
+
+
+std::vector<Card> Deck::getCardDR()
+{
+    return HandDR;
+}
+
 
 Deck::~Deck() 
 {

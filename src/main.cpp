@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <cstdlib>
+#include <ctime>
 using namespace std;
 
 #include "Controller.hpp"
@@ -11,7 +13,7 @@ int main()
 	cout << "════════════════════════════════════════════════════════════════════\n";
     cout << "                 welcome to the game : (UNMATCHED)\n";
     cout << "════════════════════════════════════════════════════════════════════\n";
-
+    srand(static_cast<unsigned int>(time(0))) ;
     string n;
     int a;
 

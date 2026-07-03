@@ -16,6 +16,9 @@ Player::Player()
 
 void Player::chooseCharacter(int choose)
 {
+    
+        std::vector<Card> shCards;
+        std::vector<Card> drCards;
     switch (choose)
     {
         case 1://Dracula
@@ -24,7 +27,7 @@ void Player::chooseCharacter(int choose)
             fighters.push_back(new Sister("Sister Beatrix"));
             fighters.push_back(new Sister("Sister Carmilla"));
 
-            deck = new Deck();
+            deck = new Deck(shCards, drCards);
 
             break;
         
@@ -32,7 +35,7 @@ void Player::chooseCharacter(int choose)
             fighters.push_back(new Sherlock());
             fighters.push_back(new Dr_watson());
 
-            deck = new Deck();
+            deck = new Deck(shCards, drCards);
 
             break;
     }
@@ -68,6 +71,12 @@ Character* Player::getsidekick(int i) const
 {
     return fighters[i];
 }
+
+Deck* Player::getDeck() const 
+{ 
+    return deck; 
+}
+
 
 Player::~Player()
 {

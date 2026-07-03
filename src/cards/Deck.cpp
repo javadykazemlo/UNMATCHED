@@ -553,7 +553,6 @@ void Deck::cardHandSH()
         return;
     }
 
-    srand(time(0));
     
     int count = 5;
 
@@ -580,7 +579,6 @@ void Deck::cardHandDR()
         return;
     }
 
-    srand(time(0));
     
     int count = 5;
 
@@ -597,6 +595,53 @@ void Deck::cardHandDR()
 }
 
 
+
+
+Card* Deck::selectAndRemoveFromHandSH(int index) 
+{
+    if (index < 0 || index >= HandSH.size()) 
+    {
+        return nullptr;
+    }
+    
+    Card* selectedCard = &HandSH[index];
+    HandSH.erase(HandSH.begin() + index);
+    return selectedCard;
+}
+
+Card* Deck::selectAndRemoveFromHandDR(int index) 
+{
+    if (index < 0 || index >= HandDR.size()) 
+    {
+        return nullptr;
+    }
+    
+    Card* selectedCard = &HandDR[index];
+    HandDR.erase(HandDR.begin() + index);
+    return selectedCard;
+}
+
+
+bool Deck::isHandSHEmpty() const 
+{
+    return HandSH.empty();
+}
+
+bool Deck::isHandDREmpty() const 
+{
+    return HandDR.empty(); 
+}
+
+int  Deck::getHandSHSize() const 
+{
+    return HandSH.size(); 
+}
+
+
+int  Deck::getHandDRSize() const 
+{ 
+    return HandDR.size();
+}
 
 vector<Card> &Deck::getCardsSH() 
 {

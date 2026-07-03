@@ -72,6 +72,12 @@ Character* Player::getsidekick(int i) const
     return fighters[i];
 }
 
+Deck* Player::getDeck() const 
+{ 
+    return deck; 
+}
+
+
 Player::~Player()
 {
     

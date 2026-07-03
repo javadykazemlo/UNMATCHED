@@ -28,7 +28,7 @@ public:
     Character* getHero() const;
     Character* getsidekick(int i) const;
 
-
+    Deck* getDeck() const ;
     ~Player();
 
 };

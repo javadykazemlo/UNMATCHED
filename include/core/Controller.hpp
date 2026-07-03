@@ -14,9 +14,9 @@ private:
 public:
     Controller();
 
-    void Resolve_Combat(vector<Card>& deck,int index,int attack,int defend);
+    void resolveCombat(Card& attackCard, Card& defenseCard, Player& attacker, Player& defender);
     void showBurnCards() const;
-    void dispaly_card();
+    void startCombat(Player& attacker, Player& defender);
     bool end_game(Player& p1, Player& p2) const;
     std::vector<Card> get_burn_Cards( ) const;
   

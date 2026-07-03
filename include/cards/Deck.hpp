@@ -2,7 +2,8 @@
 #include <vector>
 #include "Card.hpp"
 
-class Deck {
+class Deck 
+{
 private:
 
     std::vector<Card> &cardsSH;
@@ -19,6 +20,16 @@ public:
     void showCard(const Card& card) const;
     void cardHandSH();
     void cardHandDR();
+    void showHandSH() const;
+    void showHandDR() const;
+    
+    Card* selectAndRemoveFromHandSH(int index);
+    Card* selectAndRemoveFromHandDR(int index);
+    bool isHandSHEmpty() const ;
+    bool isHandDREmpty() const ;
+    int  getHandSHSize() const ;
+    int  getHandDRSize() const ;
+
     std::vector<Card> &getCardsSH();
     std::vector<Card> &getCardsDR();
     std::vector<Card> getCardsH();

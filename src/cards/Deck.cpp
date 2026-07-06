@@ -14,7 +14,6 @@ void Deck::SherlockDeck()
 
     cardsSH.clear();
 
-    // Administer Aid x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -32,7 +31,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Confirm Suspicion x3
     for (int i = 0; i < 3; i++) 
     {
         cardsSH.push_back(
@@ -50,7 +48,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Counter Punch x3
     for (int i = 0; i < 3; i++) 
     {
         cardsSH.push_back(
@@ -68,7 +65,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Deduce Strategy x3
     for (int i = 0; i < 3; i++) 
     {
         cardsSH.push_back(
@@ -86,7 +82,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Education Never Ends x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -104,7 +99,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Elementary x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -122,7 +116,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Eliminate the Impossible x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -140,7 +133,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Feint x3
     for (int i = 0; i < 3; i++) 
     {
         cardsSH.push_back(
@@ -158,7 +150,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Fixed Point in a Changing Age x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -176,7 +167,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Master of Disguise x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -194,7 +184,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // The Game Is Afoot x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -212,7 +201,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Service Revolver x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -230,7 +218,6 @@ void Deck::SherlockDeck()
         });
     }
 
-    // Study Methods x2
     for (int i = 0; i < 2; i++) 
     {
         cardsSH.push_back(
@@ -594,7 +581,37 @@ void Deck::cardHandDR()
 
 }
 
+void Deck::showHandSH() const
+{
+    cout << "\n═══════════════════════════════════════════════════════\n";
+    cout << "  DRACULA DECK (" << HandSH.size() << " Handcards)\n";
+    cout << "═══════════════════════════════════════════════════════\n\n";
 
+    for (int i = 0; i <HandSH.size() ; i++)
+    {
+        cout << "[" << i + 1 << "]\n";
+        showCard(HandSH[i]);
+        cout << "\n";
+    }
+}
+
+void Deck::showHandDR() const
+{
+
+    cout << "\n═══════════════════════════════════════════════════════\n";
+    cout << "  DRACULA DECK (" << HandDR.size() << " Handcards)\n";
+    cout << "═══════════════════════════════════════════════════════\n\n";
+
+    for (int i = 0; i <HandDR.size() ; i++)
+    {
+        cout << "[" << i + 1 << "]\n";
+        showCard(HandDR[i]);
+        cout << "\n";
+    }
+    
+
+
+}
 
 
 Card* Deck::selectAndRemoveFromHandSH(int index) 
@@ -666,17 +683,9 @@ std::vector<Card> Deck::getCardDR()
 }
 
 
+
+
 Deck::~Deck() 
 {
     
-}
-
-void Deck::showHandSH() const
-{
-
-}
-
-void Deck::showHandDR() const
-{
-
 }

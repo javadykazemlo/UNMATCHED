@@ -10,7 +10,7 @@ Sherlock::Sherlock(): Character("sherlock", 16, 2, 0)
 
 void Sherlock::ability()
 {
-    
+
 }
 
 

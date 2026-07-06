@@ -59,10 +59,16 @@ void Controller::chooseCharacters(Bord& bord)
     cout << firstPlayer->getName() << ", choose your Character: ";
     cha = getChoice({1,2});
 
-    firstPlayer->chooseCharacter( cha );
-    secondPlayer->chooseCharacter( cha == 1 ? 2 : 1 );
 
-
+    if (cha == 1) 
+    {
+        secondPlayer->chooseCharacter(2);  
+    } 
+    
+    else 
+    {
+        secondPlayer->chooseCharacter(1);  
+    }
 
     int pos[2];
     cout << firstPlayer->getName() << ", choose your Character position(4 or 15): ";

@@ -96,7 +96,7 @@ vector<int> Bord::getCellThisZone(vector<int> zon)
     {
         for (int i = 0; i < 32; i++)
         {
-            if ((find(spaces[i].zone.begin(),spaces[i].zone.end(),zon[j]) != spaces[i].zone.end() ) && !spaces[i].Character)
+            if ((find(spaces[i].zone.begin(),spaces[i].zone.end(),zon[j]) != spaces[i].zone.end() ) && spaces[i].character == nullptr)
             {
                 result.push_back(i);
             }
@@ -105,61 +105,58 @@ vector<int> Bord::getCellThisZone(vector<int> zon)
     return result;
 }
 
-void Bord::addCharacter(int c , string name)
+void Bord::addCharacter(int pos , Character* character)
 {
-    if(!spaces[c].Character)
-    {
-        spaces[c].Character = true;
-        spaces[c].CharacterName = name;
-    }
-    else 
-    {
-        cout << "";
-    }
+    spaces[pos].character = character;
 }
 
-void Bord::deletCharacter(int c)
+void Bord::deletCharacter(int pos)
 {
-    spaces[c].Character = false;
-    spaces[c].CharacterName = "";
+    spaces[pos].character = nullptr;
 }
 
-
-vector<int> Bord::getAdjacent(string character) const
+bool Bord::isEmpty(int pos)
 {
-    for (int i = 0; i < 32; i++)
+    return spaces[pos].character == nullptr;
+}
+
+vector<int> Bord::getAdjacent(Character* character) const
+{
+    for(int i = 0; i < 32; i++)
     {
-        if(spaces[i].CharacterName == character )
-        {
+        if(spaces[i].character == character)
             return spaces[i].adjacent;
-        }
     }
-    
-}
 
-vector<int> Bord::getZone(string character) const
+    return {};
+}
+vector<int> Bord::getZone(Character* character) const
 {
-    for (int i = 0; i < 32; i++)
+    for(int i = 0; i < 32; i++)
     {
-        if(spaces[i].CharacterName == character)
+        if(spaces[i].character == character)
         {
             return spaces[i].zone;
         }
     }
-
+    return {};
 }
 
-bool Bord::getSpaceStatus(int cell) const
+
+bool Bord::getSpaceStatus(int pos) const
 {
-    return spaces[cell].Character;
+    return spaces[pos].character != nullptr;
 }
 
-std::string Bord::getCharacterName(int cell) const
+
+Character* Bord::getCharacterName(int pos) const
 {
-    return spaces[cell].CharacterName;
+    return spaces[pos].character;
 }
     
 Bord::~Bord()
 {
 
 }
+
+

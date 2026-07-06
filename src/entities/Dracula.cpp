@@ -10,7 +10,7 @@ Dracula::Dracula(): Character("Dracula", 13, 2, 0)
 
 void Dracula::ability()
 {
-    // Bloodthirsty ability
+    
 }
 
 Dracula::~Dracula()

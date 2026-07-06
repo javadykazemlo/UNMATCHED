@@ -10,17 +10,31 @@
 class Controller
 {
 private:
+    Player* firstPlayer = nullptr;
+    Player* secondPlayer = nullptr;
+    Player* current = nullptr;
+    Player* enemy = nullptr;
     std::vector<Card> burncards;
 public:
     Controller();
+    
+    void choosePlayers(Player player[2]);
+    void chooseCharacters(Bord& bord);
+    void plaseSidekicks(Bord& bord , Player& player);
+    void playTurn(Bord& bord);
 
+    void move(Bord& bord);
+    
     void resolveCombat(Card& attackCard, Card& defenseCard, Player& attacker, Player& defender);
     void showBurnCards() const;
     void startCombat(Player& attacker, Player& defender);
-    bool end_game(Player& p1, Player& p2) const;
     std::vector<Card> get_burn_Cards( ) const;
-  
-    void plaseSidekicks(int cha , Bord bord);
+
+    bool end_game() const;
+    
+
+    int getInt();
+    int getChoice(std::vector<int> valid);
 
     ~Controller();
 };

@@ -670,3 +670,13 @@ Deck::~Deck()
 {
     
 }
+
+void Deck::showHandSH() const
+{
+
+}
+
+void Deck::showHandDR() const
+{
+
+}

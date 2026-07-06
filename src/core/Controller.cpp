@@ -177,6 +177,8 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard, Player& atta
     cout << "\n🔹 ATTACKER (" << attacker.getName() << "):\n";
     attacker.getDeck()->showCard(attackCard);
     
+    cout << "=======================================================================";
+
     cout << "\n🔸 DEFENDER (" << defender.getName() << "):\n";
     defender.getDeck()->showCard(defenseCard);
     

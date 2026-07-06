@@ -1,0 +1,3 @@
+C:/Users/Parsumash/Desktop/folders (1)/project/build/CMakeFiles/a.dir
+C:/Users/Parsumash/Desktop/folders (1)/project/build/CMakeFiles/edit_cache.dir
+C:/Users/Parsumash/Desktop/folders (1)/project/build/CMakeFiles/rebuild_cache.dir

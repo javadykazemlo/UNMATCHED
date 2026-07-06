@@ -138,7 +138,7 @@ void Controller::playTurn(Bord& bord)
 }
 
 
-void move(Bord& bord)
+void Controller::move(Bord& bord)
 {
 
 

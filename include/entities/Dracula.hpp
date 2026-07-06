@@ -8,6 +8,7 @@ private:
 
 public:
     Dracula();
+    
     void ability() override;
 
     ~Dracula();

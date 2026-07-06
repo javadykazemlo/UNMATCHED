@@ -11,6 +11,7 @@ Character::Character(const std::string& name, int hp, int move, int attack)
     this->Move = move;
     this->Attack = attack;
     this->IsAlive = true;
+    this->MaxHp = hp;
 }
 
 
@@ -32,12 +33,16 @@ void Character::takeDamage(int defend , int attack)
 {
     if (Hp > 0 &&  attack > defend)
     {
-        Hp -= attack ;
+        Hp -= attack - defend;
         
         if(Hp < 0) 
         {
             Hp = 0;
         }
+    }
+    else
+    {
+        ///<<<<<<<<<<<<<<<<<<<<<<<<<<
     }
     
 }
@@ -114,3 +119,6 @@ bool Character::getIsAlive() const
 Character::~Character()
 {
 }
+
+
+

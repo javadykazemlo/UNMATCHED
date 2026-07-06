@@ -1,12 +1,147 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
+#include <limits>
 #include "Controller.hpp"
 
 using namespace std;
 
 Controller::Controller()
 {
+}
+
+void Controller::choosePlayers(Player player[2])
+{
+    cout << "════════════════════════════════════════════════════════════════════\n";
+    cout << "                 welcome to the game : (UNMATCHED)\n";
+    cout << "════════════════════════════════════════════════════════════════════\n";
+
+    string n;
+    int a;
+
+    cout << "First player, enter your name: ";
+    getline(cin , n);
+    player[0].setName(n);
+
+    cout << player[0].getName() << ", enter your age: ";
+    a = getInt();
+    player[0].setAge(a);
+    
+    
+    cout << "Second player, enter your name: ";
+    getline(cin >> ws , n);
+    player[1].setName(n);
+    
+    cout << player[1].getName() << ", enter your age: ";
+    a = getInt();
+    player[1].setAge(a);
+    
+    if(player[0].getAge() <= player[1].getAge())
+    {
+        firstPlayer = &player[0];
+        secondPlayer = &player[1];
+    }
+    else
+    {
+        firstPlayer = &player[1];
+        secondPlayer = &player[0];
+    }
+}
+
+
+void Controller::chooseCharacters(Bord& bord)
+{
+    int cha;
+	cout << "\nCharacters:" << endl;
+    cout << " 1.Dracula" << endl;
+    cout << " 2.Sherlock" << endl;
+
+    cout << firstPlayer->getName() << ", choose your Character: ";
+    cha = getChoice({1,2});
+
+    firstPlayer->chooseCharacter( cha );
+    secondPlayer->chooseCharacter( cha == 1 ? 2 : 1 );
+
+
+
+    int pos[2];
+    cout << firstPlayer->getName() << ", choose your Character position(4 or 15): ";
+    pos[0] = getChoice({4,15});
+
+    bord.addCharacter( pos[0] , firstPlayer->getHero() );
+    bord.addCharacter( pos[0] == 4 ? 15 : 4 , secondPlayer->getHero() );
+
+
+    plaseSidekicks(bord , *firstPlayer);
+    plaseSidekicks(bord , *secondPlayer);
+
+
+    cout << firstPlayer->getName() << " chose " << firstPlayer->getHero()->getName() << " and starts at spaces " << pos[0] << ".\n"; 
+    cout << secondPlayer->getName() << " chose " << secondPlayer->getHero()->getName() << " and starts at spaces " << pos[1] << ".\n";  
+
+}
+
+
+
+void Controller::plaseSidekicks( Bord& bord , Player& player)
+{
+    Character* hero = player.getHero();
+    vector<int> zone = bord.getZone(hero);
+    vector<int> space  = bord.getCellThisZone(zone);
+
+    int s;
+    
+    if(hero->getName() == "Dracula")
+    {
+        for(int i = 0 ; i < 3 ; i++)
+        {
+            cout << endl << "Available space: " << endl;
+            for(int j = 0 ; j < space.size()  ; j++)
+            {
+                if(!bord.getSpaceStatus(space[j]))
+                    cout << "   " << space[j];  
+            }
+            cout << "\nwhere do you want to place the " << i + 1 << "sister: ";
+            s = getInt();
+            for(int j = 0 ; j < space.size()  ; j++)
+            {
+                if(!bord.getSpaceStatus(space[j]) && s == space[j])
+                    bord.addCharacter( s, player.getsidekick(i+1));
+            }
+    
+        }
+    }
+    else
+    {
+        cout << endl << "Available space: " << endl;
+        for(int j = 0 ; j < space.size()  ; j++)
+        {
+            if(!bord.getSpaceStatus(space[j]))
+                cout << "   " << space[j];  
+        }
+        cout << "\nwhere do you want to place the Dr_watson: ";
+        s = getInt();
+        for(int j = 0 ; j < space.size()  ; j++)
+        {
+            if(!bord.getSpaceStatus(space[j]) && s == space[j])
+                bord.addCharacter( s, player.getsidekick(1) );
+        }
+
+    }
+    
+}
+
+void Controller::playTurn(Bord& bord)
+{
+
+
+}
+
+
+void move(Bord& bord)
+{
+
+
 }
 
 
@@ -139,66 +274,47 @@ void Controller::startCombat(Player& attacker, Player& defender)
 
 
 
-
-void Controller::plaseSidekicks(int cha , Bord bord)
+int Controller::getInt()
 {
-    vector<int> zon;
-    vector<int> space;
-    int s;
-    switch(cha)
+    int x;
+
+    while (true)
     {
-        case 1:
-            zon = bord.getZone("Dracula");
-            space = bord.getCellThisZone(zon);
-            for(int i = 0 ; i < 3 ; i++)
-            {
-                cout << endl << "Available space: " << endl;
-                for(int j = 0 ; j < zon.size()  ; j++)
-                {
-                    if(!bord.getSpaceStatus(i))
-                        cout << "   " << zon[j];  
-                }
-                cout << "\nwhere do you want to place the " << i + 1 << "sister: ";
-                cin >> s;
-                for(int j = 0 ; j < zon.size()  ; j++)
-                {
-                    if(!bord.getSpaceStatus(s) && s == zon[j])
-                        bord.addCharacter( s , "sister" );
-                }
+        cin >> x;
 
-            }
+        if (!cin.fail())//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        {
+            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return x;
+        }
 
+        cout << "Invalid input. Enter a number: ";
 
-            break;
-
-        case 2:
-            zon = bord.getZone("sherlock");
-            space = bord.getCellThisZone(zon);
-
-            cout << endl << "Available space: " << endl;
-            for(int j = 0 ; j < zon.size()  ; j++)
-            {
-                if(!bord.getSpaceStatus(j))
-                    cout << "   " << zon[j];  
-            }
-            cout << "\nwhere do you want to place the Dr_watson: ";
-            cin >> s;
-            for(int j = 0 ; j < zon.size()  ; j++)
-            {
-                if(!bord.getSpaceStatus(s) && s == zon[j])
-                    bord.addCharacter( s , "Dr_watson" );
-            }
-            break;
+        cin.clear();
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
+}
 
+int Controller::getChoice(vector<int> valid)
+{
+    while(true)
+    {
+        int x = getInt();
+
+        for(int i : valid)
+        {
+            if(i == x) return x;
+        }
+
+        cout << "Invalid choice. Try again: ";
+    }
 }
 
 
-
-bool Controller::end_game(Player& p1, Player& p2) const
+bool Controller::end_game() const
 {
-    Character* hero1 = p1.getHero();
-    Character* hero2 = p2.getHero();
+    Character* hero1 = firstPlayer->getHero();
+    Character* hero2 = secondPlayer->getHero();
 
     if (!hero1->checkalive() || !hero2->checkalive())
     {

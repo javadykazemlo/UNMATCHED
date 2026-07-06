@@ -2,13 +2,13 @@
 #include <iostream>
 #include <vector>
 #include <string>
+class Character;
 
 struct cell
 {
     std::vector<int> adjacent;
     std::vector<int> zone;
-    bool Character = false;
-    std::string CharacterName = "";
+    Character* character = nullptr;
 };
 
 class Bord
@@ -22,13 +22,15 @@ public:
     bool checkzone(int z);
     std::vector<int> getCellThisZone(std::vector<int> zon);
 
-    void addCharacter(int, std::string name);
+    void addCharacter(int, Character* character);
     void deletCharacter(int);
+    bool isEmpty(int pos);
 
-    std::vector<int> getAdjacent(std::string) const;
-    std::vector<int> getZone(std::string) const;
-    bool getSpaceStatus(int cell) const;
-    std::string getCharacterName(int cell) const;
+
+    std::vector<int> getAdjacent(Character* character) const;
+    std::vector<int> getZone(Character* character) const;
+    bool getSpaceStatus(int pos) const;
+    Character* getCharacterName(int pos) const;
 
     ~Bord();
 };

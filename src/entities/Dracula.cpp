@@ -52,7 +52,7 @@ void Dracula::ability()
         cout << "Select target:\n";
         for (int i = 0; i < targets.size(); i++)
         {
-            cout << i + 1 << ". " << targets[i]->getName() << endl;  
+            cout << i + 1 << ". " << targets[i]->getName() << endl;
         }
 
         int k;

@@ -144,9 +144,75 @@ void Controller::playTurn(Bord& bord)
 }
 
 
+
+void Controller::boost(Card*& selectedCard, bool isAttackCard, bool isDefenseCard)
+{
+    if (selectedCard == nullptr)
+    {
+        cout << "No card selected!\n";
+        return;
+    }
+
+    cout << "\nSelected card: " << selectedCard->name << endl;
+    cout << "Boost value: " << selectedCard->boost << endl;
+    
+    cout << "Do you want to use Boost? (y/n): ";
+    char choice;
+    cin >> choice;
+
+    if (choice != 'y' && choice != 'Y')
+    {
+        cout << "No boost used.\n";
+        return;
+    }
+
+    cout << "\nHow do you want to use the Boost?\n";
+    cout << "   1. For Movement (+" << selectedCard->boost << " steps)\n";
+    
+    if (isAttackCard)
+        cout << "   2. For Attack (+" << selectedCard->boost << " attack)\n";
+    
+    if (isDefenseCard)
+        cout << "   3. For Defense (+" << selectedCard->boost << " defense)\n";
+    
+    cout << "   0. Cancel Boost\n";
+    cout << "Enter choice: ";
+
+    int boostChoice;
+    cin >> boostChoice;
+
+    if (boostChoice == 0)
+    {
+        cout << "Boost cancelled.\n";
+    }
+    else if (boostChoice == 1)  // حرکت
+    {
+        cout << "\n✅ Boost used for MOVEMENT!\n";
+        cout << "   +" << selectedCard->boost << " steps added.\n";
+        // مقدار Boost برای حرکت ذخیره میشه (در move استفاده میشه)
+    }
+    else if (boostChoice == 2 && isAttackCard)  // حمله
+    {
+        selectedCard->attack += selectedCard->boost;  // ← زیاد کردن حمله
+        cout << "\n✅ Boost used for ATTACK!\n";
+        cout << "   Attack increased by +" << selectedCard->boost << endl;
+        cout << "   New attack value: " << selectedCard->attack << endl;
+    }
+    else if (boostChoice == 3 && isDefenseCard)  // دفاع
+    {
+        selectedCard->defense += selectedCard->boost;  // ← زیاد کردن دفاع
+        cout << "\n✅ Boost used for DEFENSE!\n";
+        cout << "   Defense increased by +" << selectedCard->boost << endl;
+        cout << "   New defense value: " << selectedCard->defense << endl;
+    }
+    else
+    {
+        cout << "Invalid choice!\n";
+    }
+}
+
 void Controller::move(Bord& bord)
 {
-
 
 }
 
@@ -254,7 +320,7 @@ void Controller::startCombat(Player& attacker, Player& defender)
     } 
     while (attackCard == nullptr);
 
-
+    boost(attackCard, true, false);
 
     cout << "\n" << defender.getName() << " - Select DEFENSE card:\n";
     defender.getDeck()->showHandDR();
@@ -271,7 +337,8 @@ void Controller::startCombat(Player& attacker, Player& defender)
     } 
     while (defenseCard == nullptr);
 
-
+    boost(defenseCard, false, true);
+    
     resolveCombat(*attackCard, *defenseCard, attacker, defender);
     
     burncards.push_back(*attackCard);

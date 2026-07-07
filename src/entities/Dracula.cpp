@@ -76,15 +76,6 @@ void Dracula::ability()
     }
 }
 
-void Dracula::setCurrentPlayer(Player* player)
-{
-    currentPlayer = player;
-}
-
-void Dracula::setGameBoard(Bord* board)
-{
-    gameBoard = board;
-}
 
 
 

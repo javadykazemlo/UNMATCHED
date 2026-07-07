@@ -22,7 +22,7 @@ public:
     void chooseCharacters(Bord& bord);
     void plaseSidekicks(Bord& bord , Player& player);
     void playTurn(Bord& bord);
-
+    void boost(Card*& selectedCard, bool isAttackCard, bool isDefenseCard);
     void move(Bord& bord);
     
     void resolveCombat(Card& attackCard, Card& defenseCard, Player& attacker, Player& defender);

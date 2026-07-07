@@ -33,6 +33,9 @@ public:
     Character* getCharacterName(int pos) const;
 
     ~Bord();
+
+    //void check();
+
 };
 
 

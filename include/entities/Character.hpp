@@ -8,7 +8,7 @@ private:
     int Hp;
     int MaxHp;
     int Move;
-    int Attack;
+    int Attack;// 0 = Melee , 1 = Ranged
     bool IsAlive;
 
 public:

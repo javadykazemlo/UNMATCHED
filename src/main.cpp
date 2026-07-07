@@ -21,10 +21,7 @@ int main()
 
     controller.chooseCharacters(bord);
     
-    while(!controller.end_game())
-    {
-        controller.playTurn(bord);
-    }
+    controller.playTurn(bord);
 
     
   	return 0;

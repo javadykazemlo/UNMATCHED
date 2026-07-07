@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-
+#include "entities/Character.hpp"
 
 using namespace std;
 
@@ -159,4 +159,17 @@ Bord::~Bord()
 
 }
 
+// void Bord::check()
+// {
+//     for(int i = 0; i < 32 ; i++)
+//     {
+//        cout << i << " : ";
 
+//         if (spaces[i].character)
+//             cout << spaces[i].character->getName();
+//         else
+//             cout << "Empty";
+
+//         cout << endl;
+//     }
+// }

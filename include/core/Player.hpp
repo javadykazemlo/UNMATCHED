@@ -25,6 +25,7 @@ public:
 
     std::string getName() const;
     int getAge() const;
+    std::vector<Character*>& getCharacters();
     Character* getHero() const;
     Character* getsidekick(int i) const;
 

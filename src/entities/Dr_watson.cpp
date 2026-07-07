@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Dr_watson::Dr_watson(): Character("Dr_watson", 8 , 2 , 0)
+Dr_watson::Dr_watson(): Character("Dr_watson", 8 , 2 , 1)
 {
 }
 

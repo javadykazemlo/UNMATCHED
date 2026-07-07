@@ -46,6 +46,10 @@ void Controller::choosePlayers(Player player[2])
         firstPlayer = &player[1];
         secondPlayer = &player[0];
     }
+
+    current = firstPlayer;
+    enemy = secondPlayer;
+
 }
 
 
@@ -64,21 +68,16 @@ void Controller::chooseCharacters(Bord& bord)
 
 
 
-    int pos[2];
+    int pos;
     cout << firstPlayer->getName() << ", choose your Character position(4 or 15): ";
-    pos[0] = getChoice({4,15});
+    pos = getChoice({4,15});
 
-    bord.addCharacter( pos[0] , firstPlayer->getHero() );
-    bord.addCharacter( pos[0] == 4 ? 15 : 4 , secondPlayer->getHero() );
+    bord.addCharacter( pos , firstPlayer->getHero() );
+    bord.addCharacter( pos == 4 ? 15 : 4 , secondPlayer->getHero() );
 
 
     plaseSidekicks(bord , *firstPlayer);
     plaseSidekicks(bord , *secondPlayer);
-
-
-    cout << firstPlayer->getName() << " chose " << firstPlayer->getHero()->getName() << " and starts at spaces " << pos[0] << ".\n"; 
-    cout << secondPlayer->getName() << " chose " << secondPlayer->getHero()->getName() << " and starts at spaces " << pos[1] << ".\n";  
-
 }
 
 
@@ -93,15 +92,16 @@ void Controller::plaseSidekicks( Bord& bord , Player& player)
     
     if(hero->getName() == "Dracula")
     {
+        cout << "\n═════════════════════════════════════════════════" << endl;
         for(int i = 0 ; i < 3 ; i++)
         {
-            cout << endl << "Available space: " << endl;
+            cout << "Available space: ";
             for(int j = 0 ; j < space.size()  ; j++)
             {
                 if(!bord.getSpaceStatus(space[j]))
                     cout << "   " << space[j];  
             }
-            cout << "\nwhere do you want to place the " << i + 1 << "sister: ";
+            cout << "\nwhere do you want to place sister #" << i + 1 << ": ";
             s = getInt();
             for(int j = 0 ; j < space.size()  ; j++)
             {
@@ -113,7 +113,8 @@ void Controller::plaseSidekicks( Bord& bord , Player& player)
     }
     else
     {
-        cout << endl << "Available space: " << endl;
+        cout << "\n═════════════════════════════════════════════════" << endl;
+        cout << "Available space: ";
         for(int j = 0 ; j < space.size()  ; j++)
         {
             if(!bord.getSpaceStatus(space[j]))
@@ -128,19 +129,111 @@ void Controller::plaseSidekicks( Bord& bord , Player& player)
         }
 
     }
-    
 }
 
 void Controller::playTurn(Bord& bord)
 {
+    int charc = 0;
+    vector<int> chact = {};
+    int Todo = 0;
+    while(!end_game())
+    {
+        for(int i = 0; i < 2 ; i++)
+        {
+            cout << "\n════════════════════════════════════════════════════════════════" << endl;
+            cout << "            " << current->getName() << "'s turn\n\n";
+    
+            // نمایش TUI (نقشه و اطلاعات کاراتر ها و اطلاعات کارت ها)
+    
+            cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack";
+            cout << "\nChoose a action: ";
+            Todo = getChoice({1,2,3});
+            
+            int k = 1;
+            
+            switch(Todo)
+            {
+                case 1: //Maneuver
+                {
+                    //کشیدن یک کارت
 
+                    for (Character* ch : current->getCharacters())
+                    {
+                        if(ch->checkalive())
+                        {
+                            cout << k << "." << ch->getName() << endl;
+                            chact.push_back(k);
+                            k++;
+                        }
+                    }
+                    cout << "Choose a character: ";
+                    charc = getChoice({chact});
+    
+                    move(bord , charc);
+    
+                    break;
+    
+                }
+                case 2: //Scheme
+                {
+                    //انتخاب یکی از کارت های Scheme
+    
+
+
+                    break;
+    
+                }
+                case 3: //Attack
+                {
+                    int k = 1;
+                    for (Character* ch : current->getCharacters())
+                    {
+                        if(ch->checkalive())
+                        {
+                            cout << k << "." << ch->getName() << endl;
+                            chact.push_back(k);
+                            k++;
+                        }
+                    }
+                    cout << "Choose a character: ";
+                    charc = getChoice({chact});
+    
+                    
+                    break;
+    
+
+                }
+                default:
+                {
+                    break;
+                }
+            }
+            move(bord , 2);
+    
+            // حمله
+            //attack();
+    
+            if(end_game()) 
+            {
+                break;
+                
+            }
+    
+            // کشیدن کارت
+            //drawCard();
+
+        }
+
+        swap(current, enemy);
+    }
 
 }
 
 
-void Controller::move(Bord& bord)
+void Controller::move(Bord& bord , int ch)
 {
 
+    
 
 }
 
@@ -284,7 +377,7 @@ int Controller::getInt()
     {
         cin >> x;
 
-        if (!cin.fail())//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        if (!cin.fail())
         {
             cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             return x;

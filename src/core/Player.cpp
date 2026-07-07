@@ -62,6 +62,11 @@ int Player::getAge() const
     return Age;
 }
 
+vector<Character*>& Player::getCharacters()
+{
+    return fighters;
+}
+
 Character* Player::getHero() const
 {
     return fighters[0];
@@ -69,7 +74,9 @@ Character* Player::getHero() const
 
 Character* Player::getsidekick(int i) const
 {
-    return fighters[i];
+    if(fighters[i]->checkalive())
+        return fighters[i];
+    return {};
 }
 
 Deck* Player::getDeck() const 

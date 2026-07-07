@@ -23,7 +23,7 @@ public:
     void plaseSidekicks(Bord& bord , Player& player);
     void playTurn(Bord& bord);
 
-    void move(Bord& bord);
+    void move(Bord& bord , int mov);
     
     void resolveCombat(Card& attackCard, Card& defenseCard, Player& attacker, Player& defender);
     void showBurnCards() const;

@@ -1,20 +1,60 @@
 #include <iostream>
 #include <string>
+#include <vector>
 #include <iomanip>
 #include "cards/Card.hpp"
 
 
 using namespace std;
 
-void Card::applyEffect()
+void Card::applyEffect(Player* pl,Player* enemyPl, Bord*bo)
 {
 
-    Player* pl;
-    Bord* bo;
 
   if (name == "Administer Aid")
     {
+
+        Character* holmes = pl->getHero();
+        Character* watson = pl->getsidekick(1);
+        vector<int> adjacent = bo->getAdjacent(holmes);
+        vector<int> emptyAdjacent;
+
+
+        for (auto pos : adjacent)
+        {
+            if (bo->isEmpty(pos))
+            {
+                emptyAdjacent.push_back(pos);
+            }
+            
+        }
+        if (!emptyAdjacent.empty())
+        {
+            for (int i = 0; i < 32; i++)
+            {
+                if (bo->getCharacterName(i) == watson)
+                {
+                    bo->deletCharacter(i);
+                    break;
+                }
+            }
+        }
+
+        for (int i = 0; i <emptyAdjacent.size() ; i++)
+        {
+            if(bo->isEmpty(emptyAdjacent[i]))
+            {
+                bo->addCharacter(emptyAdjacent[i],watson);      
+            }
+            
+        }
         
+         
+        holmes->heal(1);
+        pl->getDeck()->cardHandSH();
+        cout << "Holmes healed 1 HP and 1 card drawn!\n";
+        
+
     }
     
     else if (name == "Confirm Suspicion")
@@ -77,7 +117,7 @@ void Card::applyEffect()
         
     }
 
-
+//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     
     else if (name == "Feeding Frenzy")

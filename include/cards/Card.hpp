@@ -18,5 +18,5 @@ struct Card
     std::string effect;
 
 
-     void applyEffect();
+     void applyEffect(Player* pl,Player* enemyPl , Bord*bo);
 };

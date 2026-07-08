@@ -551,7 +551,7 @@ void Deck::cardHandSH()
 
     }
     
-    cout << count << " cards drawn to hand successfully!\n";
+    cout << count << " cards drawn to hand successfully!\n";//باید شرط برای برسیس اینکه بیشتر از 7 تا کارت توی دست نباشه رو رو هم بنویسی 
 
 }
 

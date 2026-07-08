@@ -49,7 +49,7 @@ void Card::applyEffect(Player* pl,Player* enemyPl, Bord*bo)
             
         }
         
-         
+          
         holmes->heal(1);
         pl->getDeck()->cardHandSH();
         cout << "Holmes healed 1 HP and 1 card drawn!\n";
@@ -60,11 +60,40 @@ void Card::applyEffect(Player* pl,Player* enemyPl, Bord*bo)
     else if (name == "Confirm Suspicion")
     {
         
+        cout << "Enter a number for choose card ";
     }
     
     else if (name == "Counter Punch")
-    {
+    { 
+        Character* holmes = pl->getHero();
+        Character* enemyHero = enemyPl->getHero();
+        Character* enemySidekick = enemyPl->getsidekick(1);
+
+        vector<int> adjacent = bo->getAdjacent(holmes);
+        bool damaged = false;
+
+        for (int pos : adjacent)
+        {
+            if (!bo->isEmpty(pos))
+            {
+                Character* target = bo->getCharacterName(pos);
+                
+                if (target == enemyHero || target == enemySidekick)
+                {
+                    target->takeDamage(0, 2);
+                    cout << "2 damage dealt to " << target->getName() << "!\n";
+                    damaged = true;
+                    break;  
+                }
+            }
+        }
         
+        if (!damaged)
+        {
+            cout << "No adjacent enemy fighter!\n";
+        }
+        
+
     }
     
     else if (name == "Deduce Strategy")

@@ -6,6 +6,7 @@
 #include "cards/Deck.hpp"
 struct Card 
 {
+
     std::string name;
     std::string owner;
     std::string type;
@@ -16,7 +17,7 @@ struct Card
     int quantity;
     bool isExtra;
     std::string effect;
-
+ 
 
      void applyEffect(Player* pl,Player* enemyPl , Bord*bo);
 };

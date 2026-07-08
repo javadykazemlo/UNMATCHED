@@ -16,6 +16,9 @@ private:
     Player* current = nullptr;
     Player* enemy = nullptr;
     std::vector<Card> burncards;
+
+    bool DraculaWon;   
+    bool sherlockWon;
 public:
     Controller();
     
@@ -36,6 +39,8 @@ public:
     std::vector<Card> get_burn_Cards( ) const;
     int getInt();
     int getChoice(std::vector<int> valid);
+    bool get_DraculaWon();
+    bool get_SherlockWon();
 
     ~Controller();
 };

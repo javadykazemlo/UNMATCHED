@@ -103,6 +103,23 @@ void Card::applyEffect(Player* pl,Player* enemyPl, Bord*bo)
     
     else if (name == "Education Never Ends")
     {
+        Controller k ;
+        if (k.get_DraculaWon())
+        {
+            cout << "Dracula won! Opponent draws 1 card.\n";
+            enemyPl->getDeck()->cardHandSH();
+        }
+        else if (k.get_SherlockWon())
+        {
+            cout << "Sherlock won! Opponent draws 1 card.\n";
+            enemyPl->getDeck()->cardHandSH();
+        }
+        else
+        {
+            cout << "You lost or tied! You draw 2 cards.\n";
+            pl->getDeck()->cardHandSH();
+            pl->getDeck()->cardHandSH();
+        }
         
     }
     

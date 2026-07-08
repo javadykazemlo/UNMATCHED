@@ -8,6 +8,8 @@ using namespace std;
 
 Controller::Controller()
 {
+    DraculaWon = false;
+    sherlockWon = false;
 }
 
 void Controller::choosePlayers(Player player[2])
@@ -359,10 +361,34 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard, Player& atta
         defender.getHero()->takeDamage(defenseValue, attackValue);
         cout << "  " << defender.getName() << " HP: " << defender.getHero()->getHp() 
         << "/" << defender.getHero()->getMaxhp() << "\n";
+
+        if (attacker.getHero()->getName() == "Dracula")
+        {
+            DraculaWon = true;
+            sherlockWon = false;
+        }
+        else if (attacker.getHero()->getName() == "Sherlock Holmes")
+        {
+            sherlockWon = true;
+            DraculaWon = false;
+        }
+
+
     }
     else if (attackValue < defenseValue) 
     {
         cout << "\n🛡️ " << defender.getName() << " blocks the attack!\n";
+
+        if (defender.getHero()->getName() == "Dracula")
+        {
+            DraculaWon = true;
+            sherlockWon = false;
+        }
+        else if (defender.getHero()->getName() == "Sherlock Holmes")
+        {
+            sherlockWon = true;
+            DraculaWon = false;
+        }
     } 
     else 
     {
@@ -505,7 +531,14 @@ vector<Card> Controller::get_burn_Cards() const
 {
     return burncards;
 }
-
+bool Controller::get_DraculaWon()
+{
+    return DraculaWon;
+}
+bool Controller::get_SherlockWon()
+{
+    return sherlockWon;
+}
 
 Controller::~Controller()
 {

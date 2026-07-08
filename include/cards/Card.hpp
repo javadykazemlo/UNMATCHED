@@ -2,6 +2,7 @@
 #include <string>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
+#include "core/Controller.hpp"
 #include "entities/Character.hpp"
 #include "cards/Deck.hpp"
 struct Card 

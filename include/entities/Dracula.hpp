@@ -7,14 +7,10 @@ class Dracula : public Character
 {
 private:
 
-    Player* currentPlayer;
-    Bord* gameBoard;
 public:
-    Dracula();
-    void setCurrentPlayer(Player* player);
-    void setGameBoard(Bord* board);
+    Dracula(int owner);
 
-    void ability() override;
+    void ability(Bord* bord , Player* player) override;
 
     ~Dracula();
 };

@@ -5,34 +5,37 @@
 class Deck 
 {
 private:
-
-    std::vector<Card> &cardsSH;
-    std::vector<Card> &cardsDR;
-    std::vector<Card> HandSH;
-    std::vector<Card> HandDR;
-
+    std::vector<Card> deck;
+    std::vector<Card> hand;
+    std::vector<Card> DiscardPile;
 public:
-    Deck(std::vector<Card>& sh, std::vector<Card>& dr);
-    void SherlockDeck();
-    void DraculaDeck();
-    void showDeck_SH() const;
-    void showDeck_DR() const;
-    void showCard(const Card& card) const;
-    void cardHandSH();
-    void cardHandDR();
-    void showHandSH() const;
-    void showHandDR() const;
-    
-    Card* selectAndRemoveFromHandSH(int index);
-    Card* selectAndRemoveFromHandDR(int index);
-    bool isHandSHEmpty() const ;
-    bool isHandDREmpty() const ;
-    int  getHandSHSize() const ;
-    int  getHandDRSize() const ;
+    Deck(int hero);
 
-    std::vector<Card> &getCardsSH();
-    std::vector<Card> &getCardsDR();
-    std::vector<Card> getCardsH();
-    std::vector<Card> getCardDR();
-    ~Deck();
+    void buildDeck(int hero);
+
+    void shuffle();
+
+    void draw(int count = 1);
+    Card playCard(int index, Card& selected);
+    void discardCard(const Card& card);
+    
+    void showCard(const Card& card) const;
+    void showDeck() const;
+    void showHand() const;
+    
+    std::vector<int> showAttackCards() const;
+    std::vector<int> showDefenseCards() const;
+    std::vector<int> showSchemeCards() const;
+
+    bool isDeckEmpty() const;
+    bool isHandEmpty() const;
+
+    int getdeckSize() const;
+    int gethandSize() const;
+    int getdiscardSize() const;
+    
+    const std::vector<Card>& getdeck();
+    const std::vector<Card>& gethand();
+
+    ~Deck() = default;
 };

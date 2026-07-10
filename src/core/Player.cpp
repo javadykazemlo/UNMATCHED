@@ -14,7 +14,7 @@ Player::Player()
 }
 
 
-void Player::chooseCharacter(int choose)
+void Player::chooseCharacter(int choose , int owner)
 {
     
         std::vector<Card> shCards;
@@ -22,25 +22,24 @@ void Player::chooseCharacter(int choose)
     switch (choose)
     {
         case 1://Dracula
-            fighters.push_back(new Dracula());
-            fighters.push_back(new Sister("Sister Agatha"));
-            fighters.push_back(new Sister("Sister Beatrix"));
-            fighters.push_back(new Sister("Sister Carmilla"));
+            fighters.push_back(new Dracula(owner));
+            fighters.push_back(new Sister("Sister Agatha" , owner));
+            fighters.push_back(new Sister("Sister Beatrix" , owner));
+            fighters.push_back(new Sister("Sister Carmilla" , owner));
 
-            deck = new Deck(shCards, drCards);
+            deck = new Deck(1);
 
             break;
-        
-        case 2://Sherlock
-            fighters.push_back(new Sherlock());
-            fighters.push_back(new Dr_watson());
 
-            deck = new Deck(shCards, drCards);
+        case 2://Sherlock
+            fighters.push_back(new Sherlock(owner));
+            fighters.push_back(new Dr_watson(owner));
+
+            deck = new Deck(2);
 
             break;
     }
 }
-
 
 void Player::setName(const string& n) 
 {

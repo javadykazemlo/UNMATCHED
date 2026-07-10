@@ -76,6 +76,24 @@ Bord::Bord()
 
 }
 
+
+void Bord::addCharacter(int pos , Character* character)
+{
+    spaces[pos].character = character;
+    character->setSpace(pos);
+}
+
+void Bord::deletCharacter(int pos)
+{
+    spaces[pos].character = nullptr;
+}
+
+bool Bord::isEmpty(int pos)
+{
+    return spaces[pos].character == nullptr;
+}
+
+
 bool Bord::checkzone(int zo)
 {
     for (int i = 0; i < 32; i++)
@@ -88,7 +106,30 @@ bool Bord::checkzone(int zo)
     return false;
 }
 
-vector<int> Bord::getCellThisZone(vector<int> zon)
+vector<int> Bord::getEmptyAdjacent(Character* character) const
+{
+    vector<int> result;
+
+    for (int i = 0; i < 32; i++)
+    {
+        if (spaces[i].character == character)
+        {
+            for (int adj : spaces[i].adjacent)
+            {
+                if (spaces[adj].character == nullptr)
+                {
+                    result.push_back(adj);
+                }
+            }
+
+            break;
+        }
+    }
+
+    return result;
+}
+
+vector<int> Bord::getEmptyZone(vector<int> zon) const
 {
     vector<int> result;
 
@@ -105,32 +146,19 @@ vector<int> Bord::getCellThisZone(vector<int> zon)
     return result;
 }
 
-void Bord::addCharacter(int pos , Character* character)
-{
-    spaces[pos].character = character;
-}
 
-void Bord::deletCharacter(int pos)
-{
-    spaces[pos].character = nullptr;
-}
 
-bool Bord::isEmpty(int pos)
-{
-    return spaces[pos].character == nullptr;
-}
-
-vector<int> Bord::getAdjacent(Character* character) const
+vector<int> Bord::getAdjacentCharacter(Character* character) const
 {
     for(int i = 0; i < 32; i++)
     {
         if(spaces[i].character == character)
             return spaces[i].adjacent;
+        }
+        
+        return {};
     }
-
-    return {};
-}
-vector<int> Bord::getZone(Character* character) const
+    vector<int> Bord::getZoneCharacter(Character* character) const
 {
     for(int i = 0; i < 32; i++)
     {
@@ -142,6 +170,15 @@ vector<int> Bord::getZone(Character* character) const
     return {};
 }
 
+vector<int> Bord::getAdjacentpos(int pos) const
+{
+    return spaces[pos].adjacent;
+}
+
+vector<int> Bord::getZonepos(int pos) const
+{
+    return spaces[pos].zone;
+}
 
 bool Bord::getSpaceStatus(int pos) const
 {
@@ -149,7 +186,28 @@ bool Bord::getSpaceStatus(int pos) const
 }
 
 
-Character* Bord::getCharacterName(int pos) const
+vector<int> Bord::getSecretPassages(int pos) const
+{
+    switch (pos)
+    {
+        case 0:
+            return {12, 17, 23};
+
+        case 12:
+            return {0, 17, 23};
+
+        case 17:
+            return {0, 12, 23};
+
+        case 23:
+            return {0, 12 , 17};
+
+        default:
+            return {};
+    }
+}
+
+Character* Bord::getCharacter(int pos) const
 {
     return spaces[pos].character;
 }

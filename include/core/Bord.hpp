@@ -18,19 +18,22 @@ private:
 public:
     Bord();
     
-
-    bool checkzone(int z);
-    std::vector<int> getCellThisZone(std::vector<int> zon);
-
     void addCharacter(int, Character* character);
     void deletCharacter(int);
     bool isEmpty(int pos);
+    
+    bool checkzone(int z);
+    std::vector<int> getEmptyAdjacent(Character* character) const;
+    std::vector<int> getEmptyZone(std::vector<int> zon) const;
 
-
-    std::vector<int> getAdjacent(Character* character) const;
-    std::vector<int> getZone(Character* character) const;
+    std::vector<int> getAdjacentCharacter(Character* character) const;
+    std::vector<int> getZoneCharacter(Character* character) const;
+    std::vector<int> getAdjacentpos(int pos) const;
+    std::vector<int> getZonepos(int pos) const;
     bool getSpaceStatus(int pos) const;
-    Character* getCharacterName(int pos) const;
+
+    std::vector<int> getSecretPassages(int pos) const;
+    Character* getCharacter(int pos) const;
 
     ~Bord();
 

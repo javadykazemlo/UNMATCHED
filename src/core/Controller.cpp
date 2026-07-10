@@ -2,7 +2,7 @@
 #include <string>
 #include <iomanip>
 #include <limits>
-#include "Controller.hpp"
+#include "core/Controller.hpp"
 
 using namespace std;
 
@@ -10,6 +10,7 @@ Controller::Controller()
 {
     DraculaWon = false;
     sherlockWon = false;
+   // Guess = false;
 }
 
 void Controller::choosePlayers(Player player[2])
@@ -285,23 +286,22 @@ void Controller::boost(Card*& selectedCard, bool isAttackCard, bool isDefenseCar
     {
         cout << "Boost cancelled.\n";
     }
-    else if (boostChoice == 1)  // حرکت
+    else if (boostChoice == 1)  
     {
-        cout << "\n✅ Boost used for MOVEMENT!\n";
+        cout << "\n Boost used for MOVEMENT!\n";
         cout << "   +" << selectedCard->boost << " steps added.\n";
-        // مقدار Boost برای حرکت ذخیره میشه (در move استفاده میشه)
     }
-    else if (boostChoice == 2 && isAttackCard)  // حمله
+    else if (boostChoice == 2 && isAttackCard)  
     {
-        selectedCard->attack += selectedCard->boost;  // ← زیاد کردن حمله
-        cout << "\n✅ Boost used for ATTACK!\n";
+        selectedCard->attack += selectedCard->boost;  
+        cout << "\n Boost used for ATTACK!\n";
         cout << "   Attack increased by +" << selectedCard->boost << endl;
         cout << "   New attack value: " << selectedCard->attack << endl;
     }
-    else if (boostChoice == 3 && isDefenseCard)  // دفاع
+    else if (boostChoice == 3 && isDefenseCard)  
     {
-        selectedCard->defense += selectedCard->boost;  // ← زیاد کردن دفاع
-        cout << "\n✅ Boost used for DEFENSE!\n";
+        selectedCard->defense += selectedCard->boost;  
+        cout << "\n Boost used for DEFENSE!\n";
         cout << "   Defense increased by +" << selectedCard->boost << endl;
         cout << "   New defense value: " << selectedCard->defense << endl;
     }
@@ -440,7 +440,7 @@ void Controller::startCombat(Player& attacker, Player& defender)
     } 
     while (attackCard == nullptr);
 
-    boost(attackCard, true, false);
+   // boost(attackCard, true, false);
 
     cout << "\n" << defender.getName() << " - Select DEFENSE card:\n";
     defender.getDeck()->showHandDR();
@@ -457,7 +457,7 @@ void Controller::startCombat(Player& attacker, Player& defender)
     } 
     while (defenseCard == nullptr);
 
-    boost(defenseCard, false, true);
+   // boost(defenseCard, false, true);
     
     resolveCombat(*attackCard, *defenseCard, attacker, defender);
     

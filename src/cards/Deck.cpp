@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
-#include "Deck.hpp"
+#include "cards/Deck.hpp"
 
 using namespace std;
 Deck::Deck(std::vector<Card>& sh, std::vector<Card>& dr): cardsSH(sh), cardsDR(dr)

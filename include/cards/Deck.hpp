@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
-#include "Card.hpp"
-
+#include "cards/Card.hpp"
 class Deck 
 {
 private:

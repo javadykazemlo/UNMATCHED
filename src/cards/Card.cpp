@@ -125,7 +125,21 @@ void Card::applyEffect(Player* pl,Player* enemyPl, Bord*bo)
     
     else if (name == "Elementary")
     {
-        
+        /*
+        cout << "Guess the attack value: ";
+        int guess;
+        cin >> guess;
+        Controller k ;
+        if (برای اون بولین هستت)
+        {
+            cout <<"You guessed -> succeessful";
+        }
+        else
+        {
+            cout <<"You guessed -> failed";
+
+        }
+        */
     }
     
     else if (name == "Eliminate the Impossible")

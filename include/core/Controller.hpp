@@ -19,6 +19,7 @@ private:
 
     bool DraculaWon;   
     bool sherlockWon;
+   // bool Guess;
 public:
     Controller();
     

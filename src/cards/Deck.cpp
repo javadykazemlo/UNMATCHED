@@ -2,9 +2,10 @@
 #include <string>
 #include <vector>
 #include <iomanip>
+
 #include <algorithm>
 #include <random>
-#include "Deck.hpp"
+#include "cards/Deck.hpp"
 
 using namespace std;
 

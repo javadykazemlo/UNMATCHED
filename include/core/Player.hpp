@@ -16,7 +16,6 @@ private:
 
     std::vector<Character*> fighters;
     Deck* deck;
-    std::vector<Card*> hand;
 public:
     Player();
     void chooseCharacter(int , int owner);

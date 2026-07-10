@@ -11,6 +11,8 @@ using namespace std;
 
 Player::Player()
 {
+    deck = nullptr;
+    Age = 0;
 }
 
 

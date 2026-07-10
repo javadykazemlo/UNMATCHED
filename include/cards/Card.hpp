@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+
 #include "entities/Character.hpp"
 
 enum class owner
@@ -23,11 +24,6 @@ enum class timing
     BeforeCombat,
     DuringCombat,
     AfterCombat
-};
-
-enum class cardID
-{
-
 };
 
 class Card

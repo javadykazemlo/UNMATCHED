@@ -2,12 +2,15 @@
 #include <string>
 #include <iomanip>
 #include <limits>
-#include "Controller.hpp"
+#include "core/Controller.hpp"
 
 using namespace std;
 
 Controller::Controller()
 {
+    DraculaWon = false;
+    sherlockWon = false;
+   // Guess = false;
 }
 
 void Controller::choosePlayers(Player player[2])
@@ -363,8 +366,6 @@ int Controller::boost()
 
     cout << "Selected card: ";
     int select = getInt();
-    cout << choos;//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,
-    cout << select;
     for(int i = 0 ; select < 0 || select > choos ; i++)
     {
         cout << "Invalid choice\n";
@@ -561,7 +562,14 @@ vector<Card> Controller::get_burn_Cards() const
 {
     return burncards;
 }
-
+bool Controller::get_DraculaWon()
+{
+    return DraculaWon;
+}
+bool Controller::get_SherlockWon()
+{
+    return sherlockWon;
+}
 
 Controller::~Controller()
 {

@@ -5,6 +5,7 @@
 #include "core/Bord.hpp"
 #include "entities/Character.hpp"
 #include "cards/Deck.hpp"
+class Card;
 
 
 class Player 
@@ -17,7 +18,7 @@ private:
     Deck* deck;
 public:
     Player();
-    void chooseCharacter(int );
+    void chooseCharacter(int , int owner);
 
     void setName(const std::string& n);
     void setAge(const int& a);

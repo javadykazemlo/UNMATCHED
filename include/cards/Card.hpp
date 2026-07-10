@@ -1,24 +1,72 @@
 #pragma once
 #include <string>
-#include "core/Bord.hpp"
-#include "core/Player.hpp"
-#include "core/Controller.hpp"
+
 #include "entities/Character.hpp"
-#include "cards/Deck.hpp"
-struct Card 
+
+enum class owner
 {
+    Hero,
+    SideKick,
+    Any
+};
 
-    std::string name;
-    std::string owner;
-    std::string type;
-    int attack;
-    int defense;
-    std::string timing;
-    int boost;
-    int quantity;
-    bool isExtra;
+enum class CardType
+{
+    Attack,
+    Defense,
+    Versatile,
+    Scheme
+};
+
+enum class timing
+{
+    None,
+    BeforeCombat,
+    DuringCombat,
+    AfterCombat
+};
+
+class Card
+{
+private:
+    std::string Name;
+    owner Owner; 
+    CardType Type; 
+    int Attack;
+    timing Timing;
+    int Boost;
     std::string effect;
- 
+public:
+    Card() = default;
+    Card(std::string nam , owner own , CardType typ , int att , timing tim , int bos , std::string efec);
 
-     void applyEffect(Player* pl,Player* enemyPl , Bord*bo);
+    void Effect();
+
+    bool isHero() const;
+    bool issideKick() const;
+    bool isAnyowner() const;
+
+    bool isAttack() const;
+    bool isDefense() const;
+    bool isScheme() const;
+    bool isVersatile() const;
+
+    bool isNonetiming() const;
+    bool isBeforeCombat() const;
+    bool isDuringCombat() const;
+    bool isAfterCombat() const;
+
+    std::string getOwnerString() const;
+    std::string getTypeString() const;
+    std::string getTimingString() const;
+
+    std::string getName() const;
+    owner getOwner() const;
+    CardType getType() const;
+    int getAttack() const;
+    timing getTiming() const;
+    int getBoost() const;
+    std::string geteffect() const;
+
+    ~Card();
 };

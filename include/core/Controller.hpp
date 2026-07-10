@@ -28,12 +28,15 @@ public:
     void plaseSidekicks(Bord& bord , Player& player);
     void playTurn(Bord& bord);
 
-    void move(Bord& bord , int mov);
+    void move(Bord& bord ,Character* mov);
     
-    void boost(Card*& selectedCard, bool isAttackCard, bool isDefenseCard);
-    void resolveCombat(Card& attackCard, Card& defenseCard, Player& attacker, Player& defender);
+    int boost();
+    void resolveCombat(Card& attackCard, Card& defenseCard, Player* attacker, Player* defender);
     void showBurnCards() const;
-    void startCombat(Player& attacker, Player& defender);
+
+    void startCombat(Player* attacker, Player* defender);
+    std::vector<Card> get_burn_Cards( ) const;
+
 
     bool end_game() const;
     

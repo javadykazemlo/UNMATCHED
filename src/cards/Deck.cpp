@@ -1,489 +1,431 @@
 #include <iostream>
 #include <string>
+#include <vector>
 #include <iomanip>
+
+#include <algorithm>
+#include <random>
 #include "cards/Deck.hpp"
 
 using namespace std;
-Deck::Deck(std::vector<Card>& sh, std::vector<Card>& dr): cardsSH(sh), cardsDR(dr)
+
+Deck::Deck(int hero)
 {
-    
+    buildDeck(hero);
+    shuffle();
+    draw(5);
 }
 
-void Deck::SherlockDeck() 
+void Deck::buildDeck(int hero)
 {
+    deck.clear();
 
-    cardsSH.clear();
-
-    for (int i = 0; i < 2; i++) 
+    if(hero == 1)
     {
-        cardsSH.push_back(
-            {
-            "Administer Aid",
-            "Watson",
-            "Scheme",
-            0,
-            0,
-            "",
-            2,
-            1,
-            false,
-            "Place Watson adjacent to Holmes. Heal Holmes by 1 and draw 1 card."
-        });
-    }
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Bloodlust",                //name
+                owner::Hero,                //Owner
+                CardType::Attack,           //Type
+                2,                          //Attack
+                timing::DuringCombat,       //timing
+                3,                          //boost
+                "This attack gains +1 for each Sister in the same zone as the opposing fighter."
+            );
+        }
 
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Confirm Suspicion",
-            "Sherlock Holmes",
-            "Scheme",
-            0,
-            0,
-            "",
-            1,
-            1,
-            true,
-            "Name an attack or defense value. Your opponent must reveal and discard a matching card. The opposing hero suffers damage equal to that card's boost value. Otherwise they reveal their hand."
-        });
-    }
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Mist Form",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                2,
+                "Place Dracula in any space and gain 1 action."
+            );
+        }
 
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Counter Punch",
-            "Sherlock Holmes",
-            "Versatile",
-            3,
-            3,
-            "After Combat",
-            1,
-            1,
-            false,
-            "If Holmes is adjacent to the opposing fighter, deal 2 damage."
-        });
-    }
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Ambush",
+                owner::Any,
+                CardType::Attack,
+                2,
+                timing::DuringCombat,
+                3,
+                "Opponent discards a random card. Add its boost value to this attack."
+            );
+        }
 
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Deduce Strategy",
-            "Sherlock Holmes",
-            "Versatile",
-            3,
-            3,
-            "During Combat",
-            1,
-            1,
-            false,
-            "You may change your opponent's printed combat value to its boost value."
-        });
-    }
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Blood Bath",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                2,
+                "Recover 2 health. If a Sister is defeated, return her to any Dracula space."
+            );
+        }
 
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Education Never Ends",
-            "Any Fighter",
-            "Versatile",
-            3,
-            3,
-            "After Combat",
-            1,
-            1,
-            false,
-            "If you won, your opponent draws 1 card. Otherwise draw 2 cards."
-        });
-    }
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Beast Form",
+                owner::Hero,
+                CardType::Attack,
+                6,
+                timing::DuringCombat,
+                4,
+                "Discard any number of cards. Gain +1 attack for each discarded card."
+            );
+        }
 
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Elementary",
-            "Sherlock Holmes",
-            "Defense",
-            0,
-            3,
-            "During Combat",
-            3,
-            1,
-            true,
-            "Guess the attack value. If correct, ignore the opponent's attack and cancel all effects."
-        });
-    }
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Assault",
+                owner::Any,
+                CardType::Versatile,
+                3,
+                timing::AfterCombat,
+                1,
+                "Move your fighter up to 3 spaces."
+            );
+        }
 
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Eliminate the Impossible",
-            "Sherlock Holmes",
-            "Scheme",
-            0,
-            0,
-            "",
-            2,
-            1,
-            false,
-            "Look at your opponent's hand and discard one card."
-        });
-    }
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Exploitation",
+                owner::Any,
+                CardType::Versatile,
+                4,
+                timing::AfterCombat,
+                1,
+                "Draw 1 card."
+            );
+        }
+            
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Look Into My Eyes",
+                owner::Hero,
+                CardType::Defense,
+                1,
+                timing::DuringCombat,
+                2,
+                "Add the boost value of your opponent's attack card to this defense."
+            );
+        }
 
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Feint",
-            "Any Fighter",
-            "Versatile",
-            2,
-            2,
-            "Before Combat",
-            1,
-            1,
-            false,
-            "Cancel all effects on your opponent's card."
-        });
-    }
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Hunt",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                4,
+                "Deal 1 damage to all adjacent opposing fighters. Dracula heals 1 for each damage dealt."
+            );
+        }
 
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Fixed Point in a Changing Age",
-            "Watson",
-            "Versatile",
-            3,
-            3,
-            "After Combat",
-            1,
-            1,
-            false,
-            "If Watson is adjacent to Holmes, both recover 1 health."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Master of Disguise",
-            "Sherlock Holmes",
-            "Scheme",
-            0,
-            0,
-            "",
-            2,
-            1,
-            false,
-            "Swap Holmes with an opposing fighter and deal 1 damage."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "The Game Is Afoot",
-            "Sherlock Holmes",
-            "Attack",
-            5,
-            0,
-            "After Combat",
-            2,
-            1,
-            false,
-            "Move Holmes up to 3 spaces."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Service Revolver",
-            "Watson",
-            "Attack",
-            5,
-            0,
-            "",
-            3,
-            1,
-            false,
-            "No additional effect."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsSH.push_back(
-            {
-            "Study Methods",
-            "Any Fighter",
-            "Versatile",
-            3,
-            3,
-            "After Combat",
-            2,
-            1,
-            false,
-            "If you won the combat, you may look at your opponent's hand."
-        });
-    }
-}
-
-void Deck::DraculaDeck() 
-{
-
-    cardsDR.clear();
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Feeding Frenzy",
-            "Dracula",
-            "Attack",
-            2,
-            0,
-            "During Combat",
-            3,
-            1,
-            false,
-            "This attack gains +1 for each Sister in the same zone as the opposing fighter."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Mistform",
-            "Dracula",
-            "Scheme",
-            0,
-            0,
-            "",
-            2,
-            1,
-            false,
-            "Place Dracula in any space and gain 1 action."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Ambush",
-            "Any Fighter",
-            "Attack",
-            2,
-            0,
-            "During Combat",
-            3,
-            1,
-            false,
-            "Opponent discards a random card. Add its boost value to this attack."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Baptism of Blood",
-            "Dracula",
-            "Scheme",
-            0,
-            0,
-            "",
-            2,
-            1,
-            false,
-            "Recover 2 health. If a Sister is defeated, return her to any Dracula space."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Beastform",
-            "Dracula",
-            "Attack",
-            6,
-            0,
-            "During Combat",
-            4,
-            1,
-            false,
-            "Discard any number of cards. Gain +1 attack for each discarded card."
-        });
-    }
-
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Dash",
-            "Any Fighter",
-            "Versatile",
-            3,
-            3,
-            "After Combat",
-            1,
-            1,
-            false,
-            "Move your fighter up to 3 spaces."
-        });
-    }
-
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Exploit",
-            "Any Fighter",
-            "Versatile",
-            4,
-            4,
-            "After Combat",
-            1,
-            1,
-            false,
-            "Draw 1 card."
-        });
-    }
-
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Look Into My Eyes",
-            "Dracula",
-            "Defense",
-            0,
-            1,
-            "During Combat",
-            2,
-            1,
-            false,
-            "Add the boost value of your opponent's attack card to this defense."
-        });
-    }
-
-    for (int i = 0; i < 2; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Prey Upon",
-            "Dracula",
-            "Scheme",
-            0,
-            0,
-            "",
-            4,
-            1,
-            false,
-            "Deal 1 damage to all adjacent opposing fighters. Dracula heals 1 for each damage dealt."
-        });
-    }
-
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Ravening Seduction",
-            "Sister",
-            "Scheme",
-            0,
-            0,
-            "",
-            2,
-            1,
-            false,
-            "Move any fighter up to 2 spaces. Then deal 1 damage for each adjacent Sister."
-        });
-    }
-
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Thirst for Sustenance",
-            "Sister",
-            "Attack",
-            3,
-            0,
-            "After Combat",
-            3,
-            1,
-            false,
-            "If you won the combat, place Dracula adjacent to the opposing fighter."
-        });
-    }
-
-    for (int i = 0; i < 3; i++) 
-    {
-        cardsDR.push_back(
-            {
-            "Feint",
-            "Any Fighter",
-            "Versatile",
-            2,
-            2,
-            "Before Combat",
-            2,
-            1,
-            false,
-            "Cancel all effects on your opponent's card."
-        });
-    }
-}
-
-
-
-
-    void Deck::showCard(const Card& card) const 
-    {
-        cout << "┌────────────────────────────────────────────────────┐\n";
-        cout << "│ " << left << setw(50) << card.name << "│\n";
-        cout << "├────────────────────────────────────────────────────┤\n";
-        cout << "│ " << left << setw(50) << (card.owner + " · " + card.type) << "│\n";
-        cout << "├────────────────────────────────────────────────────┤\n";
-    
-    if (card.type == "Attack") 
-    {
-        cout << "│ " << left << setw(50) << ("Attack: " + to_string(card.attack)) << "│\n";
-    } else if (card.type == "Defense") 
-    {
-        cout << "│ " << left << setw(50) << ("Defense: " + to_string(card.defense)) << "│\n";
-    } else if (card.type == "Versatile") 
-    {
-        cout << "│ " << left << setw(50) << ("Attack/Defense: " + to_string(card.attack) + "/" + to_string(card.defense)) << "│\n";
-    }
-    
-    if (!card.timing.empty()) 
-    {
-        cout << "│ " << left << setw(50) << ("Timing: " + card.timing) << "│\n";
-    }
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Insatiable Seduction",
+                owner::SideKick,
+                CardType::Scheme,
+                0,
+                timing::None,
+                2,
+                "Move any fighter up to 2 spaces. Then deal 1 damage for each adjacent Sister."
+            );
+        }
         
-        cout << "│ " << left << setw(50) << ("Boost: " + to_string(card.boost)) << "│\n";
-        cout << "│ " << left << setw(50) << ("Quantity: x" + to_string(card.quantity)) << "│\n";
-    
-    if (card.isExtra) 
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Thirst for Survival",
+                owner::SideKick,
+                CardType::Attack,
+                3,
+                timing::AfterCombat,
+                3,
+                "If you won the combat, place Dracula adjacent to the opposing fighter."
+            );
+        }
+        
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Deception",
+                owner::Any,
+                CardType::Versatile,
+                2,
+                timing::BeforeCombat,
+                2,
+                "Cancel all effects on your opponent's card."
+            );
+        }
+
+
+    }
+    else
     {
-        cout << "│ " << left << setw(50) << "★ Extra Card" << "│\n";
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "First Aid",   
+                owner::SideKick,                 
+                CardType::Scheme,                  
+                0,                  
+                timing::None,                  
+                2,                  
+                "Place Watson adjacent to Holmes. Heal Holmes by 1 and draw 1 card."
+            );
+        }
+
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Confirm Suspicion",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                1,
+                "Name an attack or defense value. Your opponent must reveal and discard a matching card. The opposing hero suffers damage equal to that card's boost value. Otherwise they reveal their hand."
+            );
+        }
+
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Counterattack",
+                owner::Hero,
+                CardType::Versatile,
+                3,
+                timing::AfterCombat,
+                1,
+                "If Holmes is adjacent to the opposing fighter, deal 2 damage."
+            );
+        }
+
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Strategic Deduction",
+                owner::Hero,
+                CardType::Versatile,
+                3,
+                timing::DuringCombat,
+                1,
+                "You may change your opponent's printed combat value to its boost value."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Learning Never Ends",
+                owner::Any,
+                CardType::Versatile,
+                3, 
+                timing::AfterCombat,
+                1,
+                "If you won, your opponent draws 1 card. Otherwise draw 2 cards."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Elementary",
+                owner::Hero,
+                CardType::Defense,
+                3,
+                timing::DuringCombat,
+                3,
+                "Guess the attack value. If correct, ignore the opponent's attack and cancel all effects."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Impossible Elimination",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                2,
+                "Look at your opponent's hand and discard one card."
+            );
+        }
+
+        for (int i = 0; i < 3; i++) 
+        {
+            deck.emplace_back(
+                "Deception",
+                owner::Any,
+                CardType::Versatile,
+                2,
+                timing::BeforeCombat,
+                1,
+                "Cancel all effects on your opponent's card."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "A Fixed Point in a Changing Age",
+                owner::SideKick,
+                CardType::Scheme,
+                3,
+                timing::AfterCombat,
+                1,
+                "If Watson is adjacent to Holmes, both recover 1 health."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Master of Disguise",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                2,
+                "Swap Holmes with an opposing fighter and deal 1 damage."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "The Game Is Afoot",
+                owner::Hero,
+                CardType::Attack,
+                5,
+                timing::AfterCombat,
+                2,
+                "Move Holmes up to 3 spaces."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Sidearm",
+                owner::SideKick,
+                CardType::Attack,
+                5,
+                timing::None,
+                3,
+                "No additional effect."
+            );
+        }
+
+        for (int i = 0; i < 2; i++) 
+        {
+            deck.emplace_back(
+                "Study Methods",
+                owner::Any,
+                CardType::Versatile,
+                3,
+                timing::AfterCombat,
+                3,
+                "If you won the combat, you may look at your opponent's hand."
+            );
+        }
+        
+    }
+
+}
+
+void Deck::shuffle()
+{
+
+    random_device rd;
+    mt19937 gen(rd());
+    std::shuffle(deck.begin(), deck.end(), gen);
+    
+}
+
+void Deck::draw(int count)
+{
+    for(int i = 0 ; i < count ; i++)
+    {
+        if(deck.empty())
+        {
+
+        }
+        else
+        {
+            hand.push_back(deck.back());
+            deck.pop_back();
+        }
+    }
+}
+
+Card Deck::playCard(int index, Card& selected)
+{
+    if(index < 0 || index >= hand.size())
+    return selected;
+
+    selected = hand[index];
+    hand.erase(hand.begin() + index);
+
+    DiscardPile.push_back(selected);
+
+    return selected;
+}
+
+void Deck::discardCard(const Card& card)
+{
+    DiscardPile.push_back(card);
+}
+
+
+void Deck::showCard(const Card& card) const 
+{
+    cout << "┌────────────────────────────────────────────────────┐\n";
+    cout << "│ " << left << setw(50) << card.getName() << "│\n";
+    cout << "├────────────────────────────────────────────────────┤\n";
+    cout << "│ " << left << setw(50) << (card.getOwnerString() + " · " + card.getTypeString()) << "│\n";
+    cout << "├────────────────────────────────────────────────────┤\n";
+    
+    if (card.isAttack()) 
+    {
+        cout << "│ " << left << setw(50) << ("Attack: " + to_string(card.getAttack())) << "│\n";
+    } else if (card.isDefense()) 
+    {
+        cout << "│ " << left << setw(50) << ("Defense: " + to_string(card.getAttack())) << "│\n";
+    } else if (card.isVersatile()) 
+    {
+        cout << "│ " << left << setw(50) << ("Attack/Defense: " + to_string(card.getAttack()) + "/" + to_string(card.getAttack())) << "│\n";
     }
     
-        cout << "├────────────────────────────────────────────────────┤\n";
+    cout << "│ " << left << setw(50) << ("Timing: " + card.getTypeString()) << "│\n";
     
-    string effect = card.effect;
+    cout << "│ " << left << setw(50) << ("Boost: " + to_string(card.getBoost())) << "│\n";
+        
+    cout << "├────────────────────────────────────────────────────┤\n";
+    
+    string effect = card.geteffect();
     int maxWidth = 48;
     while (effect.length() > maxWidth) 
     {
@@ -500,192 +442,113 @@ void Deck::DraculaDeck()
     cout << "└────────────────────────────────────────────────────┘\n";
 }
 
-void Deck::showDeck_SH() const 
+void Deck::showDeck() const 
 {
     cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "  SHERLOCK HOLMES DECK (" << cardsSH.size() << " cards)\n";
+    cout << "  SHERLOCK HOLMES DECK (" << deck.size() << " cards)\n";
     cout << "═══════════════════════════════════════════════════════\n\n";
     
-    for (int i = 0; i < cardsSH.size(); i++) 
+    for (int i = 0; i < deck.size(); i++) 
     {
         cout << "[" << i + 1 << "]\n";
-        showCard(cardsSH[i]);
+        showCard(deck[i]);
         cout << "\n";
     }
 
 }
 
-
-void Deck::showDeck_DR() const
+void Deck::showHand() const
 {
-    
     cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "  DRACULA DECK (" << cardsDR.size() << " cards)\n";
+    cout << "  DRACULA DECK (" << hand.size() << " Handcards)\n";
     cout << "═══════════════════════════════════════════════════════\n\n";
-    
-    for (int i = 0; i < cardsDR.size(); i++) 
+
+    for (int i = 0; i <hand.size() ; i++)
     {
         cout << "[" << i + 1 << "]\n";
-        showCard(cardsDR[i]);
+        showCard(hand[i]);
         cout << "\n";
     }
 }
 
-void Deck::cardHandSH()
+vector<int> Deck::showAttackCards() const
 {
-    HandSH.clear();
-    if (cardsSH.empty()) 
+    vector<int> a;
+    for(int i = 0; i < hand.size(); i++)
     {
-        cout << "Deck is empty! Cannot draw cards.\n";
-        return;
+        if(hand[i].isAttack() || hand[i].isVersatile())
+        {
+            cout << i + 1 << '\n';
+            showCard(hand[i]);
+            a.push_back(i);
+        }
     }
+    return a;
+}
 
-    
-    int count = 5;
-
-    for (int i = 0; i < count; i++) 
+vector<int> Deck::showDefenseCards() const
+{
+    vector<int> a;
+    for(int i = 0; i < hand.size(); i++)
     {
-        int rn = rand() % cardsSH.size();
-        HandSH.push_back(cardsSH[rn]);
-        cardsSH.erase(cardsSH.begin() + rn);
-
+        if(hand[i].isDefense() || hand[i].isVersatile())
+        {
+            cout << i + 1 << '\n';
+            showCard(hand[i]);
+            a.push_back(i);
+        }
     }
-    
-    cout << count << " cards drawn to hand successfully!\n";//باید شرط برای برسیس اینکه بیشتر از 7 تا کارت توی دست نباشه رو رو هم بنویسی 
-
+    return a;
 }
 
-
-void Deck::cardHandDR()
+vector<int> Deck::showSchemeCards() const
 {
-
-    HandDR.clear();
-    if (cardsDR.empty()) 
+    vector<int> a;
+    for(int i = 0; i < hand.size(); i++)
     {
-        cout << "Deck is empty! Cannot draw cards.\n";
-        return;
+        if(hand[i].isScheme())
+        {
+            cout << i + 1 << '\n';
+            showCard(hand[i]);
+            a.push_back(i);            
+        }
     }
+    return a;
+}
 
+bool Deck::isDeckEmpty() const
+{
+    return deck.empty();
+}
+
+bool Deck::isHandEmpty() const 
+{
+    return hand.empty();
+}
+
+
+int Deck::getdeckSize() const
+{
+    return deck.size(); 
+}
+
+int Deck::gethandSize() const
+{
+    return hand.size(); 
+}
     
-    int count = 5;
-
-    for (int i = 0; i < count; i++) 
-    {
-        int rn = rand() % cardsDR.size();
-        HandDR.push_back(cardsSH[rn]);
-        cardsSH.erase(cardsSH.begin() + rn);
-        
-    }
-    
-    cout << count << " cards drawn to hand successfully!\n";
-
-}
-
-void Deck::showHandSH() const
+int Deck::getdiscardSize() const
 {
-    cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "  DRACULA DECK (" << HandSH.size() << " Handcards)\n";
-    cout << "═══════════════════════════════════════════════════════\n\n";
-
-    for (int i = 0; i <HandSH.size() ; i++)
-    {
-        cout << "[" << i + 1 << "]\n";
-        showCard(HandSH[i]);
-        cout << "\n";
-    }
+    return DiscardPile.size(); 
 }
 
-void Deck::showHandDR() const
+
+const vector<Card>& Deck::getdeck()
 {
-
-    cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "  DRACULA DECK (" << HandDR.size() << " Handcards)\n";
-    cout << "═══════════════════════════════════════════════════════\n\n";
-
-    for (int i = 0; i <HandDR.size() ; i++)
-    {
-        cout << "[" << i + 1 << "]\n";
-        showCard(HandDR[i]);
-        cout << "\n";
-    }
-    
-
-
+    return deck;
 }
 
-
-Card* Deck::selectAndRemoveFromHandSH(int index) 
+const vector<Card>& Deck::gethand()
 {
-    if (index < 0 || index >= HandSH.size()) 
-    {
-        return nullptr;
-    }
-    
-    Card* selectedCard = &HandSH[index];
-    HandSH.erase(HandSH.begin() + index);
-    return selectedCard;
-}
-
-Card* Deck::selectAndRemoveFromHandDR(int index) 
-{
-    if (index < 0 || index >= HandDR.size()) 
-    {
-        return nullptr;
-    }
-    
-    Card* selectedCard = &HandDR[index];
-    HandDR.erase(HandDR.begin() + index);
-    return selectedCard;
-}
-
-
-bool Deck::isHandSHEmpty() const 
-{
-    return HandSH.empty();
-}
-
-bool Deck::isHandDREmpty() const 
-{
-    return HandDR.empty(); 
-}
-
-int  Deck::getHandSHSize() const 
-{
-    return HandSH.size(); 
-}
-
-
-int  Deck::getHandDRSize() const 
-{ 
-    return HandDR.size();
-}
-
-vector<Card> &Deck::getCardsSH() 
-{
-    return cardsSH;
-}
-
-vector<Card> &Deck::getCardsDR() 
-{
-    return cardsDR;
-}
-
-
-std::vector<Card> Deck::getCardsH()
-{
-    return HandSH;
-}
-
-
-std::vector<Card> Deck::getCardDR()
-{
-    return HandDR;
-}
-
-
-
-
-Deck::~Deck() 
-{
-    
+    return hand;
 }

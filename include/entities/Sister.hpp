@@ -1,17 +1,17 @@
 #pragma once
 #include <string>
-#include "Character.hpp"
+#include "entities/Character.hpp"
+#include "core/Bord.hpp"
+#include "core/Player.hpp"
 
 class Sister : public Character
 {
 private:
-    // std::string name;
+    
 public:
-    Sister(std::string name);
+    Sister(std::string name , int owner);
 
-    void showSister() const;
-
-    void ability() override;
+    void ability(Bord* bord , Player* player) override;
 
     ~Sister();
 };

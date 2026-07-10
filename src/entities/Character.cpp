@@ -4,7 +4,7 @@
 
 using namespace std;
 
-Character::Character(const std::string& name, int hp, int move, int attack)
+Character::Character(const std::string& name, int hp, int move, int attack , int owner)
 {
     this->Name = name;
     this->Hp = hp;
@@ -12,6 +12,7 @@ Character::Character(const std::string& name, int hp, int move, int attack)
     this->Attack = attack;
     this->IsAlive = true;
     this->MaxHp = hp;
+    this->Owner = owner;
 }
 
 
@@ -85,6 +86,17 @@ void Character::setIsAlive(bool isAlive)
     this->IsAlive = isAlive;
 }
 
+void Character::setSpace(int sp)
+{
+    this->Space = sp;
+}
+
+void Character::setowner(int ow)
+{
+    this->Owner = ow;
+}
+
+
 std::string Character::getName() const
 {
     return Name;
@@ -115,6 +127,17 @@ bool Character::getIsAlive() const
 {
     return IsAlive;
 }
+
+int Character::getSpace() const
+{
+    return Space;
+}
+
+int Character::getowner() const
+{
+    return Owner;
+}
+
 
 Character::~Character()
 {

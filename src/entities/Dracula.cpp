@@ -5,25 +5,13 @@
 
 using namespace std;
 
-Dracula::Dracula(): Character("Dracula", 13, 2, 0)
+Dracula::Dracula(int owner): Character("Dracula", 13, 2, 0 , owner)
 {
-    currentPlayer = nullptr;
-    gameBoard = nullptr;
+    
 }
 
 
-
-void Dracula::setCurrentPlayer(Player* player)
-{
-    currentPlayer = player;
-}
-
-void Dracula::setGameBoard(Bord* board)
-{
-    gameBoard = board;
-}
-
-void Dracula::ability()
+void Dracula::ability(Bord* bord , Player* player)
 {
 
     cout << "Do you want to use Dracula's ability? (y/n): ";
@@ -32,14 +20,14 @@ void Dracula::ability()
 
     if (choice == 'y' || choice == 'Y')
     {
-        vector<int> adjacent = gameBoard->getAdjacent(this);
+        vector<int> adjacent = bord->getAdjacentCharacter(this);
         vector<Character*> targets;
 
         for (int pos : adjacent)
         {
-            if (gameBoard->getCharacterName(pos) != nullptr)
+            if (bord->getCharacter(pos) != nullptr)
             {
-                targets.push_back(gameBoard->getCharacterName(pos));
+                targets.push_back(bord->getCharacter(pos));
             }
         }
 
@@ -62,7 +50,7 @@ void Dracula::ability()
         if (k >= 1 && k <= targets.size())
         {
             targets[k - 1]->takeDamage(0, 1);
-            currentPlayer->getDeck()->cardHandSH();
+            player->getDeck()->draw();
             cout << "Ability used! 1 damage dealt and 1 card drawn.\n";
         }
         else

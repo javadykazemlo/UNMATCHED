@@ -4,11 +4,11 @@
 
 using namespace std;
 
-Sherlock::Sherlock(): Character("sherlock", 16, 2, 0)
+Sherlock::Sherlock(int owner): Character("sherlock", 16, 2, 0 , owner)
 {
 }
 
-void Sherlock::ability()
+void Sherlock::ability(Bord* bord , Player* player)
 {
 
 }

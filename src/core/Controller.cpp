@@ -2,12 +2,15 @@
 #include <string>
 #include <iomanip>
 #include <limits>
-#include "Controller.hpp"
+#include "core/Controller.hpp"
 
 using namespace std;
 
 Controller::Controller()
 {
+    DraculaWon = false;
+    sherlockWon = false;
+   // Guess = false;
 }
 
 void Controller::choosePlayers(Player player[2])
@@ -283,23 +286,22 @@ void Controller::boost(Card*& selectedCard, bool isAttackCard, bool isDefenseCar
     {
         cout << "Boost cancelled.\n";
     }
-    else if (boostChoice == 1)  // حرکت
+    else if (boostChoice == 1)  
     {
-        cout << "\n✅ Boost used for MOVEMENT!\n";
+        cout << "\n Boost used for MOVEMENT!\n";
         cout << "   +" << selectedCard->boost << " steps added.\n";
-        // مقدار Boost برای حرکت ذخیره میشه (در move استفاده میشه)
     }
-    else if (boostChoice == 2 && isAttackCard)  // حمله
+    else if (boostChoice == 2 && isAttackCard)  
     {
-        selectedCard->attack += selectedCard->boost;  // ← زیاد کردن حمله
-        cout << "\n✅ Boost used for ATTACK!\n";
+        selectedCard->attack += selectedCard->boost;  
+        cout << "\n Boost used for ATTACK!\n";
         cout << "   Attack increased by +" << selectedCard->boost << endl;
         cout << "   New attack value: " << selectedCard->attack << endl;
     }
-    else if (boostChoice == 3 && isDefenseCard)  // دفاع
+    else if (boostChoice == 3 && isDefenseCard)  
     {
-        selectedCard->defense += selectedCard->boost;  // ← زیاد کردن دفاع
-        cout << "\n✅ Boost used for DEFENSE!\n";
+        selectedCard->defense += selectedCard->boost;  
+        cout << "\n Boost used for DEFENSE!\n";
         cout << "   Defense increased by +" << selectedCard->boost << endl;
         cout << "   New defense value: " << selectedCard->defense << endl;
     }
@@ -359,10 +361,34 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard, Player& atta
         defender.getHero()->takeDamage(defenseValue, attackValue);
         cout << "  " << defender.getName() << " HP: " << defender.getHero()->getHp() 
         << "/" << defender.getHero()->getMaxhp() << "\n";
+
+        if (attacker.getHero()->getName() == "Dracula")
+        {
+            DraculaWon = true;
+            sherlockWon = false;
+        }
+        else if (attacker.getHero()->getName() == "Sherlock Holmes")
+        {
+            sherlockWon = true;
+            DraculaWon = false;
+        }
+
+
     }
     else if (attackValue < defenseValue) 
     {
         cout << "\n🛡️ " << defender.getName() << " blocks the attack!\n";
+
+        if (defender.getHero()->getName() == "Dracula")
+        {
+            DraculaWon = true;
+            sherlockWon = false;
+        }
+        else if (defender.getHero()->getName() == "Sherlock Holmes")
+        {
+            sherlockWon = true;
+            DraculaWon = false;
+        }
     } 
     else 
     {
@@ -414,7 +440,7 @@ void Controller::startCombat(Player& attacker, Player& defender)
     } 
     while (attackCard == nullptr);
 
-    boost(attackCard, true, false);
+   // boost(attackCard, true, false);
 
     cout << "\n" << defender.getName() << " - Select DEFENSE card:\n";
     defender.getDeck()->showHandDR();
@@ -431,7 +457,7 @@ void Controller::startCombat(Player& attacker, Player& defender)
     } 
     while (defenseCard == nullptr);
 
-    boost(defenseCard, false, true);
+   // boost(defenseCard, false, true);
     
     resolveCombat(*attackCard, *defenseCard, attacker, defender);
     
@@ -505,7 +531,14 @@ vector<Card> Controller::get_burn_Cards() const
 {
     return burncards;
 }
-
+bool Controller::get_DraculaWon()
+{
+    return DraculaWon;
+}
+bool Controller::get_SherlockWon()
+{
+    return sherlockWon;
+}
 
 Controller::~Controller()
 {

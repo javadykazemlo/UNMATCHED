@@ -1,8 +1,13 @@
 #pragma once
 #include <string>
-
+#include "core/Bord.hpp"
+#include "core/Player.hpp"
+#include "core/Controller.hpp"
+#include "entities/Character.hpp"
+#include "cards/Deck.hpp"
 struct Card 
 {
+
     std::string name;
     std::string owner;
     std::string type;
@@ -13,4 +18,7 @@ struct Card
     int quantity;
     bool isExtra;
     std::string effect;
+ 
+
+     void applyEffect(Player* pl,Player* enemyPl , Bord*bo);
 };

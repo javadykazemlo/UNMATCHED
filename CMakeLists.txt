@@ -11,6 +11,16 @@ include_directories(
     include/entities
 )
 
+
+add_subdirectory(external/ftxui)
+
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 add_executable(a ${SOURCES})
+
+target_link_libraries(a
+    PRIVATE
+    ftxui::screen
+    ftxui::dom
+    ftxui::component
+)

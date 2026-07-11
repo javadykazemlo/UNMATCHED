@@ -2,6 +2,7 @@
 #include <string>
 #include <iomanip>
 #include <limits>
+#include <stdexcept>
 #include "core/Controller.hpp"
 
 using namespace std;
@@ -95,7 +96,7 @@ void Controller::chooseCharacters()
 void Controller::plaseSidekicks(Player& player)
 {
     Character* hero = player.getHero();
-    vector<int> zone = bord.getZoneCharacter(hero);
+    vector<int> zone = bord.getCharacterZone(hero);
     vector<int> space  = bord.getEmptyZone(zone);
     vector<int> choose; 
     int s;
@@ -117,7 +118,7 @@ void Controller::plaseSidekicks(Player& player)
             for(int j = 0 ; j < space.size()  ; j++)
             {
                 if(!bord.getSpaceStatus(space[j]) && s == space[j])
-                    bord.addCharacter( s, player.getsidekick(i+1));
+                bord.addCharacter( s, player.getsidekick(i+1));
             }
     
         }
@@ -143,9 +144,6 @@ void Controller::plaseSidekicks(Player& player)
     }
 }
 
-
-
-
 void Controller::playTurn()
 {
     int choose = 0;
@@ -170,96 +168,89 @@ void Controller::playTurn()
             
             switch(Todo)
             {
-                case 1: //Maneuver
+                case 1:
                 {
                     cout << "\n═════════════════════════════════════════════════" << endl;
                     cout << "                 Maneuver\n"; 
 
-                    firstPlayer->getDeck()->draw();
-                    cout << "A Card added to your hand\n\n";
-
-                    for (Character* ch : current->getCharacters())
+                    try
                     {
-                        if(ch->checkalive())
-                        {
-                            cout << k << "." << ch->getName() << endl;
-                            choices.push_back(ch);
-                            valid.push_back(k);
-                            k++;
-                        }
+                        current->getDeck()->draw();
+                        cout << "added to " << current->getName() << " hand\n\n";
                     }
-                    cout << "Choose a character to move: ";
+                    catch(const runtime_error& e)
+                    {
+                        cout << e.what() << endl;
+                        for(int i = 0 ; i <  current->getfighterCount() ; i++)
+                        {
+                            current->getsidekick(i)->takeDamage(2,0);
+                        }
+                        cout << "All character on team took 2 damage";
+                    }
 
-                    choose = getChoice({valid});
-                    Character* selected = choices[choose - 1];
-
-                    move(selected);
+                    move();
 
                     break;
     
                 }
-                case 2: //Scheme
+                case 2:
                 {
-                    cout << "\n═════════════════════════════════════════════════" << endl;
-                    cout << "                 Scheme\n"; 
 
-                    vector<int> choos;
-                    choos = firstPlayer->getDeck()->showSchemeCards();
-
-                    Card Schemecard;
-
-                    int index;
-                    cout << "\nChoose a card: ";
-                    index = getChoice(choos);
-
-                    Schemecard = firstPlayer->getDeck()->playCard(index - 1, Schemecard);
-
-                    applyEffect(Schemecard);
+                    Scheme();
 
                     break;
-    
-                }
-                case 3: //Attack
-                {
-                    cout << "\n═════════════════════════════════════════════════" << endl;
-                    cout << "                 Attack\n"; 
 
-                    for (Character* ch : current->getCharacters())
-                    {
-                        if(ch->checkalive())
-                        {
-                            cout << k << "." << ch->getName() << endl;
-                            valid.push_back(k);
-                            k++;
-                        }
-                    }
-                    cout << "Choose a character: ";
-                    choose = getChoice({valid});
-    
+                }
+                case 3:
+                {
                     
-                    startCombat(current , enemy);
+                    startCombat();
 
                     break;
-    
 
                 }
                 default:
                 {
                     break;
                 }
+
+                for(int i = 0 ; i < current->getfighterCount() ; i++)
+                {
+                    if(!current->getsidekick(i)->getIsAlive())
+                    bord.deletCharacter(current->getHero()->getSpace());
+
+                    if(!enemy->getsidekick(i)->getIsAlive())
+                    bord.deletCharacter(enemy->getHero()->getSpace());
+                }
+
             }
-    
-            firstPlayer->getDeck()->draw();
-            cout << "\nCard added to your hand\n";
              
             if(end_game()) 
-            {
-                break;
-                
-            }
+            break;
         }
 
-        //بیرون انداختن کارت اضافه
+        int selec;
+        int HandSize;
+        HandSize = current->getDeck()->gethandSize();
+
+        for(int i = 0 ; HandSize > 7 ; i++)
+        {
+            current->getDeck()->showHand(current->getName());
+            cout << endl << "Enter the card number to remove: ";
+            selec = getInt();
+
+            Card deletcadr;
+            deletcadr = current->getDeck()->playCard(selec - 1 , deletcadr);
+            for(int i = 0 ;deletcadr.getName() == ""; i++)
+            {
+                cout << "Invalid card number. Try again: ";
+                selec = getInt();
+                deletcadr = current->getDeck()->playCard(selec - 1 , deletcadr);
+            }
+            cout << endl << deletcadr.getName() <<  " was removed from your hand.\n";
+        }
+
+
         swap(current, enemy);
     }
 
@@ -267,13 +258,35 @@ void Controller::playTurn()
 
 
 
-void Controller::move(Character* ch)
+void Controller::move()
 {
-    int mov = ch->getMove();
+    int choose = 0;
+    vector<Character*> choices;
+    vector<int> valid;
+    int number = 1;
+    int m = 1;
+
+    for (Character* ch : current->getCharacters())
+    {
+        if(ch->checkalive())
+        {
+            cout << number << "." << ch->getName() << endl;
+            choices.push_back(ch);
+            valid.push_back(m);
+            number++;
+        }
+        m++;
+    }
+    cout << "Choose a character to move: ";
+    choose = getChoice({valid});
+    Character* selected = choices[choose - 1];
+
+
+    int mov = selected->getMove();
 
     mov += boost();
 
-    int place = ch->getSpace();
+    int place = selected->getSpace();
     
     vector<int> validSpaces;
     vector<int> currently;
@@ -293,7 +306,7 @@ void Controller::move(Character* ch)
 
         for(int currentPos : currently)
         {
-            vector<int> neighbors = bord.getAdjacentpos(currentPos);
+            vector<int> neighbors = bord.getposAdjacent(currentPos);
             vector<int> tunnel = bord.getSecretPassages(currentPos);
 
             neighbors.insert(neighbors.end() , tunnel.begin() , tunnel.end());
@@ -315,13 +328,14 @@ void Controller::move(Character* ch)
     
                     visited[pos]=true;
                 }
-                else if(ch->getowner() == target->getowner())
+                else if(selected->getowner() == target->getowner())
                 {
                     next.push_back(pos);
                     visited[pos]=true;
                 }
-                else if(ch->getowner() != target->getowner())
+                else if(selected->getowner() != target->getowner())
                 {
+                    visited[pos]=true;
                     continue;
                 }
                 
@@ -340,7 +354,7 @@ void Controller::move(Character* ch)
 
     int destination = getChoice(validSpaces);
 
-    bord.addCharacter(destination, ch);
+    bord.addCharacter(destination, selected);
     bord.deletCharacter(place);
 }
 
@@ -348,8 +362,6 @@ void Controller::move(Character* ch)
 
 int Controller::boost()
 {
-
-    
     cout << "Do you want to use Boost? (y/n): ";
     char choice;
     cin >> choice;
@@ -360,10 +372,10 @@ int Controller::boost()
         return 0;
     }
     
-    firstPlayer->getDeck()->showHand();
+    current->getDeck()->showHand(current->getName());
 
     int choos;
-    choos = firstPlayer->getDeck()->gethandSize();
+    choos = current->getDeck()->gethandSize();
 
     cout << "Selected card: ";
     int select = getInt();
@@ -375,7 +387,7 @@ int Controller::boost()
     }
 
     Card selectedCard;
-    selectedCard = firstPlayer->getDeck()->playCard(select - 1, selectedCard);
+    selectedCard = current->getDeck()->playCard(select - 1, selectedCard);
 
     cout << "\n✅ Boost used for MOVEMENT!\n";
     cout << "   +" << selectedCard.getBoost() << " steps added.\n";
@@ -384,54 +396,204 @@ int Controller::boost()
 
 }
 
-
-void Controller::startCombat(Player* attacker, Player* defender)
+void Controller::Scheme()
 {
-    cout << "\n" << attacker->getName() << " - Select ATTACK card:\n";
-    attacker->getDeck()->showHand();
+    cout << "\n═════════════════════════════════════════════════" << endl;
+    cout << "                 Scheme\n"; 
     
-    int chooseDR;
-    Card attackCard;
-    while (true)
+    vector<int> choos;
+    choos = current->getDeck()->showSchemeCards();
+    if(choos.empty())
     {
-        cout << "Enter card number (1-" << attacker->getDeck()->gethandSize() << "): ";
-        chooseDR = getInt();
-
-        attackCard = attacker->getDeck()->playCard(chooseDR - 1, attackCard);
-
-        cout << "Invalid choice\n";
-        if(attackCard.getName() == "")
+        cout << "You don't have any Scheme cards.\n";
+        return;
+    }
+    int index;
+    while(true)
+    {
+        int choose = 0;
+        vector<Character*> choices;
+        vector<int> valid;
+        int number = 1;
+        int m = 1;
+    
+        for (Character* ch : current->getCharacters())
         {
-            cout << "Invalid choice\n";
+            if(ch->checkalive())
+            {
+                cout << number << "." << ch->getName() << endl;
+                choices.push_back(ch);
+                valid.push_back(m);
+                number++;
+            }
+            m++;
         }
+        cout << "Choose a character: ";
+        choose = getChoice({valid});
+        Character* selected = choices[choose - 1];
+
+        cout << "\nChoose a card: ";
+        index = getChoice(choos);
+        
+        bool ownerOK = false;
+
+        const vector<Card>& hand = current->getDeck()->gethand();
+
+        Card card = hand[index - 1];
+
+        if(selected->isHero())
+        {
+            ownerOK = card.isHero() || card.isAnyowner();
+        }
+        else
+        {
+            ownerOK = card.issideKick() || card.isAnyowner();
+        }
+    
+        if(ownerOK)
+        {
+            break;
+        }
+        cout << "This fighter can't use this card.\n";
     }
 
-    cout << "\n" << defender->getName() << " - Select DEFENSE card:\n";
-    defender->getDeck()->showHand();
-    
-    int chooseSH;
-    Card defenseCard;
-    while (true)
-    {
-        cout << "Enter card number (1-" << defender->getDeck()->gethandSize() << "): ";
-        chooseSH = getInt();
+    Card Schemecard;
+    Schemecard = current->getDeck()->playCard(index - 1, Schemecard);
 
-        defenseCard = defender->getDeck()->playCard(chooseSH - 1, defenseCard);
-            
-        if(defenseCard.getName() == "")
-        {
-            cout << "Invalid choice\n";
-        }
-    }
+    applyEffect(Schemecard);
 
-    resolveCombat(attackCard, defenseCard, attacker, defender);
-    
-    burncards.push_back(attackCard);
-    burncards.push_back(defenseCard);
+    cout << "\nScheme effect applied.\n";
 }
 
 
-void Controller::resolveCombat(Card& attackCard, Card& defenseCard, Player* attacker, Player* defender) 
+
+void Controller::startCombat()
+{
+    int choose = 0;
+    vector<Character*> choices;
+    vector<int> valid;
+    int number = 1;
+    int m = 1;
+
+    cout << "\n═════════════════════════════════════════════════" << endl;
+    cout << "                 Attack\n"; 
+
+    for (Character* ch : current->getCharacters())
+    {
+        if(ch->checkalive() && bord.canAttack(ch->getAttacktype() , ch->getSpace()))
+        {
+            cout << number << "." << ch->getName() << endl;
+            choices.push_back(ch);
+            valid.push_back(m);
+            number++;
+        }
+        m++;
+    }
+    cout << "Choose a character to attack with: ";
+    choose = getChoice({valid});
+    Character* attacker = choices[choose - 1];
+
+
+    valid.clear();
+    number = 1;
+    m = 1;
+    
+
+    vector<Character*> ch = bord.getAttackCharacters(attacker->getAttacktype() , attacker->getSpace());
+
+    for(int i = 0 ; i < ch.size() ; i++)
+    {
+        if(ch[i]->checkalive() && attacker->getowner() != ch[i]->getowner())
+        {
+            cout << number << "." << ch[i]->getName() << endl;
+            choices.push_back(ch[i]);
+            valid.push_back(m);
+            number++;
+        }
+        m++;
+    }
+    if(number != 1)
+    {
+        cout << "Choose a character to attack: ";
+        choose = getChoice({valid});
+        Character* defender = choices[choose - 1];
+    
+        Card attackCard = chooseCombatCard(current , attacker , true);
+        Card defenseCard = chooseCombatCard(enemy , defender , false);
+    
+        resolveCombat(attackCard, defenseCard);
+    }
+    else
+    {
+        cout << "\nThere are no enemies you can attack.\n";
+    }
+}
+
+Card Controller::chooseCombatCard(Player* player , Character* fighter, bool attack)
+{
+    cout << "\nYour hand:\n";
+    player->getDeck()->showHand(current->getName());
+    while (true)
+    {
+
+        cout << "\nChoose a card: ";
+        int choice;
+        choice = getInt();
+        choice--;
+
+        const vector<Card>& hand = player->getDeck()->gethand();
+
+        if(choice < 0 || choice >= hand.size())
+        {
+            cout << "Invalid number.\n";
+            continue;
+        }
+
+        Card card = hand[choice];
+
+
+        bool ownerOK = false;
+
+        if(fighter->isHero())
+        {
+            ownerOK = card.isHero() || card.isAnyowner();
+        }
+        else
+        {
+            ownerOK = card.issideKick() || card.isAnyowner();
+        }
+
+        if(!ownerOK)
+        {
+            cout << "This fighter can't use this card.\n";
+            continue;
+        }
+
+
+        bool typeOK = false;
+
+        if(attack)
+        {
+            typeOK = card.isAttack() || card.isVersatile();
+        }
+        else
+        {
+            typeOK = card.isDefense() || card.isVersatile();
+        }
+
+        if(!typeOK)
+        {
+            cout << "Wrong card type.\n";
+            continue;
+        }
+
+        Card attakingcard;
+        return player->getDeck()->playCard(choice , attakingcard);
+    }
+}
+
+
+void Controller::resolveCombat(Card& attackCard, Card& defenseCard) 
 {
     
     int attackValue = attackCard.getAttack();;
@@ -442,61 +604,67 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard, Player* atta
     cout << "  ⚔️ RESOLVING COMBAT ⚔️\n";
     cout << "═══════════════════════════════════════════════════════\n";
     
-    cout << "\n🔹 ATTACKER (" << attacker->getName() << "):\n";
-    attacker->getDeck()->showCard(attackCard);
+    cout << "\n🔹 ATTACKER (" << current->getName() << "):\n";
+    current->getDeck()->showCard(attackCard);
     
     cout << "=======================================================================";
 
-    cout << "\n🔸 DEFENDER (" << defender->getName() << "):\n";
-    defender->getDeck()->showCard(defenseCard);
+    cout << "\n🔸 DEFENDER (" << enemy->getName() << "):\n";
+    enemy->getDeck()->showCard(defenseCard);
     
+    
+    if(defenseCard.isBeforeCombat())
+    {
+        applyEffect(defenseCard);
+    }
+    if(attackCard.isBeforeCombat())
+    {
+        applyEffect(attackCard);
+    }
+
     cout << "\n📊 COMBAT RESULT:\n";
     cout << "  ⚔️ Attack  : " << attackValue << "\n";
     cout << "  🛡️ Defense : " << defenseValue << "\n";
     
+    
+    if(defenseCard.isDuringCombat())
+    {
+        applyEffect(defenseCard);
+    }
+    if(attackCard.isDuringCombat())
+    {
+        applyEffect(attackCard);
+    }
+    
+
     if (attackValue > defenseValue) 
     {
         int damage = attackValue - defenseValue;
-        cout << "\n💥 " << attacker->getName() << " deals " << damage << " damage!\n";
-        defender->getHero()->takeDamage(defenseValue, attackValue);
-        cout << "  " << defender->getName() << " HP: " << defender->getHero()->getHp() 
-        << "/" << defender->getHero()->getMaxhp() << "\n";
+        cout << "\n💥 " << current->getName() << " deals " << damage << " damage!\n";
+        enemy->getHero()->takeDamage(defenseValue, attackValue);
+
+        if(!enemy->getHero()->getIsAlive())
+        bord.deletCharacter(enemy->getHero()->getSpace());
+
+        cout << "  " << enemy->getName() << " HP: " << enemy->getHero()->getHp() 
+        << "/" << enemy->getHero()->getMaxhp() << "\n";
     }
-    else if (attackValue < defenseValue) 
+    else if (attackValue <= defenseValue) 
     {
-        cout << "\n🛡️ " << defender->getName() << " blocks the attack!\n";
-    } 
-    else 
-    {
-        cout << "\n⚖️ Equal values! No damage.\n";
-    }
-}
-
-
-
-void Controller::showBurnCards() const
-{
-    if (burncards.empty())
-    {
-        cout << "Burn pile is empty.\n";
-        return;
+        cout << "\n🛡️ " << enemy->getName() << " blocks the attack!\n";
     }
 
-    cout << "\n===== Burn Cards =====\n";
 
-    for (int i = 0; i < burncards.size(); i++)
+    
+    if(defenseCard.isAfterCombat())
     {
-        cout << "Card " << i + 1 << endl;
-        cout << "Name    : " << burncards[i].getName() << endl;
-        cout << "Owner   : " << burncards[i].getOwnerString() << endl;
-        cout << "Type    : " << burncards[i].getTypeString() << endl;
-        cout << "Attack  : " << burncards[i].getAttack() << endl;
-        cout << "Boost   : " << burncards[i].getBoost() << endl;
-        cout << "Effect  : " << burncards[i].geteffect() << endl;
-        cout << "--------------------------------------------------------------\n";
+        applyEffect(defenseCard);
+    }
+    if(attackCard.isAfterCombat())
+    {
+        applyEffect(attackCard);
     }
 }
-
 
 
 int Controller::getInt()
@@ -633,7 +801,7 @@ void Controller::applyEffect(const Card& card)
 
         Character* holmes = current->getHero();
         Character* watson = current->getsidekick(1);
-        vector<int> adjacent = bord.getAdjacentCharacter(holmes);
+        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
         vector<int> emptyAdjacent;
 
 
@@ -686,7 +854,7 @@ void Controller::applyEffect(const Card& card)
         Character* enemyHero = enemy->getHero();
         Character* enemySidekick = enemy->getsidekick(1);
 
-        vector<int> adjacent = bord.getAdjacentCharacter(holmes);
+        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
         bool damaged = false;
 
         for (int pos : adjacent)
@@ -698,6 +866,10 @@ void Controller::applyEffect(const Card& card)
                 if (target == enemyHero || target == enemySidekick)
                 {
                     target->takeDamage(0, 2);
+
+                    if(!target->getIsAlive())
+                    bord.deletCharacter(target->getSpace());
+
                     cout << "2 damage dealt to " << target->getName() << "!\n";
                     damaged = true;
                     break;  
@@ -794,12 +966,6 @@ void Controller::applyEffect(const Card& card)
 }    
 
 
-
-
-vector<Card> Controller::get_burn_Cards() const
-{
-    return burncards;
-}
 bool Controller::get_DraculaWon()
 {
     return DraculaWon;

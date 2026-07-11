@@ -10,23 +10,20 @@ private:
     int Hp;
     int MaxHp;
     int Move;
-    int Attack;// 0 = Melee , 1 = Ranged
+    int Attacktype;// 0 = Melee , 1 = Ranged
     bool IsAlive;
     int Space;
     int Owner;// 1 = first player , 2 = second player
-
+    bool ishero;//
 public:
-    Character(const std::string& name, int hp, int move, int attack , int owner);
+    Character(const std::string& name, int hp, int move, int attacktyp , int owner , bool her);
 
     virtual void ability(Bord* bord , Player* player) = 0;
     bool checkalive() const;
-    void takeDamage(int damage ,int attack) ;
+    void takeDamage(int defend , int attack );
     void heal(int amount) ;
     
-    void setName(const std::string& name);
     void setHp(int hp);
-    void setMove(int move);
-    void setAttack(int attack);
     void setIsAlive(bool isAlive);
     void setSpace(int sp);
     void setowner(int ow);
@@ -35,13 +32,13 @@ public:
     int getHp() const;
     int getMaxhp() const;
     int getMove() const;
-    int getAttack() const;
+    int getAttacktype() const;
     bool getIsAlive() const;
     int getSpace() const;
     int getowner() const;
+    int isHero() const;
 
-
-    virtual ~Character();
+    ~Character();
 };
 
 

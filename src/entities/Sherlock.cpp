@@ -4,7 +4,7 @@
 
 using namespace std;
 
-Sherlock::Sherlock(int owner): Character("sherlock", 16, 2, 0 , owner)
+Sherlock::Sherlock(int owner): Character("sherlock", 16, 2, 0 , owner , true)
 {
 }
 

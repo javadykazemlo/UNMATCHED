@@ -18,11 +18,6 @@ Card::Card(string nam , owner own , CardType typ , int att , timing tim , int bo
     this-> Boost = bos; 
     this->effect = efec;
 }
-    
-void Card::Effect()
-{
-
-}
 
 bool Card::isHero() const
 {

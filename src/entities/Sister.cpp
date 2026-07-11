@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Sister::Sister(string name , int owner): Character(name , 1 , 2 , 0 , owner)
+Sister::Sister(string name , int owner): Character(name , 1 , 2 , 0 , owner , false)
 {
 }
 

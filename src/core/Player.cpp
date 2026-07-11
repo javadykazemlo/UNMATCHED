@@ -18,9 +18,6 @@ Player::Player()
 
 void Player::chooseCharacter(int choose , int owner)
 {
-    
-        std::vector<Card> shCards;
-        std::vector<Card> drCards;
     switch (choose)
     {
         case 1://Dracula
@@ -30,6 +27,7 @@ void Player::chooseCharacter(int choose , int owner)
             fighters.push_back(new Sister("Sister Carmilla" , owner));
 
             deck = new Deck(1);
+            fighterCount = 4;
 
             break;
 
@@ -38,20 +36,28 @@ void Player::chooseCharacter(int choose , int owner)
             fighters.push_back(new Dr_watson(owner));
 
             deck = new Deck(2);
+            fighterCount = 2;
 
             break;
     }
 }
 
+
 void Player::setName(const string& n) 
 {
-    name = n;
+    this->name = n;
 }
 
 void Player::setAge(const int& a) 
 {
-    Age = a;
+    this->Age = a;
 }
+
+void Player::setfighterCount(int count)
+{
+    this->fighterCount = count;
+}
+
 
 string Player::getName() const
 {
@@ -85,6 +91,10 @@ Deck* Player::getDeck() const
     return deck; 
 }
 
+int Player::getfighterCount() const
+{
+    return fighterCount;
+}
 
 Player::~Player()
 {

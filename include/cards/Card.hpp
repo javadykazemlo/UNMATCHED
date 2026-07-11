@@ -40,8 +40,6 @@ public:
     Card() = default;
     Card(std::string nam , owner own , CardType typ , int att , timing tim , int bos , std::string efec);
 
-    void Effect();
-
     bool isHero() const;
     bool issideKick() const;
     bool isAnyowner() const;

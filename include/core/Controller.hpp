@@ -17,7 +17,6 @@ private:
     Player* secondPlayer = nullptr;
     Player* current = nullptr;
     Player* enemy = nullptr;
-    std::vector<Card> burncards;
 
     bool DraculaWon;   
     bool sherlockWon;
@@ -30,19 +29,19 @@ public:
     void plaseSidekicks(Player& player);
     void playTurn();
 
-    void move(Character* mov);
-    
+    void move();
     int boost();
-    void resolveCombat(Card& attackCard, Card& defenseCard, Player* attacker, Player* defender);
-    void showBurnCards() const;
+    
+    void Scheme();
 
-    void startCombat(Player* attacker, Player* defender);
+    void startCombat();
+    Card chooseCombatCard(Player* player , Character* fighter, bool attack);
+    void resolveCombat(Card& attackCard, Card& defenseCard);
 
     bool end_game() const;
 
     void applyEffect(const Card& card);
     
-    std::vector<Card> get_burn_Cards( ) const;
     int getInt();
     int getChoice(std::vector<int> valid);
     bool get_DraculaWon();

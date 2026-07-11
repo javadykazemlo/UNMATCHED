@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 #include <iomanip>
-
 #include <algorithm>
 #include <random>
+#include <stdexcept>
 #include "cards/Deck.hpp"
 
 using namespace std;
@@ -371,7 +371,7 @@ void Deck::draw(int count)
     {
         if(deck.empty())
         {
-
+            throw runtime_error("Deck is empty");
         }
         else
         {
@@ -403,9 +403,9 @@ void Deck::discardCard(const Card& card)
 void Deck::showCard(const Card& card) const 
 {
     cout << "┌────────────────────────────────────────────────────┐\n";
-    cout << "│ " << left << setw(50) << card.getName() << "│\n";
+    cout << "│ " << left << setw(50) << card.getName() << " │\n";
     cout << "├────────────────────────────────────────────────────┤\n";
-    cout << "│ " << left << setw(50) << (card.getOwnerString() + " · " + card.getTypeString()) << "│\n";
+    cout << "│ " << left << setw(50) << (card.getOwnerString() + " · " + card.getTypeString()) << "  │\n";
     cout << "├────────────────────────────────────────────────────┤\n";
     
     if (card.isAttack()) 
@@ -419,9 +419,7 @@ void Deck::showCard(const Card& card) const
         cout << "│ " << left << setw(50) << ("Attack/Defense: " + to_string(card.getAttack()) + "/" + to_string(card.getAttack())) << "│\n";
     }
     
-    cout << "│ " << left << setw(50) << ("Timing: " + card.getTypeString()) << "│\n";
-    
-    cout << "│ " << left << setw(50) << ("Boost: " + to_string(card.getBoost())) << "│\n";
+    cout << "│ " << left << setw(50) << ("Boost: " + to_string(card.getBoost())) << " │\n";
         
     cout << "├────────────────────────────────────────────────────┤\n";
     
@@ -431,21 +429,21 @@ void Deck::showCard(const Card& card) const
     {
         int space = effect.rfind(' ', maxWidth);
         if (space == string::npos) space = maxWidth;
-        cout << "│ " << left << setw(50) << effect.substr(0, space) << "│\n";
+        cout << "│ " << left << setw(50) << effect.substr(0, space) << " │\n";
         effect = effect.substr(space + 1);
     }
     if (!effect.empty()) 
     {
-        cout << "│ " << left << setw(50) << effect << "│\n";
+        cout << "│ " << left << setw(50) << effect << " │\n";
     }
     
     cout << "└────────────────────────────────────────────────────┘\n";
 }
 
-void Deck::showDeck() const 
+void Deck::showDeck(string name) const 
 {
     cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "  SHERLOCK HOLMES DECK (" << deck.size() << " cards)\n";
+    cout << "      "<< name <<" DECK (" << deck.size() << " cards)\n";
     cout << "═══════════════════════════════════════════════════════\n\n";
     
     for (int i = 0; i < deck.size(); i++) 
@@ -457,10 +455,10 @@ void Deck::showDeck() const
 
 }
 
-void Deck::showHand() const
+void Deck::showHand(string name) const
 {
     cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "  DRACULA DECK (" << hand.size() << " Handcards)\n";
+    cout << "    "<< name <<" Hand (" << hand.size() << " Handcards)\n";
     cout << "═══════════════════════════════════════════════════════\n\n";
 
     for (int i = 0; i <hand.size() ; i++)
@@ -510,7 +508,7 @@ vector<int> Deck::showSchemeCards() const
         {
             cout << i + 1 << '\n';
             showCard(hand[i]);
-            a.push_back(i);            
+            a.push_back(i + 1);            
         }
     }
     return a;

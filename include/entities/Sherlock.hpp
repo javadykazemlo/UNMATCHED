@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 #include "entities/Character.hpp"
 #include "core/Bord.hpp"
 #include "core/Player.hpp"

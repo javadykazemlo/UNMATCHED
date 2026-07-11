@@ -11,6 +11,8 @@
 class Controller
 {
 private:
+    Bord bord;
+
     Player* firstPlayer = nullptr;
     Player* secondPlayer = nullptr;
     Player* current = nullptr;
@@ -24,21 +26,21 @@ public:
     Controller();
     
     void choosePlayers(Player player[2]);
-    void chooseCharacters(Bord& bord);
-    void plaseSidekicks(Bord& bord , Player& player);
-    void playTurn(Bord& bord);
+    void chooseCharacters();
+    void plaseSidekicks(Player& player);
+    void playTurn();
 
-    void move(Bord& bord ,Character* mov);
+    void move(Character* mov);
     
     int boost();
     void resolveCombat(Card& attackCard, Card& defenseCard, Player* attacker, Player* defender);
     void showBurnCards() const;
 
     void startCombat(Player* attacker, Player* defender);
-    std::vector<Card> get_burn_Cards( ) const;
-
 
     bool end_game() const;
+
+    void applyEffect(const Card& card);
     
     std::vector<Card> get_burn_Cards( ) const;
     int getInt();

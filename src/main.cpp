@@ -13,15 +13,14 @@ int main()
     srand(static_cast<unsigned int>(time(0))) ;
 
     Controller controller;
-    Bord bord;
     Player player[2];
 
 
     controller.choosePlayers(player);
 
-    controller.chooseCharacters(bord);
+    controller.chooseCharacters();
     
-    controller.playTurn(bord);
+    controller.playTurn();
 
     
   	return 0;

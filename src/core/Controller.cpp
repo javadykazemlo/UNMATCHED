@@ -646,7 +646,7 @@ void Controller::applyEffect(const Card& card)
             
         }
         if (!emptyAdjacent.empty())
-        {;
+        {
             for (int i = 0; i < 32; i++)
             {
                 if (bord.getCharacter(i) == watson)
@@ -677,7 +677,6 @@ void Controller::applyEffect(const Card& card)
     else if (card.getName() == "Confirm Suspicion")
     {
         
-        cout << "Enter a number for choose card ";
     }
     
     else if (card.getName() == "Counterattack")
@@ -784,7 +783,8 @@ void Controller::applyEffect(const Card& card)
     
     else if (card.getName() == "Sidearm")
     {
-        
+
+        cout << "no effect (-_-)";
     }
     
     else if (card.getName() == "Study Methods")

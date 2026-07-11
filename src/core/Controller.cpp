@@ -912,11 +912,13 @@ void Controller::applyEffect(const Card& card)
     
     else if (card.getName() == "Elementary")
     {
-        /*
+        Character* holmes = current->getHero();
+        Character* enemyHero = enemy->getHero();
+        
         cout << "Guess the attack value: ";
         int guess;
         cin >> guess;
-        if (برای اون بولین هستت)
+        if ()/*برای اون بولین هستت*/
         {
             cout <<"You guessed -> succeessful";
         }
@@ -925,7 +927,7 @@ void Controller::applyEffect(const Card& card)
             cout <<"You guessed -> failed";
 
         }
-        */
+        
     }
     
     else if (card.getName() == "Impossible Elimination")
@@ -940,7 +942,31 @@ void Controller::applyEffect(const Card& card)
     
     else if (card.getName() == "A Fixed Point in a Changing Age")
     {
-        
+    Character* holmes = current->getHero();
+    Character* watson = current->getsidekick(1);
+
+    vector<int> adjacent = bord.getCharacterAdjacent(holmes);
+
+    bool found = false;
+
+    for (int pos : adjacent)
+    {
+        if (bord.getCharacter(pos) == watson)
+        {
+            holmes->heal(1);
+            watson->heal(1);
+
+            cout << "Holmes and Watson each heal 1 HP.\n";
+            found = true;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        cout << "Watson is not adjacent to Holmes.\n";
+    }
+
     }
     
     else if (card.getName() == "Master of Disguise")

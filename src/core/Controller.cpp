@@ -57,7 +57,7 @@ void Controller::choosePlayers(Player player[2])
 
 
 
-void Controller::chooseCharacters(Bord& bord)
+void Controller::chooseCharacters()
 {
     int cha;
 	cout << "\nCharacters:" << endl;
@@ -86,13 +86,13 @@ void Controller::chooseCharacters(Bord& bord)
     bord.addCharacter( pos , firstPlayer->getHero() );
     bord.addCharacter( pos == 4 ? 15 : 4 , secondPlayer->getHero() );
 
-    plaseSidekicks(bord , *firstPlayer);
-    plaseSidekicks(bord , *secondPlayer);
+    plaseSidekicks(*firstPlayer);
+    plaseSidekicks(*secondPlayer);
 }
 
 
 
-void Controller::plaseSidekicks( Bord& bord , Player& player)
+void Controller::plaseSidekicks(Player& player)
 {
     Character* hero = player.getHero();
     vector<int> zone = bord.getZoneCharacter(hero);
@@ -146,7 +146,7 @@ void Controller::plaseSidekicks( Bord& bord , Player& player)
 
 
 
-void Controller::playTurn(Bord& bord)
+void Controller::playTurn()
 {
     int choose = 0;
     vector<Character*> choices;
@@ -193,7 +193,7 @@ void Controller::playTurn(Bord& bord)
                     choose = getChoice({valid});
                     Character* selected = choices[choose - 1];
 
-                    move(bord , selected);
+                    move(selected);
 
                     break;
     
@@ -213,7 +213,8 @@ void Controller::playTurn(Bord& bord)
                     index = getChoice(choos);
 
                     Schemecard = firstPlayer->getDeck()->playCard(index - 1, Schemecard);
-                    //اثر
+
+                    applyEffect(Schemecard);
 
                     break;
     
@@ -266,7 +267,7 @@ void Controller::playTurn(Bord& bord)
 
 
 
-void Controller::move(Bord& bord , Character* ch)
+void Controller::move(Character* ch)
 {
     int mov = ch->getMove();
 
@@ -384,6 +385,50 @@ int Controller::boost()
 }
 
 
+void Controller::startCombat(Player* attacker, Player* defender)
+{
+    cout << "\n" << attacker->getName() << " - Select ATTACK card:\n";
+    attacker->getDeck()->showHand();
+    
+    int chooseDR;
+    Card attackCard;
+    while (true)
+    {
+        cout << "Enter card number (1-" << attacker->getDeck()->gethandSize() << "): ";
+        chooseDR = getInt();
+
+        attackCard = attacker->getDeck()->playCard(chooseDR - 1, attackCard);
+
+        cout << "Invalid choice\n";
+        if(attackCard.getName() == "")
+        {
+            cout << "Invalid choice\n";
+        }
+    }
+
+    cout << "\n" << defender->getName() << " - Select DEFENSE card:\n";
+    defender->getDeck()->showHand();
+    
+    int chooseSH;
+    Card defenseCard;
+    while (true)
+    {
+        cout << "Enter card number (1-" << defender->getDeck()->gethandSize() << "): ";
+        chooseSH = getInt();
+
+        defenseCard = defender->getDeck()->playCard(chooseSH - 1, defenseCard);
+            
+        if(defenseCard.getName() == "")
+        {
+            cout << "Invalid choice\n";
+        }
+    }
+
+    resolveCombat(attackCard, defenseCard, attacker, defender);
+    
+    burncards.push_back(attackCard);
+    burncards.push_back(defenseCard);
+}
 
 
 void Controller::resolveCombat(Card& attackCard, Card& defenseCard, Player* attacker, Player* defender) 
@@ -453,52 +498,6 @@ void Controller::showBurnCards() const
 }
 
 
-void Controller::startCombat(Player* attacker, Player* defender)
-{
-    cout << "\n" << attacker->getName() << " - Select ATTACK card:\n";
-    attacker->getDeck()->showHand();
-    
-    int chooseDR;
-    Card attackCard;
-    while (true)
-    {
-        cout << "Enter card number (1-" << attacker->getDeck()->gethandSize() << "): ";
-        chooseDR = getInt();
-
-        attackCard = attacker->getDeck()->playCard(chooseDR - 1, attackCard);
-
-        cout << "Invalid choice\n";
-        if(attackCard.getName() == "")
-        {
-            cout << "Invalid choice\n";
-        }
-    }
-
-    cout << "\n" << defender->getName() << " - Select DEFENSE card:\n";
-    defender->getDeck()->showHand();
-    
-    int chooseSH;
-    Card defenseCard;
-    while (true)
-    {
-        cout << "Enter card number (1-" << defender->getDeck()->gethandSize() << "): ";
-        chooseSH = getInt();
-
-        defenseCard = defender->getDeck()->playCard(chooseSH - 1, defenseCard);
-            
-        if(defenseCard.getName() == "")
-        {
-            cout << "Invalid choice\n";
-        }
-    }
-
-    resolveCombat(attackCard, defenseCard, attacker, defender);
-    
-    burncards.push_back(attackCard);
-    burncards.push_back(defenseCard);
-}
-
-
 
 int Controller::getInt()
 {
@@ -556,6 +555,245 @@ bool Controller::end_game() const
 
     return false;
 }
+
+
+void Controller::applyEffect(const Card& card)
+{
+    //current & enemy & bord are already defined
+
+//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Dracula
+
+    
+    if (card.getName() == "Bloodlust")
+    {
+        
+    }
+    
+    else if (card.getName() == "Mist Form")
+    {
+        
+    }
+    
+    else if (card.getName() == "Ambush")
+    {
+        
+    }
+    
+    else if (card.getName() == "Blood Bath")
+    {
+        
+    }
+    
+    else if (card.getName() == "Beast Form")
+    {
+        
+    }
+    
+    else if (card.getName() == "Assault")
+    {
+        
+    }
+    
+    else if (card.getName() == "Exploitation")
+    {
+        
+    }
+    
+    else if (card.getName() == "Look Into My Eyes")
+    {
+        
+    }
+    
+    else if (card.getName() == "Hunt")
+    {
+        
+    }
+    
+    else if (card.getName() == "Insatiable Seduction")
+    {
+        
+    }
+    
+    else if (card.getName() == "Thirst for Survival")
+    {
+        
+    }
+    
+    else if (card.getName() == "Deception")
+    {
+        cout << "No special effect for this card.\n";
+    }
+
+
+//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Sherlock
+
+
+    if (card.getName() == "First Aid")
+    {
+
+        Character* holmes = current->getHero();
+        Character* watson = current->getsidekick(1);
+        vector<int> adjacent = bord.getAdjacentCharacter(holmes);
+        vector<int> emptyAdjacent;
+
+
+        for (auto pos : adjacent)
+        {
+            if (bord.isEmpty(pos))
+            {
+                emptyAdjacent.push_back(pos);
+            }
+            
+        }
+        if (!emptyAdjacent.empty())
+        {;
+            for (int i = 0; i < 32; i++)
+            {
+                if (bord.getCharacter(i) == watson)
+                {
+                    bord.deletCharacter(i);
+                    break;
+                }
+            }
+        }
+
+        for (int i = 0; i <emptyAdjacent.size() ; i++)
+        {
+            if(bord.isEmpty(emptyAdjacent[i]))
+            {
+                bord.addCharacter(emptyAdjacent[i],watson);      
+            }
+            
+        }
+        
+          
+        holmes->heal(1);
+        current->getDeck()->draw();
+        cout << "Holmes healed 1 HP and 1 card drawn!\n";
+        
+
+    }
+    
+    else if (card.getName() == "Confirm Suspicion")
+    {
+        
+        cout << "Enter a number for choose card ";
+    }
+    
+    else if (card.getName() == "Counterattack")
+    { 
+        Character* holmes = current->getHero();
+        Character* enemyHero = enemy->getHero();
+        Character* enemySidekick = enemy->getsidekick(1);
+
+        vector<int> adjacent = bord.getAdjacentCharacter(holmes);
+        bool damaged = false;
+
+        for (int pos : adjacent)
+        {
+            if (!bord.isEmpty(pos))
+            {
+                Character* target = bord.getCharacter(pos);
+                
+                if (target == enemyHero || target == enemySidekick)
+                {
+                    target->takeDamage(0, 2);
+                    cout << "2 damage dealt to " << target->getName() << "!\n";
+                    damaged = true;
+                    break;  
+                }
+            }
+        }
+        
+        if (!damaged)
+        {
+            cout << "No adjacent enemy fighter!\n";
+        }
+        
+
+    }
+    
+    else if (card.getName() == "Strategic Deduction")
+    {
+        
+    }
+    
+    else if (card.getName() == "Learning Never Ends")
+    {
+        
+        if (get_DraculaWon())
+        {
+            cout << "Dracula won! Opponent draws 1 card.\n";
+            enemy->getDeck()->draw();
+        }
+        else if (get_SherlockWon())
+        {
+            cout << "Sherlock won! Opponent draws 1 card.\n";
+            enemy->getDeck()->draw();
+        }
+        else
+        {
+            cout << "You lost or tied! You draw 2 cards.\n";
+            current->getDeck()->draw(2);
+        }
+        
+    }
+    
+    else if (card.getName() == "Elementary")
+    {
+        /*
+        cout << "Guess the attack value: ";
+        int guess;
+        cin >> guess;
+        if (برای اون بولین هستت)
+        {
+            cout <<"You guessed -> succeessful";
+        }
+        else
+        {
+            cout <<"You guessed -> failed";
+
+        }
+        */
+    }
+    
+    else if (card.getName() == "Impossible Elimination")
+    {
+        
+    }
+    
+    else if (card.getName() == "Deception")
+    {
+        
+    }
+    
+    else if (card.getName() == "A Fixed Point in a Changing Age")
+    {
+        
+    }
+    
+    else if (card.getName() == "Master of Disguise")
+    {
+        
+    }
+    
+    else if (card.getName() == "The Game Is Afoot")
+    {
+        
+    }
+    
+    else if (card.getName() == "Sidearm")
+    {
+        
+    }
+    
+    else if (card.getName() == "Study Methods")
+    {
+        
+    }
+}    
+
+
 
 
 vector<Card> Controller::get_burn_Cards() const

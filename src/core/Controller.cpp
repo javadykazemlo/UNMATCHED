@@ -987,6 +987,16 @@ void Controller::applyEffect(const Card& card)
     
     else if (card.getName() == "Study Methods")
     {
+    if (get_SherlockWon())
+    {
+        cout << "Sherlock won the combat.\n";
+        cout << "Opponent's hand:\n";
+        enemy->getDeck()->showHand("Dracula");
+    }
+    else
+    {
+        cout << "Card effect not activated.\n";
+    }
         
     }
 }    

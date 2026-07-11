@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Dr_watson::Dr_watson(int owner): Character("Dr_watson", 8 , 2 , 1 , owner)
+Dr_watson::Dr_watson(int owner): Character("Dr_watson", 8 , 2 , 1 , owner , false)
 {
 }
 

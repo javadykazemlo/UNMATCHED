@@ -93,7 +93,6 @@ bool Bord::isEmpty(int pos)
     return spaces[pos].character == nullptr;
 }
 
-
 bool Bord::checkzone(int zo)
 {
     for (int i = 0; i < 32; i++)
@@ -104,6 +103,65 @@ bool Bord::checkzone(int zo)
         }
     }
     return false;
+}
+
+
+bool Bord::canAttack(int attacktype , int pos)
+{
+    if(attacktype = 1) //Melee
+    {
+        for(int neighbor : spaces[pos].adjacent)
+        {
+            if(spaces[neighbor].character != nullptr)
+            return true;
+        }
+
+    }
+    else //Ranged
+    {
+        for(int zon : spaces[pos].zone)
+        {
+            if(spaces[zon].character != nullptr)
+            return true;
+        }
+    }
+    return false;
+}
+
+vector<Character*> Bord::getAttackCharacters(int attacktype , int pos)
+{
+    vector<Character*> result;
+
+    if(attacktype = 1)
+    {
+        for(int neighbor : spaces[pos].adjacent)
+        {
+            if(spaces[neighbor].character != nullptr)
+            result.push_back(spaces[neighbor].character);
+        }
+    }
+
+    else
+    {
+        for(int zon : spaces[pos].zone)
+        {
+            if(spaces[zon].character != nullptr)
+            result.push_back(spaces[zon].character);
+        }
+
+    }
+
+    return result;
+}
+
+
+vector<Character*> Bord::getZoneCharacters(int pos)
+{
+    vector<Character*> result;
+
+    
+
+    return result;
 }
 
 vector<int> Bord::getEmptyAdjacent(Character* character) const
@@ -148,17 +206,19 @@ vector<int> Bord::getEmptyZone(vector<int> zon) const
 
 
 
-vector<int> Bord::getAdjacentCharacter(Character* character) const
+vector<int> Bord::getCharacterAdjacent(Character* character) const
 {
     for(int i = 0; i < 32; i++)
     {
         if(spaces[i].character == character)
-            return spaces[i].adjacent;
-        }
-        
-        return {};
+        return spaces[i].adjacent;
     }
-    vector<int> Bord::getZoneCharacter(Character* character) const
+        
+    return {};
+}
+    
+    
+vector<int> Bord::getCharacterZone(Character* character) const
 {
     for(int i = 0; i < 32; i++)
     {
@@ -170,12 +230,12 @@ vector<int> Bord::getAdjacentCharacter(Character* character) const
     return {};
 }
 
-vector<int> Bord::getAdjacentpos(int pos) const
+vector<int> Bord::getposAdjacent(int pos) const
 {
     return spaces[pos].adjacent;
 }
 
-vector<int> Bord::getZonepos(int pos) const
+vector<int> Bord::getposZone(int pos) const
 {
     return spaces[pos].zone;
 }
@@ -216,18 +276,3 @@ Bord::~Bord()
 {
 
 }
-
-// void Bord::check()
-// {
-//     for(int i = 0; i < 32 ; i++)
-//     {
-//        cout << i << " : ";
-
-//         if (spaces[i].character)
-//             cout << spaces[i].character->getName();
-//         else
-//             cout << "Empty";
-
-//         cout << endl;
-//     }
-// }

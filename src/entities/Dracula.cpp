@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Dracula::Dracula(int owner): Character("Dracula", 13, 2, 0 , owner)
+Dracula::Dracula(int owner): Character("Dracula", 13, 2, 0 , owner , true)
 {
     
 }
@@ -20,7 +20,7 @@ void Dracula::ability(Bord* bord , Player* player)
 
     if (choice == 'y' || choice == 'Y')
     {
-        vector<int> adjacent = bord->getAdjacentCharacter(this);
+        vector<int> adjacent = bord->getCharacterAdjacent(this);
         vector<Character*> targets;
 
         for (int pos : adjacent)

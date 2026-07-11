@@ -1,6 +1,8 @@
 #pragma once
+#include <string>
 #include <vector>
 #include "cards/Card.hpp"
+
 class Deck 
 {
 private:
@@ -19,8 +21,8 @@ public:
     void discardCard(const Card& card);
     
     void showCard(const Card& card) const;
-    void showDeck() const;
-    void showHand() const;
+    void showDeck(std::string name) const;
+    void showHand(std::string name) const;
     
     std::vector<int> showAttackCards() const;
     std::vector<int> showDefenseCards() const;

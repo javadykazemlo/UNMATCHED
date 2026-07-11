@@ -4,15 +4,16 @@
 
 using namespace std;
 
-Character::Character(const std::string& name, int hp, int move, int attack , int owner)
+Character::Character(const std::string& name, int hp, int move, int attacktyp , int owner , bool her)
 {
     this->Name = name;
     this->Hp = hp;
     this->Move = move;
-    this->Attack = attack;
+    this->Attacktype = attacktyp;
     this->IsAlive = true;
     this->MaxHp = hp;
     this->Owner = owner;
+    this->ishero = her;
 }
 
 
@@ -32,18 +33,16 @@ bool Character::checkalive() const
 
 void Character::takeDamage(int defend , int attack) 
 {
-    if (Hp > 0 &&  attack > defend)
+    if (Hp > 0)
     {
-        Hp -= attack - defend;
+        Hp -= (attack - defend);
         
-        if(Hp < 0) 
+        if(Hp <= 0) 
         {
+            IsAlive = false;
+            Space = -1;
             Hp = 0;
         }
-    }
-    else
-    {
-        ///<<<<<<<<<<<<<<<<<<<<<<<<<<
     }
     
 }
@@ -59,26 +58,9 @@ void Character::heal(int boost )
 }
 
 
-
-
-void Character::setName(const std::string& name)
-{
-    this->Name = name;
-}
-
 void Character::setHp(int hp)
 {
     Hp = hp;
-}
-
-void Character::setMove(int move)
-{
-    this->Move = move;
-}
-
-void Character::setAttack(int attack)
-{
-    this->Attack = attack;
 }
 
 void Character::setIsAlive(bool isAlive)
@@ -118,9 +100,9 @@ int Character::getMove() const
     return Move;
 }
 
-int Character::getAttack() const
+int Character::getAttacktype() const
 {
-    return Attack;
+    return Attacktype;
 }
 
 bool Character::getIsAlive() const
@@ -136,6 +118,11 @@ int Character::getSpace() const
 int Character::getowner() const
 {
     return Owner;
+}
+
+int Character::isHero() const
+{
+    return ishero;
 }
 
 

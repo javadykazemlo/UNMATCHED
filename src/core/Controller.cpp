@@ -1040,40 +1040,45 @@ void Controller::applyEffect(const Card& card)
         }
 
         enemy->getDeck()->addBurnCard(burned);
+        cancelEffect = true;
+        cout << "The next Dracula card effect will be canceled.\n";
         
     }
     
     else if (card.getName() == "Deception")
     {
+        cancelEffect = true;
+        cout << "The next Dracula card effect will be canceled.\n";
         
+
     }
     
     else if (card.getName() == "A Fixed Point in a Changing Age")
     {
-    Character* holmes = current->getHero();
-    Character* watson = current->getsidekick(1);
+        Character* holmes = current->getHero();
+        Character* watson = current->getsidekick(1);
 
-    vector<int> adjacent = bord.getCharacterAdjacent(holmes);
+        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
 
-    bool found = false;
+        bool found = false;
 
-    for (int pos : adjacent)
-    {
-        if (bord.getCharacter(pos) == watson)
+        for (int pos : adjacent)
         {
-            holmes->heal(1);
-            watson->heal(1);
+            if (bord.getCharacter(pos) == watson)
+            {
+                holmes->heal(1);
+                watson->heal(1);
 
-            cout << "Holmes and Watson each heal 1 HP.\n";
-            found = true;
-            break;
+                cout << "Holmes and Watson each heal 1 HP.\n";
+                found = true;
+                break;
+            }
         }
-    }
 
-    if (!found)
-    {
-        cout << "Watson is not adjacent to Holmes.\n";
-    }
+        if (!found)
+        {
+            cout << "Watson is not adjacent to Holmes.\n";
+        }
 
     }
     
@@ -1091,20 +1096,21 @@ void Controller::applyEffect(const Card& card)
     {
 
         cout << "no effect (-_-)";
+
     }
     
     else if (card.getName() == "Study Methods")
     {
-    if (get_SherlockWon())
-    {
-        cout << "Sherlock won the combat.\n";
-        cout << "Opponent's hand:\n";
-        enemy->getDeck()->showHand(enemy->getName());
-    }
-    else
-    {
-        cout << "Card effect not activated.\n";
-    }
+        if (get_SherlockWon())
+        {
+            cout << "Sherlock won the combat.\n";
+            cout << "Opponent's hand:\n";
+            enemy->getDeck()->showHand(enemy->getName());
+        }
+        else
+        {
+            cout << "Card effect not activated.\n";
+        }
         
     }
 }    

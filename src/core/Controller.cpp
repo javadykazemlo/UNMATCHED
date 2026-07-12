@@ -11,6 +11,7 @@ Controller::Controller()
 {
     DraculaWon = false;
     sherlockWon = false;
+    cancelEffect = false;
    // Guess = false;
 }
 
@@ -734,61 +735,152 @@ void Controller::applyEffect(const Card& card)
     
     if (card.getName() == "Bloodlust")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Bloodlust effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "Mist Form")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Mist Form effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "Ambush")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Ambush effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        } 
+
+
+
     }
     
     else if (card.getName() == "Blood Bath")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Blood Bath effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Beast Form")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Beast Form effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Assault")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Assault effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "Exploitation")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Exploitation effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "Look Into My Eyes")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Look Into My Eyes effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Hunt")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Hunt effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Insatiable Seduction")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Insatiable Seduction effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Thirst for Survival")
     {
-        
+        if (getCancelEffect())
+        {
+            cout << "Thirst for Survival effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Deception")
     {
+        if (getCancelEffect())
+        {
+            cout << "Deception effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+        
         cout << "No special effect for this card.\n";
     }
 
@@ -912,13 +1004,13 @@ void Controller::applyEffect(const Card& card)
     
     else if (card.getName() == "Elementary")
     {
-        Character* holmes = current->getHero();
+       /* Character* holmes = current->getHero();
         Character* enemyHero = enemy->getHero();
         
         cout << "Guess the attack value: ";
         int guess;
         cin >> guess;
-        if ()/*برای اون بولین هستت*/
+        if ()برای اون بولین هستت
         {
             cout <<"You guessed -> succeessful";
         }
@@ -927,11 +1019,27 @@ void Controller::applyEffect(const Card& card)
             cout <<"You guessed -> failed";
 
         }
+        */
         
     }
     
     else if (card.getName() == "Impossible Elimination")
     {
+        enemy->getDeck()->showHand(enemy->getName());
+
+        cout << "Choose a card to burn: ";
+
+        int index = getInt();
+
+        Card burned = enemy->getDeck()->burnCard(index - 1);
+
+        if (burned.getName() == "")
+        {
+            cout << "Invalid card.\n";
+            return;
+        }
+
+        enemy->getDeck()->addBurnCard(burned);
         
     }
     
@@ -991,7 +1099,7 @@ void Controller::applyEffect(const Card& card)
     {
         cout << "Sherlock won the combat.\n";
         cout << "Opponent's hand:\n";
-        enemy->getDeck()->showHand("Dracula");
+        enemy->getDeck()->showHand(enemy->getName());
     }
     else
     {
@@ -1011,6 +1119,10 @@ bool Controller::get_SherlockWon()
     return sherlockWon;
 }
 
+bool Controller::getCancelEffect() 
+{
+    return cancelEffect;
+}
 Controller::~Controller()
 {
 }

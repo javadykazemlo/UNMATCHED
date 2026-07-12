@@ -20,6 +20,7 @@ private:
 
     bool DraculaWon;   
     bool sherlockWon;
+    bool cancelEffect;
    // bool Guess;
 public:
     Controller();
@@ -46,6 +47,7 @@ public:
     int getChoice(std::vector<int> valid);
     bool get_DraculaWon();
     bool get_SherlockWon();
+    bool getCancelEffect();
 
     ~Controller();
 };

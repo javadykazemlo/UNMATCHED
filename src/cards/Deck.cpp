@@ -394,6 +394,20 @@ Card Deck::playCard(int index, Card& selected)
     return selected;
 }
 
+
+Card Deck::burnCard(int index)
+{
+    if (index < 0 || index >= hand.size())
+        return Card();
+
+    Card selected = hand[index];
+
+    hand.erase(hand.begin() + index);
+
+    return selected;
+}
+
+
 void Deck::discardCard(const Card& card)
 {
     DiscardPile.push_back(card);
@@ -514,6 +528,11 @@ vector<int> Deck::showSchemeCards() const
     return a;
 }
 
+void Deck::addBurnCard(const Card& card)
+{
+    DiscardPile.push_back(card);
+}
+
 bool Deck::isDeckEmpty() const
 {
     return deck.empty();
@@ -549,4 +568,8 @@ const vector<Card>& Deck::getdeck()
 const vector<Card>& Deck::gethand()
 {
     return hand;
+}
+const vector<Card>& Deck::getBurn()
+{
+    return DiscardPile;
 }

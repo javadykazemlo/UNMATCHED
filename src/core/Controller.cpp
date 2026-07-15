@@ -11,6 +11,7 @@ Controller::Controller()
 {
     DraculaWon = false;
     sherlockWon = false;
+    cancelEffect = false;
    // Guess = false;
 }
 
@@ -748,6 +749,14 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         cout << "Card " << card.getName() << "'s attack increased by " << amount << ".\n";
         card.setAttack(card.getAttack() + amount);
         return;//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  for ALL
+        if (getCancelEffect())
+        {
+            cout << "Bloodlust effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "MistForm")
@@ -772,6 +781,14 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         gamerand--;
         return;
+        if (getCancelEffect())
+        {
+            cout << "Mist Form effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "Ambush")
@@ -791,6 +808,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         cout << boostCard.getBoost() << " boost was added to " << card.getName() << "'s attack.\n";
         return;
+        if (getCancelEffect())
+        {
+            cout << "Ambush effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        } 
+
+
+
     }
     
     else if (card.getName() == "Baptism of Blood")
@@ -823,6 +849,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             }
         }
         return;
+        if (getCancelEffect())
+        {
+            cout << "Blood Bath effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "BeastForm")
@@ -862,6 +897,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             }
         }
         return;
+        if (getCancelEffect())
+        {
+            cout << "Beast Form effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Dash")
@@ -869,6 +913,14 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         cout << card.geteffect() << endl;
         move(3 , attacker);
         return;
+        if (getCancelEffect())
+        {
+            cout << "Assault effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "Exploit")
@@ -890,6 +942,14 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             cout << "All character on team took 2 damage";
         }
         return;
+        if (getCancelEffect())
+        {
+            cout << "Exploitation effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
     }
     
     else if (card.getName() == "Look Into My Eyes")
@@ -902,6 +962,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         cout << "This card gained " << enemyboost << " defense.\n";
         return;
+        if (getCancelEffect())
+        {
+            cout << "Look Into My Eyes effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Prey Upon")
@@ -922,6 +991,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         attacker->heal(amount);
         cout << attacker->getName() << " gained " << amount << " health.\n";
         return;
+        if (getCancelEffect())
+        {
+            cout << "Hunt effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Ravening Seduction")
@@ -988,6 +1066,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             cout << selected->getName() << "took no damage." << endl;
         }
         return;
+        if (getCancelEffect())
+        {
+            cout << "Insatiable Seduction effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Thirst for Sustenance")//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1015,6 +1102,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         
         return;
+        if (getCancelEffect())
+        {
+            cout << "Thirst for Survival effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+
+
+
     }
     
     else if (card.getName() == "Feint")
@@ -1024,6 +1120,14 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         FeintDR = true;
     
         return;
+        if (getCancelEffect())
+        {
+            cout << "Deception effect was canceled.\n";
+            cancelEffect = false;
+            return;
+        }
+        
+        cout << "No special effect for this card.\n";
     }
 
 
@@ -1048,7 +1152,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             
         }
         if (!emptyAdjacent.empty())
-        {;
+        {
             for (int i = 0; i < 32; i++)
             {
                 if (bord.getCharacter(i) == watson)
@@ -1092,7 +1196,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     else if (card.getName() == "Confirm Suspicion")
     {
         
-        cout << "Enter a number for choose card ";
     }
     
     else if (card.getName() == "Counterpunch")
@@ -1199,11 +1302,13 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Elementary")
     {
-        /*
+       /* Character* holmes = current->getHero();
+        Character* enemyHero = enemy->getHero();
+        
         cout << "Guess the attack value: ";
         int guess;
         cin >> guess;
-        if (برای اون بولین هستت)
+        if ()برای اون بولین هستت
         {
             cout <<"You guessed -> succeessful";
         }
@@ -1213,21 +1318,67 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         }
         */
+        
     }
     
     else if (card.getName() == "Eliminate the Impossible")
     {
+        enemy->getDeck()->showHand(enemy->getName());
+
+        cout << "Choose a card to burn: ";
+
+        int index = getInt();
+
+        Card burned = enemy->getDeck()->burnCard(index - 1);
+
+        if (burned.getName() == "")
+        {
+            cout << "Invalid card.\n";
+            return;
+        }
+
+        enemy->getDeck()->addBurnCard(burned);
+        cancelEffect = true;
+        cout << "The next Dracula card effect will be canceled.\n";
         
     }
     
     else if (card.getName() == "Deception")
     {
         FeintSH = true;
+        cancelEffect = true;
+        cout << "The next Dracula card effect will be canceled.\n";
+        
+
     }
     
     else if (card.getName() == "Fixed Point in a Changing Age")
     {
-        
+        Character* holmes = current->getHero();
+        Character* watson = current->getsidekick(1);
+
+        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
+
+        bool found = false;
+
+        for (int pos : adjacent)
+        {
+            if (bord.getCharacter(pos) == watson)
+            {
+                holmes->heal(1);
+                watson->heal(1);
+
+                cout << "Holmes and Watson each heal 1 HP.\n";
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            cout << "Watson is not adjacent to Holmes.\n";
+        }
+
     }
     
     else if (card.getName() == "Master of Disguise")
@@ -1242,11 +1393,23 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Service Revolver")
     {
-        
+
+        cout << "no effect (-_-)";
+
     }
     
     else if (card.getName() == "Study Methods")
     {
+        if (get_SherlockWon())
+        {
+            cout << "Sherlock won the combat.\n";
+            cout << "Opponent's hand:\n";
+            enemy->getDeck()->showHand(enemy->getName());
+        }
+        else
+        {
+            cout << "Card effect not activated.\n";
+        }
         
     }
 }    
@@ -1261,6 +1424,10 @@ bool Controller::get_SherlockWon()
     return sherlockWon;
 }
 
+bool Controller::getCancelEffect() 
+{
+    return cancelEffect;
+}
 Controller::~Controller()
 {
 }

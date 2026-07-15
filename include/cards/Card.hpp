@@ -58,6 +58,8 @@ public:
     std::string getTypeString() const;
     std::string getTimingString() const;
 
+    void setAttack(int a);
+
     std::string getName() const;
     owner getOwner() const;
     CardType getType() const;

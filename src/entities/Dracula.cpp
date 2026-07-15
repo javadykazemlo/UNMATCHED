@@ -50,8 +50,21 @@ void Dracula::ability(Bord* bord , Player* player)
         if (k >= 1 && k <= targets.size())
         {
             targets[k - 1]->takeDamage(0, 1);
-            player->getDeck()->draw();
-            cout << "Ability used! 1 damage dealt and 1 card drawn.\n";
+            try
+            {
+                player->getDeck()->draw();
+                cout << "added to " << player->getName() << " hand\n\n";
+            }
+            catch(const runtime_error& e)
+            {
+                cout << e.what() << endl;
+                for(int i = 0 ; i <  player->getfighterCount() ; i++)
+                {
+                    player->getsidekick(i)->takeDamage(2,0);
+                }
+                cout << "All character on team took 2 damage";
+            }
+            cout << "Ability used! 1 damage dealt.\n";
         }
         else
         {

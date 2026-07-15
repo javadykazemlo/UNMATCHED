@@ -126,9 +126,3 @@ int Character::isHero() const
 }
 
 
-Character::~Character()
-{
-}
-
-
-

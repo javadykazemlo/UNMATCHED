@@ -13,14 +13,18 @@ class Controller
 private:
     Bord bord;
 
-    Player* firstPlayer = nullptr;
-    Player* secondPlayer = nullptr;
+    // Player* firstPlayer = nullptr;
+    // Player* secondPlayer = nullptr;
     Player* current = nullptr;
     Player* enemy = nullptr;
+
+    bool FeintDR = false;
+    bool FeintSH = false;
 
     bool DraculaWon;   
     bool sherlockWon;
    // bool Guess;
+    int gamerand = 0;
 public:
     Controller();
     
@@ -29,18 +33,18 @@ public:
     void plaseSidekicks(Player& player);
     void playTurn();
 
-    void move();
+    void move(int mov ,Character* selected);
     int boost();
     
     void Scheme();
 
     void startCombat();
     Card chooseCombatCard(Player* player , Character* fighter, bool attack);
-    void resolveCombat(Card& attackCard, Card& defenseCard);
+    void resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender);
 
     bool end_game() const;
 
-    void applyEffect(const Card& card);
+    void applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender);
     
     int getInt();
     int getChoice(std::vector<int> valid);

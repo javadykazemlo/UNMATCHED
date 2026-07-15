@@ -98,5 +98,9 @@ int Player::getfighterCount() const
 
 Player::~Player()
 {
+    for (Character* fighter : fighters)
+    delete fighter;
     
+
+    delete deck;
 }

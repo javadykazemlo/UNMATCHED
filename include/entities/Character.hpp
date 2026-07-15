@@ -38,7 +38,7 @@ public:
     int getowner() const;
     int isHero() const;
 
-    ~Character();
+    virtual ~Character() = default;
 };
 
 

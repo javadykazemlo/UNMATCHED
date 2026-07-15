@@ -25,7 +25,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Bloodlust",                //name
+                "Feeding Frenzy",                //name
                 owner::Hero,                //Owner
                 CardType::Attack,           //Type
                 2,                          //Attack
@@ -38,7 +38,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Mist Form",
+                "MistForm",
                 owner::Hero,
                 CardType::Scheme,
                 0,
@@ -64,7 +64,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Blood Bath",
+                "Baptism of Blood",
                 owner::Hero,
                 CardType::Scheme,
                 0,
@@ -77,7 +77,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Beast Form",
+                "BeastForm",
                 owner::Hero,
                 CardType::Attack,
                 6,
@@ -90,7 +90,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Assault",
+                "Dash",
                 owner::Any,
                 CardType::Versatile,
                 3,
@@ -103,7 +103,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Exploitation",
+                "Exploit",
                 owner::Any,
                 CardType::Versatile,
                 4,
@@ -129,7 +129,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Hunt",
+                "Prey Upon",
                 owner::Hero,
                 CardType::Scheme,
                 0,
@@ -142,7 +142,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Insatiable Seduction",
+                "Ravening Seduction",
                 owner::SideKick,
                 CardType::Scheme,
                 0,
@@ -155,7 +155,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Thirst for Survival",
+                "Thirst for Sustenance",
                 owner::SideKick,
                 CardType::Attack,
                 3,
@@ -168,7 +168,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Deception",
+                "Feint",
                 owner::Any,
                 CardType::Versatile,
                 2,
@@ -186,7 +186,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "First Aid",   
+                "Administer Aid",   
                 owner::SideKick,                 
                 CardType::Scheme,                  
                 0,                  
@@ -212,7 +212,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Counterattack",
+                "Counterpunch",
                 owner::Hero,
                 CardType::Versatile,
                 3,
@@ -225,7 +225,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Strategic Deduction",
+                "Deduce Strategy",
                 owner::Hero,
                 CardType::Versatile,
                 3,
@@ -238,7 +238,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Learning Never Ends",
+                "Education Never Ends",
                 owner::Any,
                 CardType::Versatile,
                 3, 
@@ -264,7 +264,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Impossible Elimination",
+                "Eliminate the Impossible",
                 owner::Hero,
                 CardType::Scheme,
                 0,
@@ -290,7 +290,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "A Fixed Point in a Changing Age",
+                "Fixed Point in a Changing Age",
                 owner::SideKick,
                 CardType::Scheme,
                 3,
@@ -316,7 +316,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "The Game Is Afoot",
+                "The Game is Afoot",
                 owner::Hero,
                 CardType::Attack,
                 5,
@@ -329,7 +329,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Sidearm",
+                "Service Revolver",
                 owner::SideKick,
                 CardType::Attack,
                 5,

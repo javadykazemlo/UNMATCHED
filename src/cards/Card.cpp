@@ -133,6 +133,12 @@ std::string Card::getTimingString() const
     return "Unknown";
 }
 
+void Card::setAttack(int a)
+{
+    this->Attack = a;
+}
+
+
 string Card::getName() const
 {
     return Name;

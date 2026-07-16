@@ -257,7 +257,6 @@ void Controller::playTurn()
 
         for(int i = 0 ; HandSize > 7 ; i++)
         {
-            current->getDeck()->showHand(current->getName());
             cout << endl << "Enter the card number to remove: ";
             selec = getInt();
 
@@ -368,12 +367,7 @@ int Controller::boost()
         cout << "No boost used.\n";
         return 0;
     }
-    
-    current->getDeck()->showHand(current->getName());
-
-    int choos;
-    choos = current->getDeck()->gethandSize();
-
+    int choos = current->getDeck()->gethandSize();
     cout << "Selected card: ";
     int select = getInt();
     for(int i = 0 ; select < 0 || select > choos ; i++)
@@ -398,8 +392,7 @@ void Controller::Scheme()
     cout << "\n═════════════════════════════════════════════════" << endl;
     cout << "                 Scheme\n"; 
     
-    vector<int> choos;
-    choos = current->getDeck()->showSchemeCards();
+    vector<int> choos = current->getDeck()->getSchemeCardIndices();
     if(choos.empty())
     {
         cout << "You don't have any Scheme cards.\n";
@@ -523,8 +516,6 @@ void Controller::startCombat()
 
 Card Controller::chooseCombatCard(Player* player , Character* fighter, bool attack)
 {
-    cout << "\nYour hand:\n";
-    player->getDeck()->showHand(current->getName());
     while (true)
     {
 
@@ -595,14 +586,6 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     cout << "\n═══════════════════════════════════════════════════════\n";
     cout << "  ⚔️ RESOLVING COMBAT ⚔️\n";
     cout << "═══════════════════════════════════════════════════════\n";
-    
-    cout << "\n🔹 ATTACKER (" << current->getName() << "):\n";
-    current->getDeck()->showCard(attackCard);
-    
-    cout << "=======================================================================";
-
-    cout << "\n🔸 DEFENDER (" << enemy->getName() << "):\n";
-    enemy->getDeck()->showCard(defenseCard);
     
     
     if(defenseCard.isBeforeCombat())
@@ -870,7 +853,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             cin >> option;
             if(option == 'y' || option == 'Y')
             {
-                self->getDeck()->showHand(self->getName());
                 int handSize = self->getDeck()->gethandSize();
     
                 int choice;
@@ -1323,9 +1305,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Eliminate the Impossible")
     {
-        enemy->getDeck()->showHand(enemy->getName());
-
-        cout << "Choose a card to burn: ";
 
         int index = getInt();
 
@@ -1404,7 +1383,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         {
             cout << "Sherlock won the combat.\n";
             cout << "Opponent's hand:\n";
-            enemy->getDeck()->showHand(enemy->getName());
         }
         else
         {
@@ -1413,6 +1391,48 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         
     }
 }    
+
+
+
+Player* Controller::getCurrentPlayer() const 
+{
+     return current;
+}
+
+
+Player* Controller::getEnemyPlayer() const 
+{ 
+    return enemy; 
+}
+
+
+Bord& Controller::getBoard() 
+{ 
+    return bord; 
+}
+
+
+const Bord& Controller::getBoard() const 
+{ 
+    return bord; 
+}
+
+
+bool Controller::isGameOver() const 
+{ 
+    return end_game(); 
+}
+
+
+Character* Controller::getCharacterAt(int position) const 
+{ 
+    return bord.getCharacter(position); 
+}
+
+
+
+
+
 
 
 bool Controller::get_DraculaWon()

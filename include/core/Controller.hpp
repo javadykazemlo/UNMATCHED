@@ -53,5 +53,13 @@ public:
     bool get_SherlockWon();
     bool getCancelEffect();
 
+
+    Player* getCurrentPlayer() const ;
+    Player* getEnemyPlayer() const ;
+    Bord& getBoard() ;
+    const Bord& getBoard() const ;
+    bool isGameOver() const ;
+    Character* getCharacterAt(int position) const ;
+
     ~Controller();
 };

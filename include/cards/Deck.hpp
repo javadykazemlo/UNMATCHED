@@ -22,7 +22,7 @@ public:
     void discardCard(const Card& card);
     
 
-    void Deck::addBurnCard(const Card& card);
+    void addBurnCard(const Card& card);
         
     std::vector<int> getAttackCardIndices() const;
     std::vector<int> getDefenseCardIndices() const;

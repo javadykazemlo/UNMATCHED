@@ -10,7 +10,7 @@ private:
 public:
     Sister(std::string name , int owner);
 
-    void ability(Bord* bord , Player* player) override;
+    void ability(Bord bord , Player* player) override;
 
     ~Sister();
 };

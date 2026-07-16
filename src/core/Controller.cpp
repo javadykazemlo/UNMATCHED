@@ -143,13 +143,18 @@ void Controller::playTurn()
     int Todo = 0;
     while(!end_game())
     {
+        
         gamerand = 0;
         while(gamerand < 2)
         {
             cout << "\n════════════════════════════════════════════════════════════════" << endl;
             cout << "                  " << current->getName() << "'s turn\n";
-    
+            
             // نمایش TUI (نقشه و اطلاعات کاراتر ها و اطلاعات کارت ها)
+
+            if(current->getHero()->getName() == "Dracula")
+            current->getHero()->ability(bord , current);
+
     
             cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack";
             cout << "\nChoose a action: ";

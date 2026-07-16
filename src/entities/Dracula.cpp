@@ -11,23 +11,23 @@ Dracula::Dracula(int owner): Character("Dracula", 13, 2, 0 , owner , true)
 }
 
 
-void Dracula::ability(Bord* bord , Player* player)
+void Dracula::ability(Bord bord , Player* player)
 {
-
-    cout << "Do you want to use Dracula's ability? (y/n): ";
+    
+    cout << "\nDo you want to use Dracula's ability? (y/n): ";
     char choice;
     cin >> choice;  
 
     if (choice == 'y' || choice == 'Y')
     {
-        vector<int> adjacent = bord->getCharacterAdjacent(this);
+        vector<int> adjacent = bord.getCharacterAdjacent(this);
         vector<Character*> targets;
 
         for (int pos : adjacent)
         {
-            if (bord->getCharacter(pos) != nullptr)
+            if (bord.getCharacter(pos) != nullptr)
             {
-                targets.push_back(bord->getCharacter(pos));
+                targets.push_back(bord.getCharacter(pos));
             }
         }
 
@@ -37,48 +37,50 @@ void Dracula::ability(Bord* bord , Player* player)
             return;
         }
 
-        cout << "Select target:\n";
         for (int i = 0; i < targets.size(); i++)
         {
             cout << i + 1 << ". " << targets[i]->getName() << endl;
         }
-
-        int k;
-        cout << "Choice: ";
-        cin >> k;
-
-        if (k >= 1 && k <= targets.size())
+        
+        while(true)
         {
-            targets[k - 1]->takeDamage(0, 1);
-            try
+            int k;
+            cout << "Select target to damamge: ";
+            cin >> k;
+        
+            if (k >= 1 && k <= targets.size())
             {
-                player->getDeck()->draw();
-                cout << "added to " << player->getName() << " hand\n\n";
-            }
-            catch(const runtime_error& e)
-            {
-                cout << e.what() << endl;
-                for(int i = 0 ; i <  player->getfighterCount() ; i++)
+                targets[k - 1]->takeDamage(0, 1);
+                try
                 {
-                    player->getsidekick(i)->takeDamage(2,0);
+                    player->getDeck()->draw();
+                    cout << "1 card added to " << player->getName() << " hand\n\n";
                 }
-                cout << "All character on team took 2 damage";
+                catch(const runtime_error& e)
+                {
+                    cout << e.what() << endl;
+                    for(int i = 0 ; i <  player->getfighterCount() ; i++)
+                    {
+                        player->getsidekick(i)->takeDamage(2,0);
+                    }
+                    cout << "All character on team took 2 damage";
+                }
+                cout << "Ability used! 1 damage dealt.\n";
+                return;
             }
-            cout << "Ability used! 1 damage dealt.\n";
-        }
-        else
-        {
-            cout << "Invalid choice!\n";
+            else
+            {
+                cout << "Invalid choice!\n";
+            }
         }
     }
     else
     {
         cout << "Not using ability.\n";
+        return;
     }
+    
 }
-
-
-
 
 Dracula::~Dracula()
 {

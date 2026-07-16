@@ -10,7 +10,7 @@ private:
 public:
     Dr_watson(int owner);
 
-    void ability(Bord* bord , Player* player) override;
+    void ability(Bord bord , Player* player) override;
 
     ~Dr_watson();
 };

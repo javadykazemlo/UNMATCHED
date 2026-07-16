@@ -21,6 +21,9 @@ private:
     
     int gamerand = 0;
     bool GuessElementary = false;
+      bool DraculaWon = false;
+    bool sherlockWon = false;   
+    bool cancelEffect = false;
 public:
     Controller();
     
@@ -53,6 +56,12 @@ public:
     const Bord& getBoard() const ;
     bool isGameOver() const ;
     Character* getCharacterAt(int position) const ;
+
+
+    bool get_DraculaWon();
+    bool get_SherlockWon();
+    bool getCancelEffect() ;
+
 
     ~Controller();
 };

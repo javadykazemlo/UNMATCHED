@@ -14,9 +14,9 @@ GameTUI::GameTUI(Controller* ctrl)
       current(nullptr),
       enemy(nullptr) {
     
-    log.push_back("🎮 Welcome to Unmatched!");
-    log.push_back("⚔️ Dracula vs Sherlock Holmes");
-    log.push_back("📖 Select your hero and begin the battle!");
+    log.push_back("Welcome to Unmatched!");
+    log.push_back("Dracula vs Sherlock Holmes");
+    log.push_back("Select your hero and begin the battle!");
     updateData();
 }
 
@@ -32,75 +32,78 @@ void GameTUI::run() {
             case GAMEOVER: screen_element = renderGameOver(); break;
         }
         
-        screen.Loop([&] { return screen_element; });
+        screen.Loop(Renderer([&] { return screen_element; }));
     }
 }
 
 Element GameTUI::renderMenu() {
-    std::vector<std::string> items = {"🎮 Play", "📖 Help", "🚪 Exit"};
+    std::vector<std::string> items = {"Play", "Help", "Exit"};
     std::vector<Element> elems;
     
     for (int i = 0; i < items.size(); i++) {
         auto e = text(items[i]);
         if (i == menu_select) {
-            e = e | bold | color(Color::Green) | border(rounded);
+            e = e | bold | color(Color::Green) | border;
         }
         elems.push_back(e | size(WIDTH, EQUAL, 30));
     }
     
-    return vbox({
-        text("╔═══════════════════════════════════════════╗") | bold | color(Color::Red),
-        text("║        UNMATCHED: THE GAME              ║") | bold | color(Color::Red),
-        text("║    Dracula vs Sherlock Holmes           ║") | color(Color::Yellow),
-        text("╚═══════════════════════════════════════════╝") | bold | color(Color::Red),
-        text(""),
-        vbox(elems) | center,
-        text(""),
-        text(" ↑/↓: Navigate  •  ENTER: Select  •  Q: Quit") | dim | center
-    }) | border | flex;
+    std::vector<Element> menu_elems;
+    menu_elems.push_back(text("UNMATCHED: THE GAME") | bold | color(Color::Red));
+    menu_elems.push_back(text("Dracula vs Sherlock Holmes") | color(Color::Yellow));
+    menu_elems.push_back(vbox(elems) | center);
+    menu_elems.push_back(text("↑/↓: Navigate | ENTER: Select | Q: Quit") | dim);
+    
+    return vbox(menu_elems) | border | flex;
 }
 
 Element GameTUI::renderGame() {
     updateData();
     
     if (!controller) {
-        return text("❌ Controller not found!") | color(Color::Red);
+        return text("Controller not found!") | color(Color::Red);
     }
     
-    return vbox({
-        hbox({
-            text(" UNMATCHED ") | bold | color(Color::Red) | border,
-            separator(),
-            text(" Turn: ") | bold | color(Color::Yellow),
-            text(current ? current->getName() : "?") | bold | color(Color::Green)
-        }) | border | color(Color::GrayDark),
-        
-        hbox({
-            vbox({
-                renderBoard() | flex,
-                renderStatus() | flex_shrink
-            }) | flex | border,
-            
-            vbox({
-                renderPlayer(current, true) | flex_shrink,
-                separator(),
-                renderPlayer(enemy, false) | flex_shrink,
-                separator(),
-                hbox({
-                    text(" Deck: ") | bold,
-                    text(std::to_string(current ? current->getDeck()->getdeckSize() : 0)) | color(Color::Green),
-                    text("  |  Discard: ") | bold,
-                    text(std::to_string(current ? current->getDeck()->getdiscardSize() : 0)) | color(Color::Yellow)
-                }) | border | flex_shrink,
-                separator(),
-                renderHand(current) | flex,
-                separator(),
-                renderActions() | flex_shrink
-            }) | flex | border
-        }) | flex,
-        
-        renderLog() | flex_shrink
-    }) | flex;
+    std::vector<Element> main_elems;
+    
+    std::vector<Element> top_elems;
+    top_elems.push_back(text(" UNMATCHED ") | bold | color(Color::Red) | border);
+    top_elems.push_back(separator());
+    top_elems.push_back(text(" Turn: ") | bold | color(Color::Yellow));
+    top_elems.push_back(text(current ? current->getName() : "?") | bold | color(Color::Green));
+    main_elems.push_back(hbox(top_elems) | border | color(Color::GrayDark));
+    
+    std::vector<Element> middle_elems;
+    
+    std::vector<Element> left_elems;
+    left_elems.push_back(renderBoard() | flex);
+    left_elems.push_back(renderStatus() | flex_shrink);
+    middle_elems.push_back(vbox(left_elems) | flex | border);
+    
+    std::vector<Element> right_elems;
+    right_elems.push_back(renderPlayer(current, true) | flex_shrink);
+    right_elems.push_back(separator());
+    right_elems.push_back(renderPlayer(enemy, false) | flex_shrink);
+    right_elems.push_back(separator());
+    
+    std::vector<Element> deck_elems;
+    deck_elems.push_back(text(" Deck: ") | bold);
+    deck_elems.push_back(text(std::to_string(current ? current->getDeck()->getdeckSize() : 0)) | color(Color::Green));
+    deck_elems.push_back(text("  |  Discard: ") | bold);
+    deck_elems.push_back(text(std::to_string(current ? current->getDeck()->getdiscardSize() : 0)) | color(Color::Yellow));
+    right_elems.push_back(hbox(deck_elems) | border | flex_shrink);
+    
+    right_elems.push_back(separator());
+    right_elems.push_back(renderHand(current) | flex);
+    right_elems.push_back(separator());
+    right_elems.push_back(renderActions() | flex_shrink);
+    
+    middle_elems.push_back(vbox(right_elems) | flex | border);
+    
+    main_elems.push_back(hbox(middle_elems) | flex);
+    main_elems.push_back(renderLog() | flex_shrink);
+    
+    return vbox(main_elems) | flex;
 }
 
 Element GameTUI::renderBoard() {
@@ -125,8 +128,11 @@ Element GameTUI::renderBoard() {
             
             if (ch) {
                 content = " " + getCharSymbol(ch) + "  ";
-                Color color = (ch->getowner() == 1) ? Color::Red : Color::Blue;
-                cols.push_back(text(content) | bold | color(color) | border | size(WIDTH, EQUAL, 5));
+                if (ch->getowner() == 1) {
+                    cols.push_back(text(content) | bold | color(Color::Red) | border | size(WIDTH, EQUAL, 5));
+                } else {
+                    cols.push_back(text(content) | bold | color(Color::Blue) | border | size(WIDTH, EQUAL, 5));
+                }
             } else if (pos == 0 || pos == 12 || pos == 17 || pos == 23) {
                 cols.push_back(text(" ## ") | color(Color::GrayDark) | border | size(WIDTH, EQUAL, 5));
             } else if (pos == 4 || pos == 15) {
@@ -138,40 +144,41 @@ Element GameTUI::renderBoard() {
         rows.push_back(hbox(cols));
     }
     
-    return vbox({
-        text(" MAP ") | bold | center,
-        vbox(rows)
-    }) | border | flex;
+    std::vector<Element> board_elems;
+    board_elems.push_back(text(" MAP ") | bold | center);
+    board_elems.push_back(vbox(rows));
+    
+    return vbox(board_elems) | border | flex;
 }
 
 Element GameTUI::renderPlayer(Player* p, bool isCurrent) {
     if (!p || !p->getHero()) {
-        return vbox({
-            text(isCurrent ? " YOU " : " ENEMY ") | bold | color(Color::GrayDark),
-            text("  HP: --/--") | dim,
-            text("  Range: --") | dim,
-            text("  Move: --") | dim
-        }) | border | size(HEIGHT, EQUAL, 6);
+        std::vector<Element> elems;
+        elems.push_back(text(isCurrent ? " YOU " : " ENEMY ") | bold | color(Color::GrayDark));
+        elems.push_back(text("  HP: --/--") | dim);
+        elems.push_back(text("  Range: --") | dim);
+        elems.push_back(text("  Move: --") | dim);
+        return vbox(elems) | border | size(HEIGHT, EQUAL, 6);
     }
     
     Character* hero = p->getHero();
     std::string name = hero->getName();
-    Color color = (hero->getowner() == 1) ? Color::Red : Color::Blue;
     
-    return vbox({
-        text(" " + name + (isCurrent ? " [★]" : "") + " ") | bold | color(color),
-        text("  Health: " + std::to_string(hero->getHp()) + " / " + std::to_string(hero->getMaxhp())) | color(Color::Red),
-        text("  Range: " + std::to_string(hero->getAttacktype() == 0 ? 2 : 1)) | color(Color::Yellow),
-        text("  Move: " + std::to_string(hero->getMove())) | color(Color::Cyan)
-    }) | border | size(HEIGHT, EQUAL, 6);
+    std::vector<Element> elems;
+    elems.push_back(text(" " + name + (isCurrent ? " [★]" : "") + " ") | bold);
+    elems.push_back(text("  Health: " + std::to_string(hero->getHp()) + " / " + std::to_string(hero->getMaxhp())) | color(Color::Red));
+    elems.push_back(text("  Range: " + std::to_string(hero->getAttacktype() == 0 ? 2 : 1)) | color(Color::Yellow));
+    elems.push_back(text("  Move: " + std::to_string(hero->getMove())) | color(Color::Cyan));
+    
+    return vbox(elems) | border | size(HEIGHT, EQUAL, 6);
 }
 
 Element GameTUI::renderHand(Player* p) {
     if (!p || !p->getDeck()) {
-        return vbox({
-            text(" HAND ") | bold | center,
-            text(" 0 cards") | dim | center
-        }) | border | flex;
+        std::vector<Element> elems;
+        elems.push_back(text(" HAND ") | bold | center);
+        elems.push_back(text(" 0 cards") | dim | center);
+        return vbox(elems) | border | flex;
     }
     
     Deck* deck = p->getDeck();
@@ -183,10 +190,11 @@ Element GameTUI::renderHand(Player* p) {
         cards.push_back(renderCard(hand[i], i, sel));
     }
     
-    return vbox({
-        text(" " + p->getName() + " - HAND (" + std::to_string(hand.size()) + "/7) ") | bold | center,
-        hbox(cards) | center
-    }) | border | flex;
+    std::vector<Element> elems;
+    elems.push_back(text(" " + p->getName() + " - HAND (" + std::to_string(hand.size()) + "/7) ") | bold | center);
+    elems.push_back(hbox(cards) | center);
+    
+    return vbox(elems) | border | flex;
 }
 
 Element GameTUI::renderCard(const Card& card, int idx, bool sel) {
@@ -197,38 +205,46 @@ Element GameTUI::renderCard(const Card& card, int idx, bool sel) {
         text(" Boost: " + std::to_string(card.getBoost())) | dim
     }) | border | size(WIDTH, EQUAL, 16);
     
-    if (card.isAttack()) e = e | color(Color::Red);
-    else if (card.isDefense()) e = e | color(Color::Blue);
-    else if (card.isScheme()) e = e | color(Color::Green);
-    else if (card.isVersatile()) e = e | color(Color::Purple);
+    if (card.isAttack()) {
+        e = e | color(Color::Red);
+    } else if (card.isDefense()) {
+        e = e | color(Color::Blue);
+    } else if (card.isScheme()) {
+        e = e | color(Color::Green);
+    } else if (card.isVersatile()) {
+        e = e | color(Color::Purple);
+    }
     
-    if (sel) e = e | bold | border(rounded) | color(Color::Green);
+    if (sel) {
+        e = e | bold | border | color(Color::Green);
+    }
     
     return e;
 }
 
 Element GameTUI::renderActions() {
     std::vector<std::string> actions = {
-        "⚔️ Attack",
-        "🏃 Maneuver",
-        "🔮 Scheme",
-        "🔥 Discard",
-        "❓ Help"
+        "Attack",
+        "Maneuver",
+        "Scheme",
+        "Discard",
+        "Help"
     };
     
     std::vector<Element> elems;
     for (int i = 0; i < actions.size(); i++) {
         auto e = text(" " + actions[i] + " ");
         if (i == action_select) {
-            e = e | bold | color(Color::Green) | border(rounded);
+            e = e | bold | color(Color::Green) | border;
         }
         elems.push_back(e);
     }
     
-    return vbox({
-        text(" GAME COMMANDS ") | bold | center,
-        vbox(elems)
-    }) | border | flex_shrink;
+    std::vector<Element> action_elems;
+    action_elems.push_back(text(" GAME COMMANDS ") | bold | center);
+    action_elems.push_back(vbox(elems));
+    
+    return vbox(action_elems) | border | flex_shrink;
 }
 
 Element GameTUI::renderStatus() {
@@ -237,14 +253,16 @@ Element GameTUI::renderStatus() {
     }
     
     Deck* deck = current->getDeck();
-    return hbox({
-        text(" 📊 Deck: ") | bold,
-        text(std::to_string(deck->getdeckSize())) | color(Color::Green),
-        text("  |  Discard: ") | bold,
-        text(std::to_string(deck->getdiscardSize())) | color(Color::Yellow),
-        text("  |  ") | dim,
-        text(message) | color(Color::Cyan)
-    }) | border | flex_shrink;
+    
+    std::vector<Element> elems;
+    elems.push_back(text(" Deck: ") | bold);
+    elems.push_back(text(std::to_string(deck->getdeckSize())) | color(Color::Green));
+    elems.push_back(text("  |  Discard: ") | bold);
+    elems.push_back(text(std::to_string(deck->getdiscardSize())) | color(Color::Yellow));
+    elems.push_back(text("  |  ") | dim);
+    elems.push_back(text(message) | color(Color::Cyan));
+    
+    return hbox(elems) | border | flex_shrink;
 }
 
 Element GameTUI::renderLog() {
@@ -255,10 +273,11 @@ Element GameTUI::renderLog() {
         lines.push_back(text(" • " + log[i]) | dim);
     }
     
-    return vbox({
-        text(" 📜 ACTION LOG ") | bold | color(Color::Yellow) | center,
-        vbox(lines)
-    }) | border | flex_shrink;
+    std::vector<Element> elems;
+    elems.push_back(text(" ACTION LOG ") | bold | color(Color::Yellow) | center);
+    elems.push_back(vbox(lines));
+    
+    return vbox(elems) | border | flex_shrink;
 }
 
 Element GameTUI::renderCombat() {
@@ -266,41 +285,37 @@ Element GameTUI::renderCombat() {
         return text("No player data") | dim;
     }
     
-    return vbox({
-        text(" ⚔️ COMBAT ⚔️ ") | bold | color(Color::Red) | center,
-        text(""),
-        text(" Choose your attack card:") | bold | color(Color::Yellow),
-        renderHand(current) | flex,
-        text(""),
-        text(" 🎯 Select a card with ↑/↓") | dim | center,
-        text(" Press ENTER to confirm, ESC to cancel") | dim | center
-    }) | border | flex;
+    std::vector<Element> elems;
+    elems.push_back(text(" COMBAT ") | bold | color(Color::Red) | center);
+    elems.push_back(text(""));
+    elems.push_back(text(" Choose your attack card:") | bold | color(Color::Yellow));
+    elems.push_back(renderHand(current) | flex);
+    elems.push_back(text(""));
+    elems.push_back(text(" Select a card with ↑/↓") | dim | center);
+    elems.push_back(text(" Press ENTER to confirm, ESC to cancel") | dim | center);
+    
+    return vbox(elems) | border | flex;
 }
 
 Element GameTUI::renderHelp() {
-    return vbox({
-        text(" 📖 HELP ") | bold | color(Color::Blue) | center,
-        text(""),
-        text(" 🎮 CONTROLS:") | bold | color(Color::Yellow),
-        text("  ↑/↓ : Navigate menus") | dim,
-        text("  ENTER : Select option") | dim,
-        text("  ESC : Go back/Cancel") | dim,
-        text("  Q : Quit game") | dim,
-        text(""),
-        text(" ⚔️ ACTIONS:") | bold | color(Color::Yellow),
-        text("  Attack : Fight your opponent") | dim,
-        text("  Maneuver : Move & draw a card") | dim,
-        text("  Scheme : Play special ability") | dim,
-        text("  Discard : Remove a card from hand") | dim,
-        text(""),
-        text(" 🎴 CARD TYPES:") | bold | color(Color::Yellow),
-        text("  🔴 Attack : Deal damage") | color(Color::Red),
-        text("  🔵 Defense : Block attacks") | color(Color::Blue),
-        text("  🟢 Scheme : Special effects") | color(Color::Green),
-        text("  🟣 Versatile : Attack or Defense") | color(Color::Purple),
-        text(""),
-        text(" Press ESC to return") | dim | center
-    }) | border | flex;
+    std::vector<Element> elems;
+    elems.push_back(text(" HELP ") | bold | color(Color::Blue) | center);
+    elems.push_back(text(""));
+    elems.push_back(text(" CONTROLS:") | bold | color(Color::Yellow));
+    elems.push_back(text("  ↑/↓ : Navigate menus") | dim);
+    elems.push_back(text("  ENTER : Select option") | dim);
+    elems.push_back(text("  ESC : Go back/Cancel") | dim);
+    elems.push_back(text("  Q : Quit game") | dim);
+    elems.push_back(text(""));
+    elems.push_back(text(" ACTIONS:") | bold | color(Color::Yellow));
+    elems.push_back(text("  Attack : Fight your opponent") | dim);
+    elems.push_back(text("  Maneuver : Move & draw a card") | dim);
+    elems.push_back(text("  Scheme : Play special ability") | dim);
+    elems.push_back(text("  Discard : Remove a card from hand") | dim);
+    elems.push_back(text(""));
+    elems.push_back(text(" Press ESC to return") | dim | center);
+    
+    return vbox(elems) | border | flex;
 }
 
 Element GameTUI::renderGameOver() {
@@ -308,20 +323,24 @@ Element GameTUI::renderGameOver() {
     bool s_won = controller ? controller->get_SherlockWon() : false;
     
     std::string winner = "?";
-    Color color = Color::Gray;
     
-    if (d_won) { winner = "Dracula"; color = Color::Red; }
-    else if (s_won) { winner = "Sherlock"; color = Color::Blue; }
+    if (d_won) { 
+        winner = "Dracula"; 
+    }
+    else if (s_won) { 
+        winner = "Sherlock"; 
+    }
     
-    return vbox({
-        text("╔═══════════════════════════════════════════╗") | bold | color(Color::Red) | center,
-        text("║              GAME OVER!                 ║") | bold | color(Color::Red) | center,
-        text("╚═══════════════════════════════════════════╝") | bold | color(Color::Red) | center,
-        text(""),
-        text(" 🏆 " + winner + " WINS! 🏆 ") | bold | color(color) | center,
-        text(""),
-        text(" Press ENTER to continue") | dim | center
-    }) | border | flex;
+    std::vector<Element> elems;
+    elems.push_back(text("╔════════════════════════════════╗") | bold | color(Color::Red) | center);
+    elems.push_back(text("║         GAME OVER!           ║") | bold | color(Color::Red) | center);
+    elems.push_back(text("╚════════════════════════════════╝") | bold | color(Color::Red) | center);
+    elems.push_back(text(""));
+    elems.push_back(text(" 🏆 " + winner + " WINS! 🏆 ") | bold | center);
+    elems.push_back(text(""));
+    elems.push_back(text(" Press ENTER to continue") | dim | center);
+    
+    return vbox(elems) | border | flex;
 }
 
 std::string GameTUI::getCharSymbol(Character* c) {

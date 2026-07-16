@@ -842,7 +842,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             cin >> option;
             if(option == 'y' || option == 'Y')
             {
-                self->getDeck()->showHand(self->getName());
                 int handSize = self->getDeck()->gethandSize();
     
                 int choice;
@@ -1201,7 +1200,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         {
             cout << "Sherlock won the combat.\n";
             cout << "Opponent's hand:\n";
-            enemy->getDeck()->showHand(enemy->getName());
         }
         else
         {
@@ -1497,7 +1495,6 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             cout << "The opponent has no card with an attack or defense value of " << number << ".\n";
 
-            opponent->getDeck()->showHand(opponent->getName());
             return;
         }
         
@@ -1532,7 +1529,6 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         cout << "Effect >> " << endl << card.geteffect() << endl; 
 
-        opponent->getDeck()->showHand(opponent->getName());
 
         int index;
         while (true)
@@ -1598,21 +1594,15 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 }
 
 
-
-bool Controller::get_DraculaWon()
-{
-    return DraculaWon;
+bool Controller::get_DraculaWon() {
+    return false;
 }
-bool Controller::get_SherlockWon()
-{
-    return sherlockWon;
+bool Controller::get_SherlockWon() {
+    return false;
 }
-
-bool Controller::getCancelEffect() 
-{
-    return cancelEffect;
+bool Controller::getCancelEffect() {
+    return cancelEffectDR;
 }
-
 Controller::~Controller()
 {
 }

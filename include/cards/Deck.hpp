@@ -23,7 +23,7 @@ public:
     
 
     void addBurnCard(const Card& card);
-        
+    Card getHandcard(int index);
     std::vector<int> getAttackCardIndices() const;
     std::vector<int> getDefenseCardIndices() const;
     std::vector<int> getSchemeCardIndices() const;

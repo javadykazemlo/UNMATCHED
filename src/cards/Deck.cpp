@@ -465,6 +465,8 @@ void Deck::addBurnCard(const Card& card)
     DiscardPile.push_back(card);
 }
 
+
+
 bool Deck::isDeckEmpty() const
 {
     return deck.empty();

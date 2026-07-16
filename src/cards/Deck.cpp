@@ -277,7 +277,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 3; i++) 
         {
             deck.emplace_back(
-                "Deception",
+                "Feint",
                 owner::Any,
                 CardType::Versatile,
                 2,
@@ -559,6 +559,11 @@ int Deck::getdiscardSize() const
     return DiscardPile.size(); 
 }
 
+Card Deck::getHandcard(int index)
+{
+    Card selected = hand[index];
+    return selected;
+}
 
 const vector<Card>& Deck::getdeck()
 {

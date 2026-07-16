@@ -21,14 +21,12 @@ public:
     Card burnCard(int index);
     void discardCard(const Card& card);
     
-    void showCard(const Card& card) const;
-    void showDeck(std::string name) const;
-    void showHand(std::string name) const;
+
     void Deck::addBurnCard(const Card& card);
-    
-    std::vector<int> showAttackCards() const;
-    std::vector<int> showDefenseCards() const;
-    std::vector<int> showSchemeCards() const;
+        
+    std::vector<int> getAttackCardIndices() const;
+    std::vector<int> getDefenseCardIndices() const;
+    std::vector<int> getSchemeCardIndices() const;
 
     bool isDeckEmpty() const;
     bool isHandEmpty() const;
@@ -37,8 +35,8 @@ public:
     int gethandSize() const;
     int getdiscardSize() const;
     
-    const std::vector<Card>& getdeck();
-    const std::vector<Card>& gethand();
-    const std::vector<Card>&getBurn();
+    const std::vector<Card>& getdeck() const;
+    const std::vector<Card>& gethand() const;
+    const std::vector<Card>&getBurn()  const;
     ~Deck() = default;
 };

@@ -9,10 +9,6 @@ using namespace std;
 
 Controller::Controller()
 {
-    DraculaWon = false;
-    sherlockWon = false;
-    cancelEffect = false;
-   // Guess = false;
 }
 
 void Controller::choosePlayers(Player player[2])
@@ -147,13 +143,18 @@ void Controller::playTurn()
     int Todo = 0;
     while(!end_game())
     {
+        
         gamerand = 0;
         while(gamerand < 2)
         {
             cout << "\n════════════════════════════════════════════════════════════════" << endl;
             cout << "                  " << current->getName() << "'s turn\n";
-    
+            
             // نمایش TUI (نقشه و اطلاعات کاراتر ها و اطلاعات کارت ها)
+
+            if(current->getHero()->getName() == "Dracula")
+            current->getHero()->ability(bord , current);
+
     
             cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack";
             cout << "\nChoose a action: ";
@@ -172,7 +173,7 @@ void Controller::playTurn()
                     try
                     {
                         current->getDeck()->draw();
-                        cout << "added to " << current->getName() << " hand\n\n";
+                        cout << "1 card added to " << current->getName() << " hand\n\n";
                     }
                     catch(const runtime_error& e)
                     {
@@ -251,7 +252,7 @@ void Controller::playTurn()
             break;
         }
 
-        int selec;
+        int index;
         int HandSize;
         HandSize = current->getDeck()->gethandSize();
 
@@ -259,16 +260,15 @@ void Controller::playTurn()
         {
             current->getDeck()->showHand(current->getName());
             cout << endl << "Enter the card number to remove: ";
-            selec = getInt();
+            index = getInt();
 
             Card deletcadr;
-            deletcadr = current->getDeck()->playCard(selec - 1 , deletcadr);
-            for(int i = 0 ;deletcadr.getName() == ""; i++)
+            for(int i = 0 ; index > 0 && index < (current->getDeck()->gethandSize() + 1) ; i++)
             {
                 cout << "Invalid card number. Try again: ";
-                selec = getInt();
-                deletcadr = current->getDeck()->playCard(selec - 1 , deletcadr);
+                index = getInt();
             }
+            deletcadr = current->getDeck()->playCard(index - 1 , deletcadr);
             cout << endl << deletcadr.getName() <<  " was removed from your hand.\n";
         }
 
@@ -456,7 +456,7 @@ void Controller::Scheme()
     Card Schemecard;
     Schemecard = current->getDeck()->playCard(index - 1, Schemecard );
 
-    applyEffect(Schemecard , Schemecard , current , enemy , selected , selected);
+    applyEffectScheme(Schemecard , current , enemy , selected);
 
     cout << "\nScheme effect applied.\n";
 }
@@ -482,6 +482,11 @@ void Controller::startCombat()
             valid.push_back(number);
             number++;
         }
+    }
+    if(number == 1)
+    {
+        cout << "No targets are available to attack.\n";
+        return;
     }
     cout << "Choose a character to attack with: ";
     choose = getChoice({valid});
@@ -587,6 +592,15 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
 
 void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender) 
 {
+    if(defenseCard.getName() == "Elementary")
+    {
+        cout << enemy->getName() << ", guess the attack value of your opponent's card.\n";
+        int number = getInt();
+        if(number == attackCard.getAttack())
+        {
+            GuessElementary = true;
+        }
+    }
     
     int attackValue = attackCard.getAttack();;
     int defenseValue = attackCard.getAttack();;
@@ -607,11 +621,11 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     
     if(defenseCard.isBeforeCombat())
     {
-        applyEffect(defenseCard , attackCard , enemy , current , attacker , defender);
+        applyEffect(defenseCard , attackCard , enemy , current , attacker , defender , false);
     } 
     if(attackCard.isBeforeCombat())
     {
-        applyEffect(attackCard , defenseCard , current , enemy , attacker , defender);
+        applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , false);
     }
 
     cout << "\n📊 COMBAT RESULT:\n";
@@ -621,13 +635,15 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     
     if(defenseCard.isDuringCombat())
     {
-        applyEffect(defenseCard , attackCard , enemy , current , attacker , defender);
+        applyEffect(defenseCard , attackCard , enemy , current , attacker , defender , false);
     }
     if(attackCard.isDuringCombat())
     {
-        applyEffect(attackCard , defenseCard , current , enemy , attacker , defender);
+        applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , false);
     }
     
+    bool attackerWon = false;
+    bool defenderWon = false;
 
     if (attackValue > defenseValue) 
     {
@@ -640,25 +656,27 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
 
         cout << "  " << enemy->getName() << " HP: " << enemy->getHero()->getHp() 
         << "/" << enemy->getHero()->getMaxhp() << "\n";
+        attackerWon = true;
     }
     else if (attackValue <= defenseValue) 
     {
         cout << "\n🛡️ " << enemy->getName() << " blocks the attack!\n";
+        defenderWon = true;
     }
 
 
     
     if(defenseCard.isAfterCombat())
     {
-        applyEffect(defenseCard , attackCard , enemy , current , attacker , defender);
+        applyEffect(defenseCard , attackCard , enemy , current , attacker , defender , defenderWon);
     }
     if(attackCard.isAfterCombat())
     {
-        applyEffect(attackCard , defenseCard , current , enemy , attacker , defender);
+        applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , attackerWon);
     }
 
-    FeintDR = false;
-    FeintSH = false;
+    cancelEffectDR = false;
+    cancelEffectSH = false;
 }
 
 
@@ -720,714 +738,6 @@ bool Controller::end_game() const
 }
 
 
-
-void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender)
-{
-//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Dracula
-
-    if (card.getName() == "Feeding Frenzy")
-    {
-        cout << card.geteffect() << endl;//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  for ALL
-
-        vector<int> defendzon = bord.getCharacterZone(defender);
-
-        int amount = 0;
-
-        for(int adjen : defendzon)
-        {
-            if(bord.getSpaceStatus(adjen))
-            {
-                for(int i = 1 ; i < 4 ; i++)
-                {
-                    if(bord.getCharacter(adjen) == bord.getCharacter(self->getsidekick(i)->getSpace()))
-                    {
-                        amount++;
-                    }
-                }
-            }
-        }
-        cout << "Card " << card.getName() << "'s attack increased by " << amount << ".\n";
-        card.setAttack(card.getAttack() + amount);
-        return;//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  for ALL
-        if (getCancelEffect())
-        {
-            cout << "Bloodlust effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-    }
-    
-    else if (card.getName() == "MistForm")
-    {
-        cout << card.geteffect() << endl;
-
-        int pos;
-        while(true)
-        {
-            cout << "Choose a space for Dracula: ";
-            pos = getInt();
-            if(pos > 0 || pos < 31 || bord.isEmpty(pos))
-            {
-                bord.deletCharacter(self->getHero()->getSpace());
-                bord.addCharacter(pos , self->getHero());
-                break;
-            }
-            cout << "Invaliad input. Plase try again." << endl;
-        }
-        cout << "Dracula was placed\n" ;
-        cout << "You have gained an extra action.\n";
-
-        gamerand--;
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Mist Form effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-    }
-    
-    else if (card.getName() == "Ambush")
-    {
-        cout << card.geteffect() << endl;
-
-        int random = rand() % opponent->getDeck()->gethandSize();
-        
-        Card boostCard;
-        boostCard = opponent->getDeck()->playCard(random , boostCard);
-
-        cout << "Card " << boostCard.getName() << " was removed from " << opponent->getName() << "'s hand.\n";
-
-        int boost = boostCard.getBoost();
-        
-        card.setAttack(boost + card.getAttack());
-
-        cout << boostCard.getBoost() << " boost was added to " << card.getName() << "'s attack.\n";
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Ambush effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        } 
-
-
-
-    }
-    
-    else if (card.getName() == "Baptism of Blood")
-    {
-        cout << card.geteffect() << endl;
-
-        self->getHero()->heal(2);
-        cout << "Dracula recovered 2 health.\n";
-
-        vector<int> zonCanPlace;
-        zonCanPlace = bord.getCharacterZone(self->getHero());
-        
-        int pos;
-        for(int i = 1 ; i < 4 ; i++)
-        {
-            zonCanPlace = bord.getEmptyZone(zonCanPlace);
-            if(!self->getsidekick(i)->checkalive())
-            {
-                cout << "\nAvailable spaces for the Sister:  ";
-                for(int i = 0 ; i < zonCanPlace.size() ; i++)
-                {
-                    cout << zonCanPlace[i] << "   ";
-                }
-                pos = getChoice(zonCanPlace);
-                self->getsidekick(i)->setSpace(pos);
-                self->getsidekick(i)->heal(1);
-                bord.addCharacter(pos , self->getsidekick(i));
-                cout << self->getsidekick(i)->getName() << " place on " << pos;
-
-            }
-        }
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Blood Bath effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-
-    }
-    
-    else if (card.getName() == "BeastForm")
-    {
-        cout << card.geteffect() << endl;
-        while(true)
-        {
-            cout << "Do you want to remove a card?(y/n): ";
-            char option;
-            cin >> option;
-            if(option == 'y' || option == 'Y')
-            {
-                self->getDeck()->showHand(self->getName());
-                int handSize = self->getDeck()->gethandSize();
-    
-                int choice;
-                while (true)
-                {
-                    cout << "choice a card: ";
-                    choice = getInt();
-                    if(choice > 0 ; choice < handSize)
-                    {
-                        break;
-                    }
-                    cout << "Invalid input.";
-                }
-
-                Card selected;
-                selected = self->getDeck()->playCard(choice , selected);
-    
-                card.setAttack(card.getAttack() + 1);
-                cout << "Card " << card.getName() << " gained +1 attack.\n";
-            }
-            else
-            {
-                break;
-            }
-        }
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Beast Form effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-
-    }
-    
-    else if (card.getName() == "Dash")
-    {
-        cout << card.geteffect() << endl;
-        move(3 , attacker);
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Assault effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-    }
-    
-    else if (card.getName() == "Exploit")
-    {
-        cout << card.geteffect() << endl;
-
-        try
-        {
-            self->getDeck()->draw();
-            cout << "added to " << self->getName() << " hand\n\n";
-        }
-        catch(const runtime_error& e)
-        {
-            cout << e.what() << endl;
-            for(int i = 0 ; i <  self->getfighterCount() ; i++)
-            {
-                self->getsidekick(i)->takeDamage(2,0);
-            }
-            cout << "All character on team took 2 damage";
-        }
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Exploitation effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-    }
-    
-    else if (card.getName() == "Look Into My Eyes")
-    {
-        cout << card.geteffect() << endl;
-
-        int enemyboost = enemycard.getBoost();
-
-        card.setAttack(enemyboost);
-
-        cout << "This card gained " << enemyboost << " defense.\n";
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Look Into My Eyes effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-
-    }
-    
-    else if (card.getName() == "Prey Upon")
-    {
-        cout << card.geteffect() << endl;
-
-        int amount = 0;
-        vector<int> draculaAdjence = bord.getCharacterAdjacent(attacker);
-        for(int adjen : draculaAdjence)
-        {
-            if(bord.getCharacter(adjen)->getowner() != attacker->getowner())
-            {
-                bord.getCharacter(adjen)->takeDamage(0 , 1);
-                cout << bord.getCharacter(adjen)->getName() << "took 1 damage\n";
-                amount++;
-            }
-        }
-        attacker->heal(amount);
-        cout << attacker->getName() << " gained " << amount << " health.\n";
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Hunt effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-
-    }
-    
-    else if (card.getName() == "Ravening Seduction")
-    {
-        cout << card.geteffect() << endl;
-
-        int choose = 0;
-        vector<Character*> choices;
-        vector<int> valid;
-        int number = 1;
-    
-        for (Character* ch : self->getCharacters())
-        {
-            if(ch->checkalive())
-            {
-                cout << number << "." << ch->getName() << endl;
-                choices.push_back(ch);
-                valid.push_back(number);
-                number++;
-            }
-        }
-        for (Character* ch : opponent->getCharacters())
-        {
-            if(ch->checkalive())
-            {
-                cout << number << "." << ch->getName() << endl;
-                choices.push_back(ch);
-                valid.push_back(number);
-                number++;
-            }
-        }
-        cout << "Choose a character to move: ";
-        choose = getChoice({valid});
-        Character* selected = choices[choose - 1];
-
-        move(2 , selected);
-
-        vector<int> target = bord.getCharacterAdjacent(selected);
-        number = 0;
-        for(int adjenc : target)
-        {
-            if(!bord.isEmpty(adjenc))
-            {
-                for(int i = 1 ; i < 4 ; i++)
-                {
-                    if(self->getsidekick(i)->getIsAlive())
-                    {
-                        if(bord.getCharacter(adjenc) == self->getsidekick(i))
-                        {
-                            number++;
-                        }
-                    }
-                }
-            }
-        }
-
-        selected->takeDamage(0 , number);
-        if(number > 0)
-        {
-            cout << selected->getName() << "took " << number << " damage." << endl;
-        }
-        else
-        {
-            cout << selected->getName() << "took no damage." << endl;
-        }
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Insatiable Seduction effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-
-    }
-    
-    else if (card.getName() == "Thirst for Sustenance")//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    {
-        cout << card.geteffect() << endl;
-        // if()
-        // {
-        // }
-            int place = defender->getSpace();
-    
-            vector<int> validSpaces = bord.getEmptyAdjacent(defender);
-
-            cout << "\nAvailable spaces:   ";
-
-            for(int pos : validSpaces)
-            {
-                cout << pos << "   ";
-            }
-            cout << "\nSelect a destination: ";
-
-            int destination = getChoice(validSpaces);
-
-            bord.deletCharacter(place);
-            bord.addCharacter(destination, defender);
-
-        
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Thirst for Survival effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-
-
-
-    }
-    
-    else if (card.getName() == "Feint")
-    {
-        cout << card.geteffect() << endl; 
-
-        FeintDR = true;
-    
-        return;
-        if (getCancelEffect())
-        {
-            cout << "Deception effect was canceled.\n";
-            cancelEffect = false;
-            return;
-        }
-        
-        cout << "No special effect for this card.\n";
-    }
-
-
-//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Sherlock
-
-
-    if (card.getName() == "Administer Aid")
-    {
-
-        Character* holmes = self->getHero();
-        Character* watson = self->getsidekick(1);
-        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
-        vector<int> emptyAdjacent;
-
-
-        for (auto pos : adjacent)
-        {
-            if (bord.isEmpty(pos))
-            {
-                emptyAdjacent.push_back(pos);
-            }
-            
-        }
-        if (!emptyAdjacent.empty())
-        {
-            for (int i = 0; i < 32; i++)
-            {
-                if (bord.getCharacter(i) == watson)
-                {
-                    bord.deletCharacter(i);
-                    break;
-                }
-            }
-        }
-
-        for (int i = 0; i <emptyAdjacent.size() ; i++)
-        {
-            if(bord.isEmpty(emptyAdjacent[i]))
-            {
-                bord.addCharacter(emptyAdjacent[i],watson);      
-            }
-            
-        }
-        
-          
-        holmes->heal(1);
-        try
-        {
-            self->getDeck()->draw();
-            cout << "added to " << self->getName() << " hand\n\n";
-        }
-        catch(const runtime_error& e)
-        {
-            cout << e.what() << endl;
-            for(int i = 0 ; i <  self->getfighterCount() ; i++)
-            {
-                self->getsidekick(i)->takeDamage(2,0);
-            }
-            cout << "All character on team took 2 damage";
-        }
-        cout << "Holmes healed 1 HP and 1 card drawn!\n";
-        
-
-    }
-    
-    else if (card.getName() == "Confirm Suspicion")
-    {
-        
-    }
-    
-    else if (card.getName() == "Counterpunch")
-    { 
-        Character* holmes = self->getHero();
-        Character* enemyHero = opponent->getHero();
-        Character* enemySidekick = opponent->getsidekick(1);
-
-        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
-        bool damaged = false;
-
-        for (int pos : adjacent)
-        {
-            if (!bord.isEmpty(pos))
-            {
-                Character* target = bord.getCharacter(pos);
-                
-                if (target == enemyHero || target == enemySidekick)
-                {
-                    target->takeDamage(0, 2);
-
-                    if(!target->getIsAlive())
-                    bord.deletCharacter(target->getSpace());
-
-                    cout << "2 damage dealt to " << target->getName() << "!\n";
-                    damaged = true;
-                    break;  
-                }
-            }
-        }
-        
-        if (!damaged)
-        {
-            cout << "No adjacent enemy fighter!\n";
-        }
-        
-
-    }
-    
-    else if (card.getName() == "Deduce Strategy")
-    {
-        
-    }
-    
-    else if (card.getName() == "Education Never Ends")
-    {
-        
-        if (get_DraculaWon())
-        {
-            cout << "Dracula won! Opponent draws 1 card.\n";
-            try
-            {
-                opponent->getDeck()->draw();
-                cout << "added to " << opponent->getName() << " hand\n\n";
-            }
-            catch(const runtime_error& e)
-            {
-                cout << e.what() << endl;
-                for(int i = 0 ; i <  opponent->getfighterCount() ; i++)
-                {
-                    opponent->getsidekick(i)->takeDamage(2,0);
-                }
-                cout << "All character on team took 2 damage";
-            }
-        }
-        else if (get_SherlockWon())
-        {
-            cout << "Sherlock won! Opponent draws 1 card.\n";
-            try
-            {
-                opponent->getDeck()->draw();
-                cout << "added to " << opponent->getName() << " hand\n\n";
-            }
-            catch(const runtime_error& e)
-            {
-                cout << e.what() << endl;
-                for(int i = 0 ; i <  opponent->getfighterCount() ; i++)
-                {
-                    opponent->getsidekick(i)->takeDamage(2,0);
-                }
-                cout << "All character on team took 2 damage";
-            }
-        }
-        else
-        {
-            cout << "You lost or tied! You draw 2 cards.\n";
-            try
-            {
-                self->getDeck()->draw();
-                cout << "added to " << self->getName() << " hand\n\n";
-            }
-            catch(const runtime_error& e)
-            {
-                cout << e.what() << endl;
-                for(int i = 0 ; i <  self->getfighterCount() ; i++)
-                {
-                    self->getsidekick(i)->takeDamage(2,0);
-                }
-                cout << "All character on team took 2 damage";
-            }
-        }
-        
-    }
-    
-    else if (card.getName() == "Elementary")
-    {
-       /* Character* holmes = current->getHero();
-        Character* enemyHero = enemy->getHero();
-        
-        cout << "Guess the attack value: ";
-        int guess;
-        cin >> guess;
-        if ()برای اون بولین هستت
-        {
-            cout <<"You guessed -> succeessful";
-        }
-        else
-        {
-            cout <<"You guessed -> failed";
-
-        }
-        */
-        
-    }
-    
-    else if (card.getName() == "Eliminate the Impossible")
-    {
-        enemy->getDeck()->showHand(enemy->getName());
-
-        cout << "Choose a card to burn: ";
-
-        int index = getInt();
-
-        Card burned = enemy->getDeck()->burnCard(index - 1);
-
-        if (burned.getName() == "")
-        {
-            cout << "Invalid card.\n";
-            return;
-        }
-
-        enemy->getDeck()->addBurnCard(burned);
-        cancelEffect = true;
-        cout << "The next Dracula card effect will be canceled.\n";
-        
-    }
-    
-    else if (card.getName() == "Deception")
-    {
-        FeintSH = true;
-        cancelEffect = true;
-        cout << "The next Dracula card effect will be canceled.\n";
-        
-
-    }
-    
-    else if (card.getName() == "Fixed Point in a Changing Age")
-    {
-        Character* holmes = current->getHero();
-        Character* watson = current->getsidekick(1);
-
-        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
-
-        bool found = false;
-
-        for (int pos : adjacent)
-        {
-            if (bord.getCharacter(pos) == watson)
-            {
-                holmes->heal(1);
-                watson->heal(1);
-
-                cout << "Holmes and Watson each heal 1 HP.\n";
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            cout << "Watson is not adjacent to Holmes.\n";
-        }
-
-    }
-    
-    else if (card.getName() == "Master of Disguise")
-    {
-        
-    }
-    
-    else if (card.getName() == "The Game is Afoot")
-    {
-        
-    }
-    
-    else if (card.getName() == "Service Revolver")
-    {
-
-        cout << "no effect (-_-)";
-
-    }
-    
-    else if (card.getName() == "Study Methods")
-    {
-        if (get_SherlockWon())
-        {
-            cout << "Sherlock won the combat.\n";
-            cout << "Opponent's hand:\n";
-            enemy->getDeck()->showHand(enemy->getName());
-        }
-        else
-        {
-            cout << "Card effect not activated.\n";
-        }
-        
-    }
-}    
-
-
-bool Controller::get_DraculaWon()
-{
-    return DraculaWon;
-}
-bool Controller::get_SherlockWon()
-{
-    return sherlockWon;
-}
-
-bool Controller::getCancelEffect() 
-{
-    return cancelEffect;
-}
 Controller::~Controller()
 {
 }

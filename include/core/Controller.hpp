@@ -13,19 +13,14 @@ class Controller
 private:
     Bord bord;
 
-    // Player* firstPlayer = nullptr;
-    // Player* secondPlayer = nullptr;
     Player* current = nullptr;
     Player* enemy = nullptr;
 
-    bool FeintDR = false;
-    bool FeintSH = false;
-
-    bool DraculaWon;   
-    bool sherlockWon;
-    bool cancelEffect;
-   // bool Guess;
+    bool cancelEffectDR = false;
+    bool cancelEffectSH = false;
+    
     int gamerand = 0;
+    bool GuessElementary = false;
 public:
     Controller();
     
@@ -44,14 +39,12 @@ public:
     void resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender);
 
     bool end_game() const;
-
-    void applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender);
     
     int getInt();
     int getChoice(std::vector<int> valid);
-    bool get_DraculaWon();
-    bool get_SherlockWon();
-    bool getCancelEffect();
+
+    void applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender , bool woncombat);
+    void applyEffectScheme(Card& card ,Player* self, Player* opponent , Character* attacker );
 
     ~Controller();
 };

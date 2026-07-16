@@ -8,7 +8,7 @@ Sherlock::Sherlock(int owner): Character("sherlock", 16, 2, 0 , owner , true)
 {
 }
 
-void Sherlock::ability(Bord* bord , Player* player)
+void Sherlock::ability(Bord bord , Player* player)
 {
 
 }

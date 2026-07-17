@@ -49,10 +49,14 @@ Element GameTUI::renderMenu() {
     }
     
     std::vector<Element> menu_elems;
-    menu_elems.push_back(text("UNMATCHED: THE GAME") | bold | color(Color::Red));
-    menu_elems.push_back(text("Dracula vs Sherlock Holmes") | color(Color::Yellow));
+    menu_elems.push_back(text("╔════════════════════════════════╗") | bold | color(Color::Red) | center);
+    menu_elems.push_back(text("║     UNMATCHED: THE GAME       ║") | bold | color(Color::Red) | center);
+    menu_elems.push_back(text("║   Dracula vs Sherlock Holmes  ║") | color(Color::Yellow) | center);
+    menu_elems.push_back(text("╚════════════════════════════════╝") | bold | color(Color::Red) | center);
+    menu_elems.push_back(text(""));
     menu_elems.push_back(vbox(elems) | center);
-    menu_elems.push_back(text("↑/↓: Navigate | ENTER: Select | Q: Quit") | dim);
+    menu_elems.push_back(text(""));
+    menu_elems.push_back(text(" ↑/↓: Navigate  •  ENTER: Select  •  Q: Quit") | dim | center);
     
     return vbox(menu_elems) | border | flex;
 }

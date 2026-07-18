@@ -75,7 +75,7 @@ void Controller::chooseCharacters()
     }
 
     int pos;
-    cout << current->getName() << ", choose your Character position(4 or 15): ";
+    cout << current->getName() << ", choose your Character position(4 or 15) 4 = (left map ) (15 = righ map): ";
     pos = getChoice({4,15});
 
     bord.addCharacter( pos , current->getHero() );
@@ -136,145 +136,6 @@ void Controller::plaseSidekicks(Player& player)
         }
 
     }
-}
-
-void Controller::playTurn()
-{
-    int Todo = 0;
-    while(!end_game())
-    {
-        
-        gamerand = 0;
-        while(gamerand < 2)
-        {
-            cout << "\n════════════════════════════════════════════════════════════════" << endl;
-            cout << "                  " << current->getName() << "'s turn\n";
-            
-            // نمایش TUI (نقشه و اطلاعات کاراتر ها و اطلاعات کارت ها)
-
-            if(current->getHero()->getName() == "Dracula")
-            current->getHero()->ability(bord , current);
-
-    
-            cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack";
-            cout << "\nChoose a action: ";
-            Todo = getChoice({1,2,3});
-            
-            Character* ch;
-            int k = 1;
-            
-            switch(Todo)
-            {
-                case 1:
-                {
-                    cout << "\n═════════════════════════════════════════════════" << endl;
-                    cout << "                 Maneuver\n"; 
-
-                    try
-                    {
-                        current->getDeck()->draw();
-                        cout << "1 card added to " << current->getName() << " hand\n\n";
-                    }
-                    catch(const runtime_error& e)
-                    {
-                        cout << e.what() << endl;
-                        for(int i = 0 ; i <  current->getfighterCount() ; i++)
-                        {
-                            current->getsidekick(i)->takeDamage(2,0);
-                        }
-                        cout << "All character on team took 2 damage";
-                    }
-
-                    int mov = 0;
-                    mov += boost();
-
-                    int choose = 0;
-                    vector<Character*> choices;
-                    vector<int> valid;
-                    int number = 1;
-
-                    for (Character* ch : current->getCharacters())
-                    {
-                        if(ch->checkalive())
-                        {
-                            cout << number << "." << ch->getName() << endl;
-                            choices.push_back(ch);
-                            valid.push_back(number);
-                            number++;
-                        }
-                    }
-                    cout << "Choose a character to move: ";
-                    choose = getChoice({valid});
-                    Character* selected = choices[choose - 1];
-
-                    mov =+ selected->getMove();
-
-                    move(mov , selected);
-
-                    break;
-    
-                }
-                case 2:
-                {
-
-                    Scheme();
-
-                    break;
-
-                }
-                case 3:
-                {
-                    
-                    startCombat();
-
-                    break;
-
-                }
-                default:
-                {
-                    break;
-                }
-
-                for(int i = 0 ; i < current->getfighterCount() ; i++)
-                {
-                    if(!current->getsidekick(i)->getIsAlive())
-                    bord.deletCharacter(current->getHero()->getSpace());
-
-                    if(!enemy->getsidekick(i)->getIsAlive())
-                    bord.deletCharacter(enemy->getHero()->getSpace());
-                }
-
-            }
-            
-            gamerand++;
-
-            if(end_game()) 
-            break;
-        }
-
-        int index;
-        int HandSize;
-        HandSize = current->getDeck()->gethandSize();
-
-        for(int i = 0 ; HandSize > 7 ; i++)
-        {
-            cout << endl << "Enter the card number to remove: ";
-            index = getInt();
-
-            Card deletcadr;
-            for(int i = 0 ; index > 0 && index < (current->getDeck()->gethandSize() + 1) ; i++)
-            {
-                cout << "Invalid card number. Try again: ";
-                index = getInt();
-            }
-            deletcadr = current->getDeck()->playCard(index - 1 , deletcadr);
-            cout << endl << deletcadr.getName() <<  " was removed from your hand.\n";
-        }
-
-
-        swap(current, enemy);
-    }
-
 }
 
 
@@ -662,29 +523,34 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     cancelEffectSH = false;
 }
 
-
 int Controller::getInt()
 {
+    std::string line;
     int x;
-
+    
     while (true)
     {
-        cin >> x;
-
-        if (!cin.fail())
-        {
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::getline(std::cin, line);
+        
+        line.erase(0, line.find_first_not_of(" \t\n\r\f\v"));
+        line.erase(line.find_last_not_of(" \t\n\r\f\v") + 1);
+        
+        if (line.empty()) {
+            std::cout << "Enter a number: ";
+            continue;
+        }
+        
+        try {
+            x = std::stoi(line);
             return x;
         }
-
-        cout << "Invalid input. Enter a number: ";
-
-        cin.clear();
-        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        catch (const std::exception& e) {
+            std::cout << "Invalid input. Enter a number: ";
+        }
     }
 }
 
-int Controller::getChoice(vector<int> valid)
+int Controller::getChoice(std::vector<int> valid)
 {
     while(true)
     {
@@ -695,7 +561,7 @@ int Controller::getChoice(vector<int> valid)
             if(i == x) return x;
         }
 
-        cout << "Invalid choice. Try again: ";
+        std::cout << "Invalid choice. Try again: ";
     }
 }
 

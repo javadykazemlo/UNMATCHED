@@ -30,7 +30,6 @@ public:
     void choosePlayers(Player player[2]);
     void chooseCharacters();
     void plaseSidekicks(Player& player);
-    void playTurn();
 
     void move(int mov ,Character* selected);
     int boost();

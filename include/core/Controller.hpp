@@ -38,10 +38,16 @@ public:
     Card chooseCombatCard(Player* player , Character* fighter, bool attack);
     void resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender);
 
-    bool end_game() const;
-    
     int getInt();
     int getChoice(std::vector<int> valid);
+    
+    Bord& getBord();
+    Player* getCurrentPlayer();
+    Player* getEnemyPlayer();
+    Character* getCharacterAt(int position);
+    bool isGameOver();
+    
+    bool end_game() const;
 
     void applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender , bool woncombat);
     void applyEffectScheme(Card& card ,Player* self, Player* opponent , Character* attacker );

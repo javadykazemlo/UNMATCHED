@@ -6,6 +6,7 @@ using namespace std;
 #include "Controller.hpp"
 #include "Player.hpp"
 #include "Bord.hpp"
+#include "GameTUI.hpp"
 
 int main()
 {
@@ -14,6 +15,7 @@ int main()
     Controller controller;
     Player player[2];
 
+    GameTUI::showWelcome();
 
     controller.choosePlayers(player);
 

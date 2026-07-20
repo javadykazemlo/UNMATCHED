@@ -4,6 +4,7 @@
 #include <limits>
 #include <stdexcept>
 #include "core/Controller.hpp"
+#include "GameTUI.hpp"
 
 using namespace std;
 
@@ -13,14 +14,10 @@ Controller::Controller()
 
 void Controller::choosePlayers(Player player[2])
 {
-    cout << "════════════════════════════════════════════════════════════════════\n";
-    cout << "                 welcome to the game : (UNMATCHED)\n";
-    cout << "════════════════════════════════════════════════════════════════════\n";
-
     string n;
     int a;
 
-    cout << "First player, enter your name: ";
+    cout << "\nFirst player, enter your name: ";
     getline(cin , n);
     player[0].setName(n);
 
@@ -75,11 +72,19 @@ void Controller::chooseCharacters()
     }
 
     int pos;
-    cout << current->getName() << ", choose your Character position(4 or 15): ";
-    pos = getChoice({4,15});
+    cout << current->getName() << ", choose your Character position (1 = left map ) (2 = righ map): ";
+    pos = getChoice({1,2});
 
-    bord.addCharacter( pos , current->getHero() );
-    bord.addCharacter( pos == 4 ? 15 : 4 , enemy->getHero() );
+    if(pos == 1)
+    {
+        bord.addCharacter( 4 , current->getHero() );
+        bord.addCharacter( 15 , enemy->getHero() );
+    }
+    else
+    {
+        bord.addCharacter( 15 , current->getHero() );
+        bord.addCharacter( 4 , enemy->getHero() );
+    }
 
     plaseSidekicks(*current);
     plaseSidekicks(*enemy);
@@ -147,11 +152,12 @@ void Controller::playTurn()
         gamerand = 0;
         while(gamerand < 2)
         {
+            // نمایش TUI (نقشه و اطلاعات کاراتر ها و اطلاعات کارت ها)
+            GameTUI::render(*current, *enemy, current, bord);
+
             cout << "\n════════════════════════════════════════════════════════════════" << endl;
             cout << "                  " << current->getName() << "'s turn\n";
-            
-            // نمایش TUI (نقشه و اطلاعات کاراتر ها و اطلاعات کارت ها)
-
+           
             if(current->getHero()->getName() == "Dracula")
             current->getHero()->ability(bord , current);
 
@@ -714,6 +720,31 @@ int Controller::getChoice(vector<int> valid)
 
         cout << "Invalid choice. Try again: ";
     }
+}
+
+Bord& Controller::getBord()
+{
+    return bord;
+}
+
+Player* Controller::getCurrentPlayer()
+{
+    return current;
+}
+
+Player* Controller::getEnemyPlayer()
+{
+    return enemy;
+}
+
+Character* Controller::getCharacterAt(int position)
+{
+    return bord.getCharacter(position);
+}
+
+bool Controller::isGameOver()
+{
+    return end_game();
 }
 
 

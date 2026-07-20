@@ -25,7 +25,7 @@ void Deck::buildDeck(int hero)
         for (int i = 0; i < 2; i++) 
         {
             deck.emplace_back(
-                "Feeding Frenzy",                //name
+                "Feeding Frenzy",           //name
                 owner::Hero,                //Owner
                 CardType::Attack,           //Type
                 2,                          //Attack
@@ -395,19 +395,6 @@ Card Deck::playCard(int index, Card& selected)
 }
 
 
-// Card Deck::burnCard(int index)
-// {
-//     if (index < 0 || index >= hand.size())
-//         return Card();
-
-//     Card selected = hand[index];
-
-//     hand.erase(hand.begin() + index);
-
-//     return selected;
-// }
-
-
 void Deck::discardCard(const Card& card)
 {
     DiscardPile.push_back(card);
@@ -527,15 +514,6 @@ vector<int> Deck::getSchemeCardIndices() const
 }
 
 
-
-
-// void Deck::addBurnCard(const Card& card)
-// {
-//     DiscardPile.push_back(card);
-// }
-
-
-
 bool Deck::isDeckEmpty() const
 {
     return deck.empty();
@@ -577,7 +555,3 @@ const vector<Card>& Deck::gethand() const
 {
     return hand;
 }
-// const vector<Card>& Deck::getBurn() const
-// {
-//     return DiscardPile;
-// }

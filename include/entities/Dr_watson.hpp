@@ -12,5 +12,5 @@ public:
 
     void ability(Bord bord , Player* player) override;
 
-    ~Dr_watson();
+    ~Dr_watson() = default;
 };

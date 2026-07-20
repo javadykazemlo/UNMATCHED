@@ -16,7 +16,8 @@ private:
     int Owner;// 1 = first player , 2 = second player
     bool ishero;//
 public:
-    Character(const std::string& name, int hp, int move, int attacktyp , int owner , bool her);
+    Character(const std::string& name, int hp, int move
+        , int attacktyp , int owner , bool her);
 
     virtual void ability(Bord bord , Player* player) = 0;
     bool checkalive() const;

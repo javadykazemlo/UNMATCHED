@@ -183,15 +183,19 @@ void GameTUI::printSideBySide(const vector<string>& left,
 // readable left-to-right diagram instead of a jumble of numbers.
 GameTUI::NodePos GameTUI::nodePos(int id)
 {
+    // col/row here are logical layout units (not a strict grid) —
+    // they mirror the real board's regions: misty grounds (top-left),
+    // study/library (top), sitting room + stairs hub (middle),
+    // dining/hallway (right of center), outer path (bottom row).
     static const NodePos table[32] = {
-        /*0*/  {2,1}, /*1*/  {1,2}, /*2*/  {3,2}, /*3*/  {2,2},
-        /*4*/  {0,3}, /*5*/  {1,3}, /*6*/  {1,4}, /*7*/  {2,3},
-        /*8*/  {2,4}, /*9*/  {3,3}, /*10*/ {4,2}, /*11*/ {4,3},
-        /*12*/ {5,0}, /*13*/ {5,1}, /*14*/ {6,0}, /*15*/ {5,2},
-        /*16*/ {4,4}, /*17*/ {5,3}, /*18*/ {6,1}, /*19*/ {5,4},
-        /*20*/ {2,5}, /*21*/ {3,4}, /*22*/ {4,5}, /*23*/ {5,5},
-        /*24*/ {6,2}, /*25*/ {7,3}, /*26*/ {6,3}, /*27*/ {6,4},
-        /*28*/ {5,6}, /*29*/ {5,7}, /*30*/ {6,5}, /*31*/ {6,6},
+        /*0*/  {1,0},  /*1*/  {1,2},  /*2*/  {4,0},  /*3*/  {5,2},
+        /*4*/  {3,3},  /*5*/  {6,3},  /*6*/  {4,5},  /*7*/  {4,7},
+        /*8*/  {6,6},  /*9*/  {7,5},  /*10*/ {9,4},  /*11*/ {9,6},
+        /*12*/ {11,4}, /*13*/ {8,8},  /*14*/ {7,10}, /*15*/ {9,10},
+        /*16*/ {10,7}, /*17*/ {12,6}, /*18*/ {13,8}, /*19*/ {14,10},
+        /*20*/ {6,5},  /*21*/ {3,5},  /*22*/ {10,10},/*23*/ {9,12},
+        /*24*/ {11,12},/*25*/ {13,12},/*26*/ {15,11},/*27*/ {15,13},
+        /*28*/ {17,12},/*29*/ {19,12},/*30*/ {21,13},/*31*/ {20,11},
     };
     return table[id];
 }
@@ -215,15 +219,20 @@ string GameTUI::nodeGlyph(Bord& bord, int id, Player& dracula, Player& sherlock)
         string name = occ->getName();
 
         if (occ->isHero())
-            glyph = isDraculaSide ? "D " : "S ";
-        else if (!name.empty())
-            glyph = string(1, toupper(name.back())) + " "; // last word initial for sidekicks
-
-        // nicer sidekick initials: use first letter of last name token
         {
-            size_t sp = name.find_last_of(' ');
-            char letter = sp == string::npos ? name[0] : name[sp + 1];
-            glyph = string(1, (char)toupper(letter)) + " ";
+            // heroes always show as D (Dracula side) or S (Sherlock side)
+            glyph = isDraculaSide ? "D " : "S ";
+        }
+        else
+        {
+            // sidekick: use first letter of the last name token
+            char letter = '?';
+            if (!name.empty())
+            {
+                size_t sp = name.find_last_of(' ');
+                letter = (sp == string::npos) ? name[0] : name[sp + 1];
+            }
+            glyph = string(1, (char)toupper((unsigned char)letter)) + " ";
         }
 
         string color = isDraculaSide ? RED : BLUE;
@@ -238,68 +247,95 @@ string GameTUI::nodeGlyph(Bord& bord, int id, Player& dracula, Player& sherlock)
     return GREY + string(buf) + RESET;
 }
 
+// --- internal helper: draws a clean "diagonal then straight" line between
+// two canvas points, so edges never depend on nodes being grid-neighbors. ---
+static void drawEdgeOnCanvas(vector<vector<string>>& canvas, int W, int H,
+                              int x0, int y0, int x1, int y1)
+{
+    const std::string RESET = "\033[0m";
+    const std::string GREY  = "\033[90m";
+    int dx = x1 - x0, dy = y1 - y0;
+    int stepx = (dx > 0) - (dx < 0);
+    int stepy = (dy > 0) - (dy < 0);
+    int adx = dx < 0 ? -dx : dx;
+    int ady = dy < 0 ? -dy : dy;
+    int n = adx < ady ? adx : ady;
+
+    string diag = (stepx == stepy) ? "\\" : "/";
+    int cx = x0, cy = y0;
+
+    for (int k = 0; k < n; k++)
+    {
+        cx += stepx; cy += stepy;
+        if (cx >= 0 && cx < W && cy >= 0 && cy < H && canvas[cy][cx] == " ")
+            canvas[cy][cx] = GREY + diag + RESET;
+    }
+    while (cx != x1)
+    {
+        cx += stepx;
+        if (cx >= 0 && cx < W && cy >= 0 && cy < H && canvas[cy][cx] == " ")
+            canvas[cy][cx] = GREY + string("-") + RESET;
+    }
+    while (cy != y1)
+    {
+        cy += stepy;
+        if (cx >= 0 && cx < W && cy >= 0 && cy < H && canvas[cy][cx] == " ")
+            canvas[cy][cx] = GREY + string("|") + RESET;
+    }
+}
+
 vector<string> GameTUI::buildMapLines(Bord& bord, Player& dracula, Player& sherlock)
 {
-    const int COLS = 8, ROWS = 8;
-    int grid[COLS][ROWS];
-    for (int c = 0; c < COLS; c++)
-        for (int r = 0; r < ROWS; r++)
-            grid[c][r] = -1;
+    // pixel-space scale: 3 cols per logical unit, 2 rows per logical unit
+    auto px = [](int col) { return 1 + col * 3; };
+    auto py = [](int row) { return 1 + row * 2; };
 
+    int maxCol = 0, maxRow = 0;
     for (int id = 0; id < 32; id++)
     {
         NodePos p = nodePos(id);
-        grid[p.col][p.row] = id;
+        maxCol = max(maxCol, p.col);
+        maxRow = max(maxRow, p.row);
     }
 
-    auto adjacent = [&](int a, int b) {
-        if (a < 0 || b < 0) return false;
-        vector<int> adj = bord.getposAdjacent(a);
-        return find(adj.begin(), adj.end(), b) != adj.end();
-    };
+    int W = px(maxCol) + 3;
+    int H = py(maxRow) + 2;
+
+    vector<vector<string>> canvas(H, vector<string>(W, " "));
+
+    // draw edges first so labels always render on top
+    for (int id = 0; id < 32; id++)
+    {
+        NodePos a = nodePos(id);
+        for (int nb : bord.getposAdjacent(id))
+        {
+            if (nb <= id) continue; // avoid drawing each edge twice
+            NodePos b = nodePos(nb);
+            drawEdgeOnCanvas(canvas, W, H, px(a.col), py(a.row), px(b.col), py(b.row));
+        }
+    }
+
+    // stamp node glyphs on top (each glyph is 2 visible chars wide)
+    for (int id = 0; id < 32; id++)
+    {
+        NodePos p = nodePos(id);
+        int cx = px(p.col), cy = py(p.row);
+        if (cy < 0 || cy >= H || cx < 0 || cx + 1 >= W) continue;
+
+        canvas[cy][cx] = nodeGlyph(bord, id, dracula, sherlock);
+        canvas[cy][cx + 1] = ""; // glyph already includes both visible chars
+    }
 
     vector<string> lines;
     lines.push_back(BOLD + CYAN + "MAP (Graph)" + RESET);
     lines.push_back("");
 
-    for (int r = 0; r < ROWS; r++)
+    for (int r = 0; r < H; r++)
     {
-        // node row
-        string nodeLine;
-        for (int c = 0; c < COLS; c++)
-        {
-            int id = grid[c][r];
-            string label = id == -1 ? "  " : nodeGlyph(bord, id, dracula, sherlock);
-            nodeLine += label;
-            if (c != COLS - 1)
-                nodeLine += adjacent(id, grid[c + 1][r]) ? GREY + "──" + RESET : "  ";
-        }
-        lines.push_back(nodeLine);
-
-        if (r != ROWS - 1)
-        {
-            // connector row (vertical + diagonal edges)
-            string connLine;
-            for (int c = 0; c < COLS; c++)
-            {
-                int here = grid[c][r];
-                int down = grid[c][r + 1];
-                connLine += adjacent(here, down) ? (GREY + "|" + RESET) : " ";
-                connLine += " ";
-
-                if (c != COLS - 1)
-                {
-                    int downRight = grid[c + 1][r + 1];
-                    int hereRight = grid[c + 1][r];
-                    bool diagDR = adjacent(here, downRight);
-                    bool diagDL = adjacent(hereRight, down);
-                    if (diagDR)      connLine += GREY + "\\" + RESET;
-                    else if (diagDL) connLine += GREY + "/" + RESET;
-                    else             connLine += " ";
-                }
-            }
-            lines.push_back(connLine);
-        }
+        string line;
+        for (int c = 0; c < W; c++)
+            line += canvas[r][c];
+        lines.push_back(line);
     }
 
     lines.push_back("");

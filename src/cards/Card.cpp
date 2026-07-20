@@ -175,10 +175,6 @@ string Card::geteffect() const
 }
 
 
-Card::~Card()
-{
-}
-
 
 
 

@@ -183,19 +183,15 @@ void GameTUI::printSideBySide(const vector<string>& left,
 // readable left-to-right diagram instead of a jumble of numbers.
 GameTUI::NodePos GameTUI::nodePos(int id)
 {
-    // col/row here are logical layout units (not a strict grid) —
-    // they mirror the real board's regions: misty grounds (top-left),
-    // study/library (top), sitting room + stairs hub (middle),
-    // dining/hallway (right of center), outer path (bottom row).
     static const NodePos table[32] = {
-        /*0*/  {1,0},  /*1*/  {1,2},  /*2*/  {4,0},  /*3*/  {5,2},
-        /*4*/  {3,3},  /*5*/  {6,3},  /*6*/  {4,5},  /*7*/  {4,7},
-        /*8*/  {6,6},  /*9*/  {7,5},  /*10*/ {9,4},  /*11*/ {9,6},
-        /*12*/ {11,4}, /*13*/ {8,8},  /*14*/ {7,10}, /*15*/ {9,10},
-        /*16*/ {10,7}, /*17*/ {12,6}, /*18*/ {13,8}, /*19*/ {14,10},
-        /*20*/ {6,5},  /*21*/ {3,5},  /*22*/ {10,10},/*23*/ {9,12},
-        /*24*/ {11,12},/*25*/ {13,12},/*26*/ {15,11},/*27*/ {15,13},
-        /*28*/ {17,12},/*29*/ {19,12},/*30*/ {21,13},/*31*/ {20,11},
+        /*0*/  {2,1}, /*1*/  {1,2}, /*2*/  {3,2}, /*3*/  {2,2},
+        /*4*/  {0,3}, /*5*/  {1,3}, /*6*/  {1,4}, /*7*/  {2,3},
+        /*8*/  {2,4}, /*9*/  {3,3}, /*10*/ {4,2}, /*11*/ {4,3},
+        /*12*/ {5,0}, /*13*/ {5,1}, /*14*/ {6,0}, /*15*/ {5,2},
+        /*16*/ {4,4}, /*17*/ {5,3}, /*18*/ {6,1}, /*19*/ {5,4},
+        /*20*/ {2,5}, /*21*/ {3,4}, /*22*/ {4,5}, /*23*/ {5,5},
+        /*24*/ {6,2}, /*25*/ {7,3}, /*26*/ {6,3}, /*27*/ {6,4},
+        /*28*/ {5,6}, /*29*/ {5,7}, /*30*/ {6,5}, /*31*/ {6,6},
     };
     return table[id];
 }
@@ -219,20 +215,13 @@ string GameTUI::nodeGlyph(Bord& bord, int id, Player& dracula, Player& sherlock)
         string name = occ->getName();
 
         if (occ->isHero())
-        {
-            // heroes always show as D (Dracula side) or S (Sherlock side)
             glyph = isDraculaSide ? "D " : "S ";
-        }
-        else
+
+        // nicer sidekick initials: use first letter of last name token
         {
-            // sidekick: use first letter of the last name token
-            char letter = '?';
-            if (!name.empty())
-            {
-                size_t sp = name.find_last_of(' ');
-                letter = (sp == string::npos) ? name[0] : name[sp + 1];
-            }
-            glyph = string(1, (char)toupper((unsigned char)letter)) + " ";
+            size_t sp = name.find_last_of(' ');
+            char letter = sp == string::npos ? name[0] : name[sp + 1];
+            glyph = string(1, (char)toupper(letter)) + " ";
         }
 
         string color = isDraculaSide ? RED : BLUE;
@@ -247,96 +236,115 @@ string GameTUI::nodeGlyph(Bord& bord, int id, Player& dracula, Player& sherlock)
     return GREY + string(buf) + RESET;
 }
 
-// --- internal helper: draws a clean "diagonal then straight" line between
-// two canvas points, so edges never depend on nodes being grid-neighbors. ---
-static void drawEdgeOnCanvas(vector<vector<string>>& canvas, int W, int H,
-                              int x0, int y0, int x1, int y1)
-{
-    const std::string RESET = "\033[0m";
-    const std::string GREY  = "\033[90m";
-    int dx = x1 - x0, dy = y1 - y0;
-    int stepx = (dx > 0) - (dx < 0);
-    int stepy = (dy > 0) - (dy < 0);
-    int adx = dx < 0 ? -dx : dx;
-    int ady = dy < 0 ? -dy : dy;
-    int n = adx < ady ? adx : ady;
-
-    string diag = (stepx == stepy) ? "\\" : "/";
-    int cx = x0, cy = y0;
-
-    for (int k = 0; k < n; k++)
-    {
-        cx += stepx; cy += stepy;
-        if (cx >= 0 && cx < W && cy >= 0 && cy < H && canvas[cy][cx] == " ")
-            canvas[cy][cx] = GREY + diag + RESET;
-    }
-    while (cx != x1)
-    {
-        cx += stepx;
-        if (cx >= 0 && cx < W && cy >= 0 && cy < H && canvas[cy][cx] == " ")
-            canvas[cy][cx] = GREY + string("-") + RESET;
-    }
-    while (cy != y1)
-    {
-        cy += stepy;
-        if (cx >= 0 && cx < W && cy >= 0 && cy < H && canvas[cy][cx] == " ")
-            canvas[cy][cx] = GREY + string("|") + RESET;
-    }
-}
-
 vector<string> GameTUI::buildMapLines(Bord& bord, Player& dracula, Player& sherlock)
 {
-    // pixel-space scale: 3 cols per logical unit, 2 rows per logical unit
-    auto px = [](int col) { return 1 + col * 3; };
-    auto py = [](int row) { return 1 + row * 2; };
+    const int COLS = 8, ROWS = 8;
+    int grid[COLS][ROWS];
+    for (int c = 0; c < COLS; c++)
+        for (int r = 0; r < ROWS; r++)
+            grid[c][r] = -1;
 
-    int maxCol = 0, maxRow = 0;
     for (int id = 0; id < 32; id++)
     {
         NodePos p = nodePos(id);
-        maxCol = max(maxCol, p.col);
-        maxRow = max(maxRow, p.row);
+        grid[p.col][p.row] = id;
     }
 
-    int W = px(maxCol) + 3;
-    int H = py(maxRow) + 2;
+    // Not every real edge connects grid-adjacent cells (e.g. space 2 <-> 21
+    // are 2 rows apart in this layout). vertConn/diagConn carry those
+    // multi-row edges so every real connection actually gets drawn instead
+    // of only the ones that happen to land in touching cells.
+    bool vertConn[ROWS][COLS] = {};
+    char diagConn[ROWS][COLS] = {};
 
-    vector<vector<string>> canvas(H, vector<string>(W, " "));
-
-    // draw edges first so labels always render on top
     for (int id = 0; id < 32; id++)
     {
-        NodePos a = nodePos(id);
-        for (int nb : bord.getposAdjacent(id))
+        for (int n : bord.getposAdjacent(id))
         {
-            if (nb <= id) continue; // avoid drawing each edge twice
-            NodePos b = nodePos(nb);
-            drawEdgeOnCanvas(canvas, W, H, px(a.col), py(a.row), px(b.col), py(b.row));
+            if (n < id) continue; // each edge once
+            NodePos pa = nodePos(id), pb = nodePos(n);
+            if (pa.row > pb.row) swap(pa, pb);
+            int dc = pb.col - pa.col;
+            int dr = pb.row - pa.row;
+
+            if (dr == 0) continue; // pure horizontal edges: handled below via direct neighbor check
+
+            int curCol = pa.col;
+            for (int g = pa.row; g < pb.row; g++)
+            {
+                if (g == pa.row && dc != 0)
+                {
+                    int nextCol = curCol + dc;
+                    diagConn[g][min(curCol, nextCol)] = (dc > 0) ? '\\' : '/';
+                    curCol = nextCol;
+                }
+                else
+                {
+                    vertConn[g][curCol] = true;
+                }
+            }
         }
     }
 
-    // stamp node glyphs on top (each glyph is 2 visible chars wide)
-    for (int id = 0; id < 32; id++)
-    {
-        NodePos p = nodePos(id);
-        int cx = px(p.col), cy = py(p.row);
-        if (cy < 0 || cy >= H || cx < 0 || cx + 1 >= W) continue;
+    auto adjacent = [&](int a, int b) {
+        if (a < 0 || b < 0) return false;
+        vector<int> adj = bord.getposAdjacent(a);
+        return find(adj.begin(), adj.end(), b) != adj.end();
+    };
 
-        canvas[cy][cx] = nodeGlyph(bord, id, dracula, sherlock);
-        canvas[cy][cx + 1] = ""; // glyph already includes both visible chars
+    // Cells stay exactly as wide as their label (just the number / "##"),
+    // only the gap between them opened up a bit; links use plain ASCII
+    // "-"/"_" (and "\","/" for diagonals) instead of unicode box lines.
+    const string HCONN = GREY + "----" + RESET; // was "──"
+    const string HGAP  = "    ";
+
+    vector<string> raw;
+
+    for (int r = 0; r < ROWS; r++)
+    {
+        // node row
+        string nodeLine;
+        for (int c = 0; c < COLS; c++)
+        {
+            int id = grid[c][r];
+            string label = id == -1 ? "  " : nodeGlyph(bord, id, dracula, sherlock);
+            nodeLine += label;
+            if (c != COLS - 1)
+                nodeLine += adjacent(id, grid[c + 1][r]) ? HCONN : HGAP;
+        }
+        raw.push_back(nodeLine);
+
+        if (r != ROWS - 1)
+        {
+            string connLine;
+            for (int c = 0; c < COLS; c++)
+            {
+                connLine += vertConn[r][c] ? (GREY + "_ " + RESET) : "  "; // matches 2-char label width
+                if (c != COLS - 1)
+                {
+                    char d = diagConn[r][c];
+                    if (d == '\\')      connLine += GREY + "\\   " + RESET;
+                    else if (d == '/')  connLine += GREY + "/   " + RESET;
+                    else                connLine += "    "; // matches 4-char gap width
+                }
+            }
+            raw.push_back(connLine);
+        }
     }
+
+    // Frame the whole board like a fence, using "=" for the top/bottom rail
+    // and "|" for the side posts, same as the original look.
+    int innerWidth = 0;
+    for (auto& l : raw) innerWidth = max(innerWidth, visibleLength(l));
+    innerWidth += 2; // 1 space padding each side
 
     vector<string> lines;
     lines.push_back(BOLD + CYAN + "MAP (Graph)" + RESET);
     lines.push_back("");
-
-    for (int r = 0; r < H; r++)
-    {
-        string line;
-        for (int c = 0; c < W; c++)
-            line += canvas[r][c];
-        lines.push_back(line);
-    }
+    lines.push_back(string(innerWidth + 2, '='));
+    for (auto& l : raw)
+        lines.push_back("| " + padVisible(l, innerWidth - 1) + "|");
+    lines.push_back(string(innerWidth + 2, '='));
 
     lines.push_back("");
     lines.push_back(DIM + "Legend:" + RESET);
@@ -471,7 +479,7 @@ void GameTUI::render(Player& p1, Player& p2, Player* currentTurn, Bord& bord)
 
     clearScreen();
 
-    const int totalWidth = 100;
+    const int totalWidth = 110;
     cout << BOLD << CYAN << string(totalWidth, '=') << RESET << "\n";
     cout << center(BOLD + "UNMATCHED - " + dracula.getName() + " (Dracula) vs " + sherlock.getName() + " (Sherlock Holmes)" + RESET, totalWidth) << "\n";
 
@@ -488,11 +496,13 @@ void GameTUI::render(Player& p1, Player& p2, Player* currentTurn, Bord& bord)
 
     cout << "\n" << DIM << string(totalWidth, '-') << RESET << "\n\n";
 
-    for (auto& line : buildHandPanel(dracula, RED, totalWidth))
-        cout << line << "\n";
-    cout << "\n";
-    for (auto& line : buildHandPanel(sherlock, BLUE, totalWidth))
-        cout << line << "\n";
+    // Only show the hand of whoever's turn it is - not both players'.
+    if (currentTurn != nullptr)
+    {
+        string handColor = (currentTurn == &dracula) ? RED : BLUE;
+        for (auto& line : buildHandPanel(*currentTurn, handColor, totalWidth))
+            cout << line << "\n";
+    }
 
     cout << "\n" << DIM << string(totalWidth, '=') << RESET << "\n\n";
 }

@@ -26,9 +26,7 @@ public:
     bool checkzone(int z);
 
     std::vector<Character*> getAttackCharacters(int attacktype , int pos);
-    std::vector<Character*> getZoneCharacters(int pos);
-
-
+    
     std::vector<int> getEmptyAdjacent(Character* character) const;
     std::vector<int> getEmptyZone(std::vector<int> zon) const;
 
@@ -42,6 +40,5 @@ public:
     std::vector<int> getSecretPassages(int pos) const;
     Character* getCharacter(int pos) const;
 
-    ~Bord();
-
+    ~Bord() = default;
 };

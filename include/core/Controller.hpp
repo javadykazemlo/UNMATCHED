@@ -23,7 +23,7 @@ private:
     bool GuessElementary = false;
     
 public:
-    Controller();
+    Controller() = default;
     
     void choosePlayers(Player player[2]);
     void chooseCharacters();
@@ -52,5 +52,5 @@ public:
     void applyEffect(Card& card, Card& enemycard, Player* self, Player* opponent, Character* attacker, Character* defender, bool woncombat);
     void applyEffectScheme(Card& card, Player* self, Player* opponent, Character* attacker);
 
-    ~Controller();
+    ~Controller() = default;
 };

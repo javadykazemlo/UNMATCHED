@@ -81,7 +81,3 @@ void Dracula::ability(Bord bord , Player* player)
     }
     
 }
-
-Dracula::~Dracula()
-{
-}

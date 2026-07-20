@@ -10,10 +10,6 @@
 
 using namespace std;
 
-Controller::Controller()
-{
-}
-
 void Controller::choosePlayers(Player player[2])
 {
     string n;
@@ -696,8 +692,4 @@ bool Controller::end_game() const
         return true;
     }
     return false;
-}
-
-Controller::~Controller()
-{
 }

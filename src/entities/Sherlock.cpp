@@ -12,8 +12,3 @@ void Sherlock::ability(Bord bord , Player* player)
 {
 
 }
-
-
-Sherlock::~Sherlock()
-{
-}

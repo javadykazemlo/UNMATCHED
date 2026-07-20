@@ -154,16 +154,6 @@ vector<Character*> Bord::getAttackCharacters(int attacktype , int pos)
     return result;
 }
 
-
-vector<Character*> Bord::getZoneCharacters(int pos)
-{
-    vector<Character*> result;
-
-    
-
-    return result;
-}
-
 vector<int> Bord::getEmptyAdjacent(Character* character) const
 {
     vector<int> result;
@@ -270,9 +260,4 @@ vector<int> Bord::getSecretPassages(int pos) const
 Character* Bord::getCharacter(int pos) const
 {
     return spaces[pos].character;
-}
-    
-Bord::~Bord()
-{
-
 }

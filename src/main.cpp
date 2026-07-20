@@ -2,11 +2,25 @@
 #include <cstdlib>
 #include <ctime>
 
-int main() {
-    srand(static_cast<unsigned int>(time(0)));
+#include "Controller.hpp"
+#include "Player.hpp"
+#include "Bord.hpp"
+#include "GameTUI.hpp"
+
+int main()
+{
+    srand(static_cast<unsigned int>(time(0))) ;
+
+    Controller controller;
+    Player player[2];
+
+    GameTUI::showWelcome();
+
+    controller.choosePlayers(player);
+
+    controller.chooseCharacters();
     
-    GameTUI game;
-    game.run();
-    
-    return 0;
+    controller.playTurn();
+  
+  	return 0;
 }

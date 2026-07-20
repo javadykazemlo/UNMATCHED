@@ -1,8 +1,6 @@
 #pragma once
 #include <string>
 
-#include "entities/Character.hpp"
-
 enum class owner
 {
     Hero,

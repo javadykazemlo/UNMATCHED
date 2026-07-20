@@ -31,20 +31,18 @@ bool Character::checkalive() const
 
 
 
-void Character::takeDamage(int defend , int attack) 
-{
-    if (Hp > 0)
-    {
-        Hp -= (attack - defend);
-        
-        if(Hp <= 0) 
-        {
-            IsAlive = false;
-            Space = -1;
-            Hp = 0;
+void Character::takeDamage(int defend, int attack) {
+    if (Hp > 0) {
+        int damage = attack - defend;
+        if (damage > 0) {
+            Hp -= damage;
+            if (Hp <= 0) {
+                IsAlive = false;
+                Space = -1;
+                Hp = 0;
+            }
         }
     }
-    
 }
 
 

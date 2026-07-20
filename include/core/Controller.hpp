@@ -21,22 +21,20 @@ private:
     
     int gamerand = 0;
     bool GuessElementary = false;
+    
 public:
     Controller();
     
     void choosePlayers(Player player[2]);
     void chooseCharacters();
     void plaseSidekicks(Player& player);
-    void playTurn();
 
-    void move(int mov ,Character* selected);
+    void move(int mov, Character* selected);
     int boost();
-    
     void Scheme();
-
     void startCombat();
-    Card chooseCombatCard(Player* player , Character* fighter, bool attack);
-    void resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender);
+    Card chooseCombatCard(Player* player, Character* fighter, bool attack);
+    void resolveCombat(Card& attackCard, Card& defenseCard, Character* attacker, Character* defender);
 
     int getInt();
     int getChoice(std::vector<int> valid);
@@ -49,8 +47,8 @@ public:
     
     bool end_game() const;
 
-    void applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender , bool woncombat);
-    void applyEffectScheme(Card& card ,Player* self, Player* opponent , Character* attacker );
+    void applyEffect(Card& card, Card& enemycard, Player* self, Player* opponent, Character* attacker, Character* defender, bool woncombat);
+    void applyEffectScheme(Card& card, Player* self, Player* opponent, Character* attacker);
 
     ~Controller();
 };

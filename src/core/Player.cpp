@@ -6,7 +6,6 @@
 #include "entities/Sister.hpp"
 #include "entities/Dr_watson.hpp"
 
-
 using namespace std;
 
 Player::Player()
@@ -14,7 +13,6 @@ Player::Player()
     deck = nullptr;
     Age = 0;
 }
-
 
 void Player::chooseCharacter(int choose , int owner)
 {
@@ -42,7 +40,6 @@ void Player::chooseCharacter(int choose , int owner)
     }
 }
 
-
 void Player::setName(const string& n) 
 {
     this->name = n;
@@ -57,7 +54,6 @@ void Player::setfighterCount(int count)
 {
     this->fighterCount = count;
 }
-
 
 string Player::getName() const
 {
@@ -81,9 +77,9 @@ Character* Player::getHero() const
 
 Character* Player::getsidekick(int i) const
 {
-    if(fighters[i]->checkalive())
+    if (i >= 0 && i < (int)fighters.size() && fighters[i] && fighters[i]->checkalive())
         return fighters[i];
-    return {};
+    return nullptr;
 }
 
 Deck* Player::getDeck() const 
@@ -99,8 +95,6 @@ int Player::getfighterCount() const
 Player::~Player()
 {
     for (Character* fighter : fighters)
-    delete fighter;
-    
-
+        delete fighter;
     delete deck;
 }

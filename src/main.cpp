@@ -1,7 +1,6 @@
-#include <iostream>
+#include "GameTUI.hpp"
 #include <cstdlib>
 #include <ctime>
-using namespace std;
 
 #include "Controller.hpp"
 #include "Player.hpp"
@@ -22,8 +21,6 @@ int main()
     controller.chooseCharacters();
     
     controller.playTurn();
-
-    
+  
   	return 0;
 }
-  

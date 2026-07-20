@@ -12,13 +12,6 @@ using namespace std;
 
 Controller::Controller()
 {
-    cancelEffectDR = false;
-    cancelEffectSH = false;
-    GuessElementary = false;
-    gamerand = 0;
-    DraculaWon = false;
-    sherlockWon = false;
-    cancelEffect = false;
 }
 
 void Controller::choosePlayers(Player player[2])
@@ -366,6 +359,7 @@ int Controller::boost()
         cout << "No boost used.\n";
         return 0;
     }
+    current->getDeck()->showHand(current->getName());
     int choos = current->getDeck()->gethandSize();
     cout << "Selected card: ";
     int select = getInt();
@@ -573,7 +567,7 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     }
     
     int attackValue = attackCard.getAttack();
-    int defenseValue = defenseCard.getAttack();  // ✅ اصلاح شد (قبلاً اشتباه بود)
+    int defenseValue = defenseCard.getAttack();
 
     cout << "\n═══════════════════════════════════════════════════════\n";
     cout << "  ⚔️ RESOLVING COMBAT ⚔️\n";

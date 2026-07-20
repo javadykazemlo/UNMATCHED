@@ -29,6 +29,8 @@ public:
     void chooseCharacters();
     void plaseSidekicks(Player& player);
 
+    void playTurn();
+
     void move(int mov, Character* selected);
     int boost();
     void Scheme();

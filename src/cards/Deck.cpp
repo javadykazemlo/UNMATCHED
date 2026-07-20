@@ -395,22 +395,91 @@ Card Deck::playCard(int index, Card& selected)
 }
 
 
-Card Deck::burnCard(int index)
-{
-    if (index < 0 || index >= hand.size())
-        return Card();
+// Card Deck::burnCard(int index)
+// {
+//     if (index < 0 || index >= hand.size())
+//         return Card();
 
-    Card selected = hand[index];
+//     Card selected = hand[index];
 
-    hand.erase(hand.begin() + index);
+//     hand.erase(hand.begin() + index);
 
-    return selected;
-}
+//     return selected;
+// }
 
 
 void Deck::discardCard(const Card& card)
 {
     DiscardPile.push_back(card);
+}
+
+void Deck::showCard(const Card& card) const 
+{
+    cout << "┌────────────────────────────────────────────────────┐\n";
+    cout << "│ " << left << setw(50) << card.getName() << " │\n";
+    cout << "├────────────────────────────────────────────────────┤\n";
+    cout << "│ " << left << setw(50) << (card.getOwnerString() + " · " + card.getTypeString()) << "  │\n";
+    cout << "├────────────────────────────────────────────────────┤\n";
+
+    if (card.isAttack()) 
+    {
+        cout << "│ " << left << setw(50) << ("Attack: " + to_string(card.getAttack())) << "│\n";
+    } else if (card.isDefense()) 
+    {
+        cout << "│ " << left << setw(50) << ("Defense: " + to_string(card.getAttack())) << "│\n";
+    } else if (card.isVersatile()) 
+    {
+        cout << "│ " << left << setw(50) << ("Attack/Defense: " + to_string(card.getAttack()) + "/" + to_string(card.getAttack())) << "│\n";
+    }
+
+    cout << "│ " << left << setw(50) << ("Boost: " + to_string(card.getBoost())) << " │\n";
+
+    cout << "├────────────────────────────────────────────────────┤\n";
+
+    string effect = card.geteffect();
+    int maxWidth = 48;
+    while (effect.length() > maxWidth) 
+    {
+        int space = effect.rfind(' ', maxWidth);
+        if (space == string::npos) space = maxWidth;
+        cout << "│ " << left << setw(50) << effect.substr(0, space) << " │\n";
+        effect = effect.substr(space + 1);
+    }
+    if (!effect.empty()) 
+    {
+        cout << "│ " << left << setw(50) << effect << " │\n";
+    }
+
+    cout << "└────────────────────────────────────────────────────┘\n";
+}
+
+void Deck::showDeck(string name) const 
+{
+    cout << "\n═══════════════════════════════════════════════════════\n";
+    cout << "      "<< name <<" DECK (" << deck.size() << " cards)\n";
+    cout << "═══════════════════════════════════════════════════════\n\n";
+
+    for (int i = 0; i < deck.size(); i++) 
+    {
+        cout << "[" << i + 1 << "]\n";
+        showCard(deck[i]);
+        cout << "\n";
+    }
+
+}
+
+void Deck::showHand(string name) const
+{
+    cout << "\n═══════════════════════════════════════════════════════\n";
+    cout << "    "<< name <<" Hand (" << hand.size() << " Handcards)\n";
+    cout << "═══════════════════════════════════════════════════════\n\n";
+
+    for (int i = 0; i <hand.size() ; i++)
+    {
+        cout << "[" << i + 1 << "]\n";
+        showCard(hand[i]);
+        cout << "\n";
+    }
 }
 
 
@@ -460,10 +529,10 @@ vector<int> Deck::getSchemeCardIndices() const
 
 
 
-void Deck::addBurnCard(const Card& card)
-{
-    DiscardPile.push_back(card);
-}
+// void Deck::addBurnCard(const Card& card)
+// {
+//     DiscardPile.push_back(card);
+// }
 
 
 
@@ -508,7 +577,7 @@ const vector<Card>& Deck::gethand() const
 {
     return hand;
 }
-const vector<Card>& Deck::getBurn() const
-{
-    return DiscardPile;
-}
+// const vector<Card>& Deck::getBurn() const
+// {
+//     return DiscardPile;
+// }

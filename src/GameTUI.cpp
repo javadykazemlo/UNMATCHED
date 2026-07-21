@@ -491,11 +491,10 @@ void GameTUI::render(Player& p1, Player& p2, Player* currentTurn, Bord& bord)
 
     cout << "\n" << DIM << string(totalWidth, '-') << RESET << "\n\n";
 
-    // Only show the hand of whoever's turn it is - not both players'.
     if (currentTurn != nullptr)
     {
         string handColor = (currentTurn == &dracula) ? RED : BLUE;
-        for (auto& line : buildHandPanel(*currentTurn, handColor, totalWidth))
+        for (auto& line : buildHandPanel(currentTurn->getDeck()->gethand(), currentTurn->getName(), handColor, totalWidth))
             cout << line << "\n";
     }
 

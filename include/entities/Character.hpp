@@ -21,7 +21,7 @@ public:
 
     virtual void ability(Bord bord , Player* player) = 0;
     bool checkalive() const;
-    void takeDamage(int defend , int attack );
+    void takeDamage(int damage);
     void heal(int amount) ;
     
     void setHp(int hp);

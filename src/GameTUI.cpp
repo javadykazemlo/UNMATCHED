@@ -399,12 +399,12 @@ vector<string> GameTUI::buildHeroPanel(Player& player, bool isTurn, const string
     return lines;
 }
 
-vector<string> GameTUI::buildHandPanel(Player& player, const string& color, int width)
+vector<string> GameTUI::buildHandPanel(const vector<Card>& hand, const string& ownerName, const string& color, int width)
 {
     vector<string> lines;
-    const vector<Card>& hand = player.getDeck()->gethand();
+    //const vector<Card>& hand = player.getDeck()->gethand();
 
-    string header = color + BOLD + player.getName() + " - HAND (" + to_string(hand.size()) + ")" + RESET;
+    string header = color + BOLD + ownerName + " - HAND (" + to_string(hand.size()) + ")" + RESET;
     lines.push_back(header);
 
     const int cardW = 22;
@@ -488,10 +488,10 @@ void GameTUI::render(Player& p1, Player& p2, Player* currentTurn, Bord& bord)
 
     cout << "\n" << DIM << string(totalWidth, '-') << RESET << "\n\n";
 
-    for (auto& line : buildHandPanel(dracula, RED, totalWidth))
+    for (auto& line : buildHandPanel(dracula.getDeck()->gethand(), dracula.getName(), RED, totalWidth))
         cout << line << "\n";
     cout << "\n";
-    for (auto& line : buildHandPanel(sherlock, BLUE, totalWidth))
+    for (auto& line : buildHandPanel(sherlock.getDeck()->gethand(), sherlock.getName(), BLUE, totalWidth))
         cout << line << "\n";
 
     cout << "\n" << DIM << string(totalWidth, '=') << RESET << "\n\n";

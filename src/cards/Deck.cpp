@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <random>
 #include <stdexcept>
+
 #include "cards/Deck.hpp"
+#include "GameTUI.hpp"
 
 using namespace std;
 
@@ -438,35 +440,32 @@ void Deck::showCard(const Card& card) const
     }
 
     cout << "└────────────────────────────────────────────────────┘\n";
+    
 }
 
 void Deck::showDeck(string name) const 
 {
-    cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "      "<< name <<" DECK (" << deck.size() << " cards)\n";
-    cout << "═══════════════════════════════════════════════════════\n\n";
+    int width = 100;
 
-    for (int i = 0; i < deck.size(); i++) 
-    {
-        cout << "[" << i + 1 << "]\n";
-        showCard(deck[i]);
-        cout << "\n";
-    }
+    cout << endl;
+    GameTUI g;
+    for (auto& line : g.buildHandPanel(getdeck() , name , g.GREEN , width))
+        cout << line << "\n";
+
+    cout << "\n";
 
 }
 
 void Deck::showHand(string name) const
 {
-    cout << "\n═══════════════════════════════════════════════════════\n";
-    cout << "    "<< name <<" Hand (" << hand.size() << " Handcards)\n";
-    cout << "═══════════════════════════════════════════════════════\n\n";
+    int width = 100;
 
-    for (int i = 0; i <hand.size() ; i++)
-    {
-        cout << "[" << i + 1 << "]\n";
-        showCard(hand[i]);
-        cout << "\n";
-    }
+    cout << endl;
+    GameTUI g;
+    for (auto& line : g.buildHandPanel(gethand() , name , g.GREEN , width))
+        cout << line << "\n";
+
+    cout << "\n";
 }
 
 
@@ -478,9 +477,10 @@ vector<int> Deck::getAttackCardIndices() const
     {
         if(hand[i].isAttack() || hand[i].isVersatile())
         {
-            indices.push_back(i);
+            indices.push_back(i + 1);
         }
     }
+
     return indices;
 }
 
@@ -493,9 +493,10 @@ vector<int> Deck::getDefenseCardIndices() const
     {
         if(hand[i].isDefense() || hand[i].isVersatile())
         {
-            indices.push_back(i);
+            indices.push_back(i + 1);
         }
     }
+
     return indices;
 }
 
@@ -507,9 +508,10 @@ vector<int> Deck::getSchemeCardIndices() const
     {
         if(hand[i].isScheme())
         {
-            indices.push_back(i);
+            indices.push_back(i + 1);
         }
     }
+
     return indices;
 }
 

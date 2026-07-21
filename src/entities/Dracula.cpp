@@ -50,7 +50,7 @@ void Dracula::ability(Bord bord , Player* player)
         
             if (k >= 1 && k <= targets.size())
             {
-                targets[k - 1]->takeDamage(0, 1);
+                targets[k - 1]->takeDamage(1);
                 try
                 {
                     player->getDeck()->draw();
@@ -61,7 +61,7 @@ void Dracula::ability(Bord bord , Player* player)
                     cout << e.what() << endl;
                     for(int i = 0 ; i <  player->getfighterCount() ; i++)
                     {
-                        player->getsidekick(i)->takeDamage(2,0);
+                        player->getsidekick(i)->takeDamage(2);
                     }
                     cout << "All character on team took 2 damage";
                 }

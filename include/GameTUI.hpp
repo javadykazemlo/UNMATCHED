@@ -5,6 +5,7 @@
 class Player;
 class Bord;
 class Character;
+class Card;
 
 // ─────────────────────────────────────────────────────────────────────────
 //  GameTUI
@@ -26,7 +27,10 @@ public:
     // is Sherlock so the layout is always Dracula-left / Sherlock-right.
     static void showWelcome();
     static void render(Player& p1, Player& p2, Player* currentTurn, Bord& bord);
-
+    
+    static std::vector<std::string> buildHandPanel(const std::vector<Card>& hand, const std::string& ownerName, const std::string& color, int width);
+    static const std::string RED, BLUE, GREEN, YELLOW, CYAN, MAGENTA, GREY;
+    
 private:
     struct NodePos { int col; int row; };
 
@@ -36,7 +40,6 @@ private:
     static std::string center(const std::string& s, int width);
 
     static const std::string RESET, BOLD, DIM;
-    static const std::string RED, BLUE, GREEN, YELLOW, CYAN, MAGENTA, GREY;
 
     static NodePos nodePos(int id);
     static bool isSecretPassage(int id);
@@ -44,7 +47,6 @@ private:
 
     static std::vector<std::string> buildMapLines(Bord& bord, Player& dracula, Player& sherlock);
     static std::vector<std::string> buildHeroPanel(Player& player, bool isTurn, const std::string& color, int width);
-    static std::vector<std::string> buildHandPanel(Player& player, const std::string& color, int width);
 
     static void printSideBySide(const std::vector<std::string>& left,
                                  const std::vector<std::string>& mid,

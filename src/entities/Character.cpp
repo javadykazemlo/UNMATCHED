@@ -10,7 +10,7 @@ Character::Character(const std::string& name, int hp, int move, int attacktyp , 
     this->Hp = hp;
     this->Move = move;
     this->Attacktype = attacktyp;
-    this->IsAlive = true;
+    //this->IsAlive = true;
     this->MaxHp = hp;
     this->Owner = owner;
     this->ishero = her;
@@ -19,14 +19,7 @@ Character::Character(const std::string& name, int hp, int move, int attacktyp , 
 
 bool Character::checkalive() const
 {
-    if (Hp == 0)
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return Hp > 0;
 }
 
 
@@ -36,7 +29,6 @@ void Character::takeDamage(int damage) {
         if (damage > 0) {
             Hp -= damage;
             if (Hp <= 0) {
-                IsAlive = false;
                 Space = -1;
                 Hp = 0;
             }
@@ -58,11 +50,6 @@ void Character::heal(int boost )
 void Character::setHp(int hp)
 {
     Hp = hp;
-}
-
-void Character::setIsAlive(bool isAlive)
-{
-    this->IsAlive = isAlive;
 }
 
 void Character::setSpace(int sp)
@@ -100,11 +87,6 @@ int Character::getMove() const
 int Character::getAttacktype() const
 {
     return Attacktype;
-}
-
-bool Character::getIsAlive() const
-{
-    return IsAlive;
 }
 
 int Character::getSpace() const

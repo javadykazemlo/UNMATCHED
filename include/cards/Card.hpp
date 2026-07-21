@@ -35,7 +35,7 @@ private:
     int Boost;
     std::string effect;
 public:
-    Card() = default;
+    Card();
     Card(std::string nam , owner own , CardType typ 
         , int att , timing tim , int bos , std::string efec);
 

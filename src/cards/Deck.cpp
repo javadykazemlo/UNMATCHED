@@ -294,7 +294,7 @@ void Deck::buildDeck(int hero)
             deck.emplace_back(
                 "Fixed Point in a Changing Age",
                 owner::SideKick,
-                CardType::Scheme,
+                CardType::Versatile,
                 3,
                 timing::AfterCombat,
                 1,

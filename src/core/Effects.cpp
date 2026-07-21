@@ -98,7 +98,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 {
                     cout << "choice a card: ";
                     choice = getInt();
-                    if(choice > 0 ; choice < handSize)
+                    if(choice > 0 && choice < handSize)
                     {
                         break;
                     }

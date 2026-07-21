@@ -177,10 +177,6 @@ void GameTUI::printSideBySide(const vector<string>& left,
 
 // ─────────────────────────────── map ───────────────────────────────
 
-// Hand-computed BFS-layered layout of the 32 board spaces (see the real
-// adjacency graph in Bord.cpp). Column = distance from the Dracula start
-// space (4), row = position within that "ring" so the graph prints as a
-// readable left-to-right diagram instead of a jumble of numbers.
 GameTUI::NodePos GameTUI::nodePos(int id)
 {
     // col/row here are logical layout units (not a strict grid) —
@@ -314,38 +310,45 @@ vector<string> GameTUI::buildMapLines(Bord& bord, Player& dracula, Player& sherl
             drawEdgeOnCanvas(canvas, W, H, px(a.col), py(a.row), px(b.col), py(b.row));
         }
     }
-
     // stamp node glyphs on top (each glyph is 2 visible chars wide)
     for (int id = 0; id < 32; id++)
     {
         NodePos p = nodePos(id);
         int cx = px(p.col), cy = py(p.row);
         if (cy < 0 || cy >= H || cx < 0 || cx + 1 >= W) continue;
-
         canvas[cy][cx] = nodeGlyph(bord, id, dracula, sherlock);
         canvas[cy][cx + 1] = ""; // glyph already includes both visible chars
     }
 
-    vector<string> lines;
-    lines.push_back(BOLD + CYAN + "MAP (Graph)" + RESET);
-    lines.push_back("");
-
+    vector<string> raw;
     for (int r = 0; r < H; r++)
     {
         string line;
         for (int c = 0; c < W; c++)
             line += canvas[r][c];
-        lines.push_back(line);
+        raw.push_back(line);
     }
+
+    // fence-style frame around just the grid itself
+    int innerWidth = 0;
+    for (auto& l : raw) innerWidth = max(innerWidth, visibleLength(l));
+
+    vector<string> lines;
+    lines.push_back(BOLD + CYAN + "MAP (Graph)" + RESET);
+    lines.push_back("");
+
+    lines.push_back(GREY + "+" + string(innerWidth + 2, '=') + "+" + RESET);
+    for (auto& l : raw)
+        lines.push_back(GREY + "| " + RESET + padVisible(l, innerWidth) + GREY + " |" + RESET);
+    lines.push_back(GREY + "+" + string(innerWidth + 2, '=') + "+" + RESET);
 
     lines.push_back("");
     lines.push_back(DIM + "Legend:" + RESET);
     lines.push_back(RED + BOLD + "D" + RESET + DIM + " Dracula   " + RESET +
                      BLUE + BOLD + "S" + RESET + DIM + " Sherlock" + RESET);
     lines.push_back(DIM + "Letters = sidekicks   " + RESET + YELLOW + "##" + RESET +
-                     DIM + " = secret passage" + RESET);
+                     DIM + " = secret passage (0, 12, 17, 23 all connect to each other)" + RESET);
     lines.push_back(DIM + "Numbers = empty space id" + RESET);
-
     return lines;
 }
 
@@ -471,7 +474,7 @@ void GameTUI::render(Player& p1, Player& p2, Player* currentTurn, Bord& bord)
 
     clearScreen();
 
-    const int totalWidth = 100;
+    const int totalWidth = 110;
     cout << BOLD << CYAN << string(totalWidth, '=') << RESET << "\n";
     cout << center(BOLD + "UNMATCHED - " + dracula.getName() + " (Dracula) vs " + sherlock.getName() + " (Sherlock Holmes)" + RESET, totalWidth) << "\n";
 
@@ -488,11 +491,13 @@ void GameTUI::render(Player& p1, Player& p2, Player* currentTurn, Bord& bord)
 
     cout << "\n" << DIM << string(totalWidth, '-') << RESET << "\n\n";
 
-    for (auto& line : buildHandPanel(dracula, RED, totalWidth))
-        cout << line << "\n";
-    cout << "\n";
-    for (auto& line : buildHandPanel(sherlock, BLUE, totalWidth))
-        cout << line << "\n";
+    // Only show the hand of whoever's turn it is - not both players'.
+    if (currentTurn != nullptr)
+    {
+        string handColor = (currentTurn == &dracula) ? RED : BLUE;
+        for (auto& line : buildHandPanel(*currentTurn, handColor, totalWidth))
+            cout << line << "\n";
+    }
 
     cout << "\n" << DIM << string(totalWidth, '=') << RESET << "\n\n";
 }

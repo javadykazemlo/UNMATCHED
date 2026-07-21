@@ -266,7 +266,7 @@ void Controller::playTurn()
             index = getInt();
 
             Card deletcadr;
-            for(int i = 0 ; index > 0 && index < (current->getDeck()->gethandSize() + 1) ; i++)
+            for(int i = 0 ; index < 0 && index > (current->getDeck()->gethandSize() + 1) ; i++)
             {
                 cout << "Invalid card number. Try again: ";
                 index = getInt();

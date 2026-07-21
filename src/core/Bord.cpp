@@ -108,7 +108,7 @@ bool Bord::checkzone(int zo)
 
 bool Bord::canAttack(int attacktype , int pos)
 {
-    if(attacktype = 1) //Melee
+    if(attacktype == 1) //Melee
     {
         for(int neighbor : spaces[pos].adjacent)
         {
@@ -132,7 +132,7 @@ vector<Character*> Bord::getAttackCharacters(int attacktype , int pos)
 {
     vector<Character*> result;
 
-    if(attacktype = 1)
+    if(attacktype == 1)
     {
         for(int neighbor : spaces[pos].adjacent)
         {

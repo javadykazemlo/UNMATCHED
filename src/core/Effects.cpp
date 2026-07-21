@@ -266,7 +266,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 {
                     target->takeDamage(2);
 
-                    if(!target->getIsAlive())
+                    if(!target->checkalive())
                     bord.deletCharacter(target->getSpace());
 
                     cout << "2 damage dealt to " << target->getName() << "!\n";
@@ -625,7 +625,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             {
                 for(int i = 1 ; i < 4 ; i++)
                 {
-                    if(self->getsidekick(i)->getIsAlive())
+                    if(self->getsidekick(i)->checkalive())
                     {
                         if(bord.getCharacter(adjenc) == self->getsidekick(i))
                         {

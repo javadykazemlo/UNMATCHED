@@ -126,8 +126,10 @@ void Controller::plaseSidekicks(Player& player)
         for(int j = 0 ; j < space.size()  ; j++)
         {
             if(!bord.getSpaceStatus(space[j]))
+            {
                 cout << "   " << space[j];  
                 choose.push_back(space[j]);
+            }
         }
         cout << "\nwhere do you want to place the Dr_watson: ";
         s = getChoice(choose);
@@ -213,7 +215,7 @@ void Controller::playTurn()
                     choose = getChoice({valid});
                     Character* selected = choices[choose - 1];
 
-                    mov =+ selected->getMove();
+                    mov += selected->getMove();
 
                     move(mov , selected);
 
@@ -245,15 +247,15 @@ void Controller::playTurn()
                     break;
                 }
 
-                for(int i = 0 ; i < current->getfighterCount() ; i++)
-                {
-                    if(!current->getsidekick(i)->getIsAlive())
-                    bord.deletCharacter(current->getHero()->getSpace());
+                
+            }
+            for(int i = 0 ; i < current->getfighterCount() ; i++)
+            {
+                if(!current->getsidekick(i)->checkalive())
+                bord.deletCharacter(current->getsidekick(i)->getSpace());
 
-                    if(!enemy->getsidekick(i)->getIsAlive())
-                    bord.deletCharacter(enemy->getHero()->getSpace());
-                }
-
+                if(!enemy->getsidekick(i)->checkalive())
+                bord.deletCharacter(enemy->getsidekick(i)->getSpace());
             }
             
             gamerand++;
@@ -265,21 +267,23 @@ void Controller::playTurn()
         int index;
         int HandSize;
         HandSize = current->getDeck()->gethandSize();
-
-        for(int i = 0 ; HandSize > 7 ; i++)
+        while(HandSize > 7)
         {
             current->getDeck()->showHand(current->getName());
             cout << endl << "Enter the card number to remove: ";
             index = getInt();
 
-            Card deletcadr;
-            for(int i = 0 ; index < 0 && index > (current->getDeck()->gethandSize() + 1) ; i++)
+            while(index <= 0 || index > HandSize)
             {
                 cout << "Invalid card number. Try again: ";
                 index = getInt();
             }
+
+            Card deletcadr;
             deletcadr = current->getDeck()->playCard(index - 1 , deletcadr);
-            cout << endl << deletcadr.getName() <<  " was removed from your hand.\n";
+            cout << endl << deletcadr.getName() << " was removed from your hand.\n";
+
+            HandSize = current->getDeck()->gethandSize();
         }
 
 
@@ -366,7 +370,7 @@ int Controller::boost()
     int choos = current->getDeck()->gethandSize();
     cout << "Selected card: ";
     int select = getInt();
-    for(int i = 0 ; select < 0 || select > choos ; i++)
+    for(int i = 0 ; select < 1 || select > choos + 1 ; i++)
     {
         cout << "Invalid choice\n";
         cout << "Selected card: ";
@@ -391,8 +395,11 @@ void Controller::Scheme()
     if(choos.empty())
     {
         cout << "You don't have any Scheme cards.\n";
+        gamerand++;
+
         return;
     }
+
     Character* selected;
     int index;
     while(true)
@@ -450,6 +457,13 @@ void Controller::startCombat()
     cancelEffectSH = false;
     GuessElementary = false;
 
+    if(current->getDeck()->getAttackCardIndices().empty())
+    {
+        cout << "You have no attack cards. Cannot attack this turn.\n";
+        gamerand++;
+        return;
+    }
+
     int choose = 0;
     vector<Character*> choices;
     vector<int> valid;
@@ -497,7 +511,7 @@ void Controller::startCombat()
         cout << "Choose a character to attack: ";
         choose = getChoice({valid});
         Character* defender = choices[choose - 1];
-    
+
         Card attackCard = chooseCombatCard(current , attacker , true);
         Card defenseCard = chooseCombatCard(enemy , defender , false);
     
@@ -515,15 +529,32 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
     if(attack)
     {
         myhandcard = player->getDeck()->getAttackCardIndices();
+        
     }
     else
     {
         myhandcard = player->getDeck()->getDefenseCardIndices();
     }
+    
+    if(myhandcard.empty())
+    {
+        cout << player->getName() << " has no valid " 
+             << (attack ? "attack" : "defense") << " card. Using 0 value.\n";
+
+        Card empty;
+        return empty;
+    }
 
     while (true)
     {
         cout << "\nChoose a card: ";
+
+        cout << "Available cards: ";
+        for(int idx : myhandcard) 
+        cout << idx + 1 << "  ";
+
+        cout << "\n> ";
+
         int choice;
         choice = getChoice(myhandcard);
         choice--;
@@ -609,7 +640,7 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
         cout << "\n💥 " << current->getName() << " deals " << damage << " damage!\n";
         enemy->getHero()->takeDamage(damage);
 
-        if(!enemy->getHero()->getIsAlive())
+        if(!enemy->getHero()->checkalive())
             bord.deletCharacter(enemy->getHero()->getSpace());
 
         cout << "  " << enemy->getName() << " HP: " << enemy->getHero()->getHp() 
@@ -703,9 +734,11 @@ bool Controller::end_game() const
         cout << "                                GAME OVER\n";
         cout << "══════════════════════════════════════════════════════════════════════════\n";
         if (!hero1->checkalive())
-            cout << "🏆 " << hero2->getName() << " wins!\n";
+            cout << "           🏆 " << hero2->getName() << " wins! 🏆\n";
         else
-            cout << "🏆 " << hero1->getName() << " wins!\n";
+            cout << "           🏆 " << hero1->getName() << " wins! 🏆\n";
+  
+        cout << "══════════════════════════════════════════════════════════════════════════\n";
         return true;
     }
     return false;

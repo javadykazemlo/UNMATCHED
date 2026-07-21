@@ -11,10 +11,9 @@ private:
     int MaxHp;
     int Move;
     int Attacktype;// 0 = Melee , 1 = Ranged
-    bool IsAlive;
     int Space;
     int Owner;// 1 = first player , 2 = second player
-    bool ishero;//
+    bool ishero;
 public:
     Character(const std::string& name, int hp, int move
         , int attacktyp , int owner , bool her);
@@ -25,7 +24,6 @@ public:
     void heal(int amount) ;
     
     void setHp(int hp);
-    void setIsAlive(bool isAlive);
     void setSpace(int sp);
     void setowner(int ow);
     
@@ -34,7 +32,6 @@ public:
     int getMaxhp() const;
     int getMove() const;
     int getAttacktype() const;
-    bool getIsAlive() const;
     int getSpace() const;
     int getowner() const;
     int isHero() const;

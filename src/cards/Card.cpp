@@ -7,6 +7,14 @@
 
 using namespace std;
 
+Card::Card()
+{
+    this->Attack = 0;
+    this->Boost = 0;
+    this->Owner = owner::Any;
+    this->Type = CardType::Versatile;
+    this->Timing = timing::None;
+}
 
 Card::Card(string nam , owner own , CardType typ , int att , timing tim , int bos , string efec)
 {

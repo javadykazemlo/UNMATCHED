@@ -249,13 +249,29 @@ void Controller::playTurn()
 
                 
             }
-            for(int i = 0 ; i < current->getfighterCount() ; i++)
-            {
-                if(!current->getsidekick(i)->checkalive())
-                bord.deletCharacter(current->getsidekick(i)->getSpace());
 
-                if(!enemy->getsidekick(i)->checkalive())
-                bord.deletCharacter(enemy->getsidekick(i)->getSpace());
+            // FIX: getsidekick(i) وقتی کاراکتر مرده باشه خودش nullptr
+            // برمی‌گردونه (بخاطر شرط fighters[i]->checkalive() داخلش)،
+            // پس ->checkalive() روی nullptr صدا زده می‌شد و کرش می‌کرد.
+            // به‌جاش از لیست خام getCharacters() استفاده می‌کنیم که
+            // مرده‌ها رو هم برمی‌گردونه، و با getSpace() != -1 چک می‌کنیم
+            // که یک کاراکتر مرده دوبار از روی نقشه پاک نشه.
+            for(Character* c : current->getCharacters())
+            {
+                if(c && !c->checkalive() && c->getSpace() != -1)
+                {
+                    bord.deletCharacter(c->getSpace());
+                    c->setSpace(-1);
+                }
+            }
+
+            for(Character* c : enemy->getCharacters())
+            {
+                if(c && !c->checkalive() && c->getSpace() != -1)
+                {
+                    bord.deletCharacter(c->getSpace());
+                    c->setSpace(-1);
+                }
             }
             
             gamerand++;
@@ -370,7 +386,10 @@ int Controller::boost()
     int choos = current->getDeck()->gethandSize();
     cout << "Selected card: ";
     int select = getInt();
-    for(int i = 0 ; select < 1 || select > choos + 1 ; i++)
+    // FIX: شرط قبلی select > choos + 1 بود، یعنی عدد choos + 1
+    // به‌عنوان انتخاب معتبر قبول می‌شد و باعث دسترسی خارج از رنج در
+    // playCard() و کرش برنامه می‌شد. باید select > choos باشه.
+    for(int i = 0 ; select < 1 || select > choos ; i++)
     {
         cout << "Invalid choice\n";
         cout << "Selected card: ";
@@ -395,8 +414,9 @@ void Controller::Scheme()
     if(choos.empty())
     {
         cout << "You don't have any Scheme cards.\n";
-        gamerand++;
-
+        // FIX: gamerand++ اینجا حذف شد. لوپ اصلی توی playTurn() بعد از
+        // هر اکشن خودش gamerand++ می‌زنه؛ داشتن این خط هم اینجا باعث
+        // می‌شد بازیکن دو تا اکشن‌ش یک‌جا مصرف بشه.
         return;
     }
 
@@ -460,7 +480,7 @@ void Controller::startCombat()
     if(current->getDeck()->getAttackCardIndices().empty())
     {
         cout << "You have no attack cards. Cannot attack this turn.\n";
-        gamerand++;
+        // FIX: gamerand++ اینجا هم حذف شد، همون دلیل بالا.
         return;
     }
 
@@ -492,10 +512,15 @@ void Controller::startCombat()
     Character* attacker = choices[choose - 1];
 
     valid.clear();
+    // FIX: choices هم باید پاک بشه، وگرنه attackerهای مرحله‌ی قبل
+    // توی لیست defenderها می‌مونن و ایندکس‌ها با هم نمی‌خونن.
+    choices.clear();
     number = 1;
     vector<Character*> ch = bord.getAttackCharacters(attacker->getAttacktype() , attacker->getSpace());
 
-    cout << "\nYour Characters:\n";
+    // FIX: این لیست، کاراکترهای قابل‌حمله (حریف) رو نشون می‌ده، نه
+    // کاراکترهای خودت؛ برچسب اصلاح شد تا گمراه‌کننده نباشه.
+    cout << "\nEnemy Characters:\n";
     for(int i = 0 ; i < ch.size() ; i++)
     {
         if(ch[i]->checkalive() && attacker->getowner() != ch[i]->getowner())
@@ -640,8 +665,15 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
         cout << "\n💥 " << current->getName() << " deals " << damage << " damage!\n";
         enemy->getHero()->takeDamage(damage);
 
-        if(!enemy->getHero()->checkalive())
+        // FIX: چون Character::takeDamage دیگه Space رو خودش -1 نمی‌کنه
+        // (ببین fix پایین توی Character.cpp)، اینجا هنوز موقعیت درست
+        // کاراکتر مرده رو داریم؛ بعد از پاک کردن از تخته صراحتاً -1ش
+        // می‌کنیم تا جای دیگه دوباره پاکش نکنه.
+        if(!enemy->getHero()->checkalive() && enemy->getHero()->getSpace() != -1)
+        {
             bord.deletCharacter(enemy->getHero()->getSpace());
+            enemy->getHero()->setSpace(-1);
+        }
 
         cout << "  " << enemy->getName() << " HP: " << enemy->getHero()->getHp() 
         << "/" << enemy->getHero()->getMaxhp() << "\n";

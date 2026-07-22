@@ -29,7 +29,15 @@ void Character::takeDamage(int damage) {
         if (damage > 0) {
             Hp -= damage;
             if (Hp <= 0) {
-                Space = -1;
+                // FIX: قبلاً اینجا Space = -1 می‌شد، یعنی همون لحظه‌ی مرگ
+                // موقعیت کاراکتر روی نقشه گم می‌شد. بعدش هرجا کد می‌خواست
+                // با getSpace() کاراکتر رو از روی تخته پاک کنه
+                // (bord.deletCharacter(character->getSpace())) در واقع
+                // deletCharacter(-1) صدا می‌شد که دسترسی خارج از رنج
+                // آرایه‌ی spaces[32] بود و باعث کرش می‌شد.
+                // حالا Space دست‌نخورده می‌مونه تا هرکسی که مرگ رو تشخیص
+                // می‌ده بتونه با getSpace() موقعیت درست رو بگیره، از تخته
+                // پاکش کنه، و *بعدش* خودش صراحتاً setSpace(-1) بزنه.
                 Hp = 0;
             }
         }
@@ -103,5 +111,3 @@ int Character::isHero() const
 {
     return ishero;
 }
-
-

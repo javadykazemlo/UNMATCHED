@@ -175,7 +175,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Look Into My Eyes")
     {
-        if (cancelEffectDR)
+        if (cancelEffectDR) 
         {
             cout << "Look Into My Eyes effect was canceled.\n";
             return;

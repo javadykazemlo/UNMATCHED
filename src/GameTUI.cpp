@@ -72,8 +72,6 @@ void GameTUI::showWelcome()
     screen.Loop(withEnter);
     system("clear");
 }
-// purely cosmetic: the engine stores some hero names in lowercase
-// ("sherlock"); capitalize just for display, without touching game data.
 static string displayName(const string& s)
 {
     if (s.empty()) return s;
@@ -110,8 +108,6 @@ int GameTUI::visibleLength(const string& s)
             while (i < s.size() && s[i] != 'm') i++;
             continue;
         }
-        // Rough UTF-8 aware count: only count the first byte of a
-        // multi-byte sequence so box-drawing / unicode glyphs count as 1.
         unsigned char c = static_cast<unsigned char>(s[i]);
         if ((c & 0xC0) != 0x80) len++;
     }
@@ -175,14 +171,9 @@ void GameTUI::printSideBySide(const vector<string>& left,
     }
 }
 
-// ─────────────────────────────── map ───────────────────────────────
 
 GameTUI::NodePos GameTUI::nodePos(int id)
 {
-    // col/row here are logical layout units (not a strict grid) —
-    // they mirror the real board's regions: misty grounds (top-left),
-    // study/library (top), sitting room + stairs hub (middle),
-    // dining/hallway (right of center), outer path (bottom row).
     static const NodePos table[32] = {
         /*0*/  {1,0},  /*1*/  {1,2},  /*2*/  {4,0},  /*3*/  {5,2},
         /*4*/  {3,3},  /*5*/  {6,3},  /*6*/  {4,5},  /*7*/  {4,7},
@@ -216,12 +207,10 @@ string GameTUI::nodeGlyph(Bord& bord, int id, Player& dracula, Player& sherlock)
 
         if (occ->isHero())
         {
-            // heroes always show as D (Dracula side) or S (Sherlock side)
             glyph = isDraculaSide ? "D " : "S ";
         }
         else
         {
-            // sidekick: use first letter of the last name token
             char letter = '?';
             if (!name.empty())
             {
@@ -242,9 +231,6 @@ string GameTUI::nodeGlyph(Bord& bord, int id, Player& dracula, Player& sherlock)
     snprintf(buf, sizeof(buf), "%2d", id);
     return GREY + string(buf) + RESET;
 }
-
-// --- internal helper: draws a clean "diagonal then straight" line between
-// two canvas points, so edges never depend on nodes being grid-neighbors. ---
 static void drawEdgeOnCanvas(vector<vector<string>>& canvas, int W, int H,
                               int x0, int y0, int x1, int y1)
 {
@@ -282,7 +268,6 @@ static void drawEdgeOnCanvas(vector<vector<string>>& canvas, int W, int H,
 
 vector<string> GameTUI::buildMapLines(Bord& bord, Player& dracula, Player& sherlock)
 {
-    // pixel-space scale: 3 cols per logical unit, 2 rows per logical unit
     auto px = [](int col) { return 1 + col * 3; };
     auto py = [](int row) { return 1 + row * 2; };
 
@@ -299,25 +284,23 @@ vector<string> GameTUI::buildMapLines(Bord& bord, Player& dracula, Player& sherl
 
     vector<vector<string>> canvas(H, vector<string>(W, " "));
 
-    // draw edges first so labels always render on top
     for (int id = 0; id < 32; id++)
     {
         NodePos a = nodePos(id);
         for (int nb : bord.getposAdjacent(id))
         {
-            if (nb <= id) continue; // avoid drawing each edge twice
+            if (nb <= id) continue; 
             NodePos b = nodePos(nb);
             drawEdgeOnCanvas(canvas, W, H, px(a.col), py(a.row), px(b.col), py(b.row));
         }
     }
-    // stamp node glyphs on top (each glyph is 2 visible chars wide)
     for (int id = 0; id < 32; id++)
     {
         NodePos p = nodePos(id);
         int cx = px(p.col), cy = py(p.row);
         if (cy < 0 || cy >= H || cx < 0 || cx + 1 >= W) continue;
         canvas[cy][cx] = nodeGlyph(bord, id, dracula, sherlock);
-        canvas[cy][cx + 1] = ""; // glyph already includes both visible chars
+        canvas[cy][cx + 1] = ""; 
     }
 
     vector<string> raw;
@@ -329,7 +312,6 @@ vector<string> GameTUI::buildMapLines(Bord& bord, Player& dracula, Player& sherl
         raw.push_back(line);
     }
 
-    // fence-style frame around just the grid itself
     int innerWidth = 0;
     for (auto& l : raw) innerWidth = max(innerWidth, visibleLength(l));
 
@@ -352,7 +334,6 @@ vector<string> GameTUI::buildMapLines(Bord& bord, Player& dracula, Player& sherl
     return lines;
 }
 
-// ────────────────────────── hero / hand panels ──────────────────────────
 
 vector<string> GameTUI::buildHeroPanel(Player& player, bool isTurn, const string& color, int width)
 {
@@ -405,7 +386,6 @@ vector<string> GameTUI::buildHeroPanel(Player& player, bool isTurn, const string
 vector<string> GameTUI::buildHandPanel(const vector<Card>& hand, const string& ownerName, const string& color, int width)
 {
     vector<string> lines;
-    //const vector<Card>& hand = player.getDeck()->gethand();
 
     string header = color + BOLD + ownerName + " - HAND (" + to_string(hand.size()) + ")" + RESET;
     lines.push_back(header);
@@ -465,7 +445,6 @@ vector<string> GameTUI::buildHandPanel(const vector<Card>& hand, const string& o
     return lines;
 }
 
-// ─────────────────────────────── render ───────────────────────────────
 
 void GameTUI::render(Player& p1, Player& p2, Player* currentTurn, Bord& bord)
 {

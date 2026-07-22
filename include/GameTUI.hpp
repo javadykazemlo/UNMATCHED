@@ -7,24 +7,9 @@ class Bord;
 class Character;
 class Card;
 
-// ─────────────────────────────────────────────────────────────────────────
-//  GameTUI
-//
-//  Draws the "fixed" top part of the screen (title, whose turn it is, the
-//  map, both heroes' stats and both players' hands) exactly like a small
-//  dashboard. Every time render() is called the terminal is cleared and the
-//  whole dashboard is redrawn from scratch, so from the player's point of
-//  view it always looks like the same picture just refreshing in place.
-//  Everything else (menus, prompts, "Enter command:", action log text, ...)
-//  keeps working exactly like before: plain std::cin / std::cout under the
-//  dashboard.
-// ─────────────────────────────────────────────────────────────────────────
 class GameTUI
 {
 public:
-    // Draws the whole dashboard. p1/p2 can be passed in any order, the
-    // hero name is used to figure out which one is Dracula and which one
-    // is Sherlock so the layout is always Dracula-left / Sherlock-right.
     static void showWelcome();
     static void render(Player& p1, Player& p2, Player* currentTurn, Bord& bord);
     

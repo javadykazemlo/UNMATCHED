@@ -250,12 +250,6 @@ void Controller::playTurn()
                 
             }
 
-            // FIX: getsidekick(i) وقتی کاراکتر مرده باشه خودش nullptr
-            // برمی‌گردونه (بخاطر شرط fighters[i]->checkalive() داخلش)،
-            // پس ->checkalive() روی nullptr صدا زده می‌شد و کرش می‌کرد.
-            // به‌جاش از لیست خام getCharacters() استفاده می‌کنیم که
-            // مرده‌ها رو هم برمی‌گردونه، و با getSpace() != -1 چک می‌کنیم
-            // که یک کاراکتر مرده دوبار از روی نقشه پاک نشه.
             for(Character* c : current->getCharacters())
             {
                 if(c && !c->checkalive() && c->getSpace() != -1)
@@ -386,9 +380,6 @@ int Controller::boost()
     int choos = current->getDeck()->gethandSize();
     cout << "Selected card: ";
     int select = getInt();
-    // FIX: شرط قبلی select > choos + 1 بود، یعنی عدد choos + 1
-    // به‌عنوان انتخاب معتبر قبول می‌شد و باعث دسترسی خارج از رنج در
-    // playCard() و کرش برنامه می‌شد. باید select > choos باشه.
     for(int i = 0 ; select < 1 || select > choos ; i++)
     {
         cout << "Invalid choice\n";
@@ -414,9 +405,6 @@ void Controller::Scheme()
     if(choos.empty())
     {
         cout << "You don't have any Scheme cards.\n";
-        // FIX: gamerand++ اینجا حذف شد. لوپ اصلی توی playTurn() بعد از
-        // هر اکشن خودش gamerand++ می‌زنه؛ داشتن این خط هم اینجا باعث
-        // می‌شد بازیکن دو تا اکشن‌ش یک‌جا مصرف بشه.
         return;
     }
 
@@ -480,7 +468,6 @@ void Controller::startCombat()
     if(current->getDeck()->getAttackCardIndices().empty())
     {
         cout << "You have no attack cards. Cannot attack this turn.\n";
-        // FIX: gamerand++ اینجا هم حذف شد، همون دلیل بالا.
         return;
     }
 
@@ -512,14 +499,10 @@ void Controller::startCombat()
     Character* attacker = choices[choose - 1];
 
     valid.clear();
-    // FIX: choices هم باید پاک بشه، وگرنه attackerهای مرحله‌ی قبل
-    // توی لیست defenderها می‌مونن و ایندکس‌ها با هم نمی‌خونن.
     choices.clear();
     number = 1;
     vector<Character*> ch = bord.getAttackCharacters(attacker->getAttacktype() , attacker->getSpace());
 
-    // FIX: این لیست، کاراکترهای قابل‌حمله (حریف) رو نشون می‌ده، نه
-    // کاراکترهای خودت؛ برچسب اصلاح شد تا گمراه‌کننده نباشه.
     cout << "\nEnemy Characters:\n";
     for(int i = 0 ; i < ch.size() ; i++)
     {
@@ -665,10 +648,6 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
         cout << "\n💥 " << current->getName() << " deals " << damage << " damage!\n";
         enemy->getHero()->takeDamage(damage);
 
-        // FIX: چون Character::takeDamage دیگه Space رو خودش -1 نمی‌کنه
-        // (ببین fix پایین توی Character.cpp)، اینجا هنوز موقعیت درست
-        // کاراکتر مرده رو داریم؛ بعد از پاک کردن از تخته صراحتاً -1ش
-        // می‌کنیم تا جای دیگه دوباره پاکش نکنه.
         if(!enemy->getHero()->checkalive() && enemy->getHero()->getSpace() != -1)
         {
             bord.deletCharacter(enemy->getHero()->getSpace());

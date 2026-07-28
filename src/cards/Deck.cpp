@@ -575,6 +575,25 @@ void Deck::discardCard(const Card& card)
     DiscardPile.push_back(card);
 }
 
+
+Card Deck::removeFromHand(int index)
+{
+    Card selected;
+    if(index < 0 || index >= (int)hand.size())
+        return selected;
+
+    selected = hand[index];
+    hand.erase(hand.begin() + index);
+
+    return selected;
+}
+
+void Deck::putOnTop(const Card& card)
+{
+    deck.push_back(card);
+}
+
+
 void Deck::showCard(const Card& card) const 
 {
     cout << "┌────────────────────────────────────────────────────┐\n";

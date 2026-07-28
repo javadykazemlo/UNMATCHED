@@ -18,6 +18,7 @@ private:
 
     bool cancelEffectDR = false;
     bool cancelEffectSH = false;
+    bool cancelEffectIM = false;
     
     int gamerand = 0;
     bool GuessElementary = false;
@@ -47,7 +48,7 @@ public:
     Character* getCharacterAt(int position);
     bool isGameOver();
     
-    void SaveGame();
+    void SaveGame();    
     bool end_game() const;
 
     void applyEffect(Card& card, Card& enemycard, Player* self, Player* opponent, Character* attacker, Character* defender, bool woncombat);

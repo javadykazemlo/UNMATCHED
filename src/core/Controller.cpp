@@ -515,6 +515,7 @@ void Controller::startCombat()
 {
     cancelEffectDR = false;
     cancelEffectSH = false;
+    cancelEffectIM = false;
     GuessElementary = false;
 
     if(current->getDeck()->getAttackCardIndices().empty())
@@ -731,6 +732,7 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
   
     cancelEffectDR = false;
     cancelEffectSH = false;
+    cancelEffectIM = false;
 }
 
 

@@ -19,6 +19,8 @@ public:
     void draw(int count = 1);
     Card playCard(int index, Card& selected);
     void discardCard(const Card& card);
+    Card removeFromHand(int index);
+    void putOnTop(const Card& card);
     
     void showCard(const Card& card) const;
     void showDeck(std::string name) const;

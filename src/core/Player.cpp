@@ -5,6 +5,7 @@
 #include "entities/Sherlock.hpp"
 #include "entities/Sister.hpp"
 #include "entities/Dr_watson.hpp"
+#include "entities/invisible_man.hpp"
 
 using namespace std;
 
@@ -19,6 +20,7 @@ void Player::chooseCharacter(int choose , int owner)
     switch (choose)
     {
         case 1://Dracula
+        {
             fighters.push_back(new Dracula(owner));
             fighters.push_back(new Sister("Sister Agatha" , owner));
             fighters.push_back(new Sister("Sister Beatrix" , owner));
@@ -28,8 +30,9 @@ void Player::chooseCharacter(int choose , int owner)
             fighterCount = 4;
 
             break;
-
+        }
         case 2://Sherlock
+        {
             fighters.push_back(new Sherlock(owner));
             fighters.push_back(new Dr_watson(owner));
 
@@ -37,6 +40,16 @@ void Player::chooseCharacter(int choose , int owner)
             fighterCount = 2;
 
             break;
+        }
+        case 3://invisible man
+        {
+            fighters.push_back(new invisible_man(owner));
+
+            deck = new Deck(3);
+            fighterCount = 1;
+
+            break;
+        }
     }
 }
 

@@ -17,10 +17,10 @@ int main()
     GameTUI::showWelcome();
 
     controller.choosePlayers(player);
-
-    controller.chooseCharacters();
     
     controller.playTurn();
+
+    controller.SaveGame();
   
   	return 0;
 }

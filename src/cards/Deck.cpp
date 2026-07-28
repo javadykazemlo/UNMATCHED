@@ -182,7 +182,7 @@ void Deck::buildDeck(int hero)
 
 
     }
-    else
+    else if(hero == 2)
     {
 
         for (int i = 0; i < 2; i++) 
@@ -354,6 +354,179 @@ void Deck::buildDeck(int hero)
             );
         }
         
+    }
+    else if(hero == 3)
+    {
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Coded Notes",
+                owner::Hero,
+                CardType::Defense,
+                3,
+                timing::AfterCombat,
+                2,
+                "After the fight, draw a few cards and quietly slide a couple of them back on top of your deck in whichever order suits you."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Confound",
+                owner::Hero,
+                CardType::Versatile,
+                3,
+                timing::AfterCombat,
+                2,
+                "Your opponent may discard a card to stop you; otherwise you scatter every fog token to new spaces."
+            );
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            deck.emplace_back(
+                "Covert Preparation",
+                owner::Hero,
+                CardType::Versatile,
+                2,
+                timing::AfterCombat,
+                1,
+                "Draw a card, then reposition a fog token a short distance across the board."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Dreaming of Revenge",
+                owner::Hero,
+                CardType::Versatile,
+                3,
+                timing::AfterCombat,
+                1,
+                "If you are standing in the fog, every enemy fighter sharing a fog space with it feels the sting too."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Emerge from Mist",
+                owner::Hero,
+                CardType::Attack,
+                3,
+                timing::DuringCombat,
+                2,
+                "Stepping out of the fog to strike hits far harder than anyone expects."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Impossible to See",
+                owner::Hero,
+                CardType::Versatile,
+                2,
+                timing::BeforeCombat,
+                2,
+                "Your opponent's card is reduced to nothing before it ever has a chance to matter."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Into Thin Air",
+                owner::Hero,
+                CardType::Defense,
+                4,
+                timing::AfterCombat,
+                1,
+                "Slip a single space away while your opponent is forced to relocate one of your fog tokens."
+            );
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            deck.emplace_back(
+                "Lurking",
+                owner::Hero,
+                CardType::Defense,
+                2,
+                timing::AfterCombat,
+                2,
+                "Draw a card, then either slip onto a fog space or nudge a fog token further away."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Reign of Terror",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                1,
+                "From the safety of the fog, strike fear and damage into a chosen enemy fighter."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Rolling Fog",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                1,
+                "Shift a fog token to another space and keep the pressure on with an extra action."
+            );
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            deck.emplace_back(
+                "Slip Away",
+                owner::Hero,
+                CardType::Attack,
+                3,
+                timing::AfterCombat,
+                2,
+                "Move a fog token to an empty space, then vanish into it yourself."
+            );
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            deck.emplace_back(
+                "Step Lightly",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                1,
+                "A quick strike on a nearby fighter, made far more dangerous when thrown from the fog."
+            );
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            deck.emplace_back(
+                "Vanish",
+                owner::Hero,
+                CardType::Scheme,
+                0,
+                timing::None,
+                3,
+                "Recover some health and disappear from the board entirely, until you choose to reappear."
+            );
+        }
+
     }
 
 }

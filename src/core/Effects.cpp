@@ -466,6 +466,152 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         return;
 
     }
+
+//<<<<<<<<<<<<<<<<< invisible_man
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
 }    
 
 
@@ -854,4 +1000,69 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         
     }
 
+//<<<<<<<<<<<<<<<<< invisible_man
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
+
+    else if (card.getName() == "")
+    {
+        if (cancelEffectDR)
+        {
+            cout << card.getName() << " effect was canceled.\n";
+            return;
+        }
+        cout << "\nEffect >> " << card.geteffect() << endl; 
+
+        
+
+
+        return;
+        
+    }
 }

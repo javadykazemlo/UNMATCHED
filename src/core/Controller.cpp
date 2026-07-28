@@ -5,9 +5,12 @@
 #include <stdexcept>
 #include <algorithm>
 #include <random>
+#include <nlohmann/json.hpp>
 #include "core/Controller.hpp"
 #include "GameTUI.hpp"
+#include "entities/invisible_man.hpp"
 
+using json = nlohmann::json;   
 using namespace std;
 
 void Controller::choosePlayers(Player player[2])
@@ -15,22 +18,24 @@ void Controller::choosePlayers(Player player[2])
     string n;
     int a;
 
+    cout << "\nFirst player, enter your age: ";
+    a = getInt();
+    player[0].setAge(a);
+    
+    cout << "Second player, enter your age: ";
+    a = getInt();
+    player[1].setAge(a);
+
+
     cout << "\nFirst player, enter your name: ";
     getline(cin , n);
     player[0].setName(n);
 
-    cout << player[0].getName() << ", enter your age: ";
-    a = getInt();
-    player[0].setAge(a);
-    
     cout << "Second player, enter your name: ";
     getline(cin >> ws , n);
     player[1].setName(n);
     
-    cout << player[1].getName() << ", enter your age: ";
-    a = getInt();
-    player[1].setAge(a);
-    
+
     if(player[0].getAge() <= player[1].getAge())
     {
         current = &player[0];
@@ -41,33 +46,47 @@ void Controller::choosePlayers(Player player[2])
         current = &player[1];
         enemy = &player[0];
     }
+    chooseCharacters();
 }
 
 
 
 void Controller::chooseCharacters()
 {
-    int cha;
     cout << "\nCharacters:" << endl;
-    cout << " 1.Dracula" << endl;
-    cout << " 2.Sherlock" << endl;
-
+    cout << " 1. Dracula" << endl;
+    cout << " 2. Sherlock" << endl;
+    cout << " 3. invisible man" << endl;
+    
+    int cha_cur;
     cout << current->getName() << ", choose your Character: ";
-    cha = getChoice({1,2});
+    cha_cur = getChoice({1,2,3});
+    current->chooseCharacter(cha_cur , 1);
 
-    current->chooseCharacter(cha , 1);
+    cout << "\nRemaining Characters:" << endl;
 
-    if (cha == 1) 
-    {
-        enemy->chooseCharacter(2 , 2);  
-    } 
-    else 
-    {
-        enemy->chooseCharacter(1 , 2);  
+    vector<int> available;
+    if (cha_cur != 1) {
+        cout << " 1. Dracula" << endl;
+        available.push_back(1);
     }
+    if (cha_cur != 2) {
+        cout << " 2. Sherlock" << endl;
+        available.push_back(2);
+    }
+    if (cha_cur != 3) {
+        cout << " 3. Invisible Man" << endl;
+        available.push_back(3);
+    }
+    
+    int cha_enm;
+    cout << enemy->getName() << ", choose your Character: ";
+    cha_enm = getChoice(available);
+    enemy->chooseCharacter(cha_enm , 2);
+
 
     int pos;
-    cout << current->getName() << ", choose your Character position (1 = left map ) (2 = righ map): ";
+    cout << endl << current->getName() << ", choose your Character position (1 = left map ) (2 = righ map): ";
     pos = getChoice({1,2});
 
     if(pos == 1)
@@ -95,7 +114,28 @@ void Controller::plaseSidekicks(Player& player)
     vector<int> choose; 
     int s;
     
-    if(hero->getName() == "Dracula")
+    if(hero->getName() == "sherlock")
+    {
+        cout << "\n══════════════════════════════════════════════════════════════════" << endl;
+        cout << "Available space: ";
+        for(int j = 0 ; j < space.size()  ; j++)
+        {
+            if(!bord.getSpaceStatus(space[j]))
+            {
+                cout << "   " << space[j];  
+                choose.push_back(space[j]);
+            }
+        }
+        cout << "\nwhere do you want to place the Dr_watson: ";
+        s = getChoice(choose);
+        for(int j = 0 ; j < space.size()  ; j++)
+        {
+            if(!bord.getSpaceStatus(space[j]) && s == space[j])
+                bord.addCharacter( s, player.getsidekick(1) );
+        }
+
+    }
+    else if(hero->getName() == "Dracula")
     {
         cout << "\n════════════════════════════════════════════════════════════════════" << endl;
         for(int i = 0 ; i < 3 ; i++)
@@ -119,26 +159,27 @@ void Controller::plaseSidekicks(Player& player)
             choose.clear();
         }
     }
-    else
+    else if(hero->getName() == "invisible man")
     {
-        cout << "\n══════════════════════════════════════════════════════════════════" << endl;
-        cout << "Available space: ";
-        for(int j = 0 ; j < space.size()  ; j++)
-        {
-            if(!bord.getSpaceStatus(space[j]))
-            {
-                cout << "   " << space[j];  
-                choose.push_back(space[j]);
-            }
-        }
-        cout << "\nwhere do you want to place the Dr_watson: ";
-        s = getChoice(choose);
-        for(int j = 0 ; j < space.size()  ; j++)
-        {
-            if(!bord.getSpaceStatus(space[j]) && s == space[j])
-                bord.addCharacter( s, player.getsidekick(1) );
-        }
+        invisible_man* im = dynamic_cast<invisible_man*>(hero);
 
+        cout << "\n══════════════════════════════════════════════════════════════════" << endl;
+        for(int i = 0 ; i < 3 ; i++)
+        {
+            cout << "Available space: ";
+            for(int j = 0 ; j < space.size()  ; j++)
+            {
+                if(!bord.getSpaceStatus(space[j]) && !im->isMistPosition(space[j]))
+                {
+                    cout << "   " << space[j];  
+                    choose.push_back(space[j]);
+                }
+            }
+            cout << "\nwhere do you want to place fog token #" << i + 1 << ": ";
+            s = getChoice(choose);
+            im->setMistToken(i , s);
+            choose.clear();
+        }
     }
 }
 
@@ -318,6 +359,8 @@ void Controller::move(int mov ,Character* selected)
     currently.push_back(place);
     visited[place] = true;
 
+    invisible_man* imMover = dynamic_cast<invisible_man*>(selected);
+
     while(mov--)
     {
         next.clear();
@@ -326,6 +369,15 @@ void Controller::move(int mov ,Character* selected)
             vector<int> neighbors = bord.getposAdjacent(currentPos);
             vector<int> tunnel = bord.getSecretPassages(currentPos);
             neighbors.insert(neighbors.end() , tunnel.begin() , tunnel.end());
+
+            if(imMover != nullptr && imMover->isMistPosition(currentPos))
+            {
+                for(int mistPos : imMover->getMistTokens())
+                {
+                    if(mistPos != -1 && mistPos != currentPos)
+                        neighbors.push_back(mistPos);
+                }
+            }
             
             for(int pos : neighbors)
             {
@@ -621,6 +673,13 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     int attackValue = attackCard.getAttack();
     int defenseValue = defenseCard.getAttack();
 
+    invisible_man* imDefender = dynamic_cast<invisible_man*>(defender);
+    if(imDefender != nullptr && imDefender->isMistPosition(imDefender->getSpace()) && !defenseCard.getName().empty())
+    {
+        defenseValue += 1;
+        cout << "\n🌫️ Invisible Man is on a fog token: defense +1 (cannot be cancelled).\n";
+    }
+
     cout << "\n═══════════════════════════════════════════════════════════════════\n";
     cout << "                 ⚔️ RESOLVING COMBAT ⚔️\n";
     cout << "═════════════════════════════════════════════════════════════════════\n";
@@ -733,6 +792,11 @@ bool Controller::isGameOver()
     return end_game();
 }
 
+void Controller::SaveGame()
+{
+    
+
+}
 
 bool Controller::end_game() const
 {

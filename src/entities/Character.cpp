@@ -10,7 +10,6 @@ Character::Character(const std::string& name, int hp, int move, int attacktyp , 
     this->Hp = hp;
     this->Move = move;
     this->Attacktype = attacktyp;
-    //this->IsAlive = true;
     this->MaxHp = hp;
     this->Owner = owner;
     this->ishero = her;

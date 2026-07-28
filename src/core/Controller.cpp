@@ -559,7 +559,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
 
         cout << "Available cards: ";
         for(int idx : myhandcard) 
-        cout << idx + 1 << "  ";
+        cout << idx<< "  ";
 
         cout << "\n> ";
 
@@ -583,6 +583,18 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
         else
             ownerOK = card.issideKick() || card.isAnyowner();
 
+        for(int idx : myhandcard) 
+        {
+            if(ownerOK)
+            {
+                break;
+            }
+            cout << "This fighter don't have any card to use.\n";
+            Card empty;
+            return empty;
+        }
+
+        
         if(!ownerOK)
         {
             cout << "This fighter can't use this card.\n";

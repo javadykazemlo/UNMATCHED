@@ -11,6 +11,8 @@ using namespace std;
 
 void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender , bool woncombat)
 {
+    activeDecider = self;
+
 //<<<<<<<<<<<<<<<<< Dracula
 
     if (card.getName() == "Feeding Frenzy")
@@ -94,9 +96,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         while(true)
         {
             cout << "Do you want to remove a card?(y/n): ";
-            char option;
-            cin >> option;
-            if(option == 'y' || option == 'Y')
+            if(getYesNo())
             {
                 self->getDeck()->showHand(self->getName());
                 int handSize = self->getDeck()->gethandSize();
@@ -541,10 +541,10 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         cout << card.geteffect() << endl;
 
         cout << opponent->getName() << ", do you want to discard 1 card? (y/n): ";
-        char choice;
-        cin >> choice;
+        activeDecider = opponent;
+        bool willDiscard = getYesNo();
 
-        if (choice == 'y' || choice == 'Y')
+        if (willDiscard)
         {
             opponent->getDeck()->showHand(opponent->getName());
             int handSize = opponent->getDeck()->gethandSize();
@@ -560,9 +560,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             Card discarded;
             discarded = opponent->getDeck()->playCard(idx - 1 , discarded);
             cout << discarded.getName() << " was discarded.\n";
+            activeDecider = self;
         }
         else
         {
+            activeDecider = self;
             invisible_man* im = dynamic_cast<invisible_man*>(self->getHero());
             if (im != nullptr)
             {
@@ -642,6 +644,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         if (tokens.size() >= 2)
         {
+            activeDecider = opponent;
+
             cout << "\n" << opponent->getName() << ", choose a different fog token to move: ";
             for (int t : tokens) cout << "   " << t;
             int tokenPos2 = getChoice(tokens);
@@ -657,6 +661,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
             for (int i = 0; i < 3; i++)
                 if (im->getMistToken(i) == tokenPos2) { im->setMistToken(i , dest2); break; }
+
+            activeDecider = self;
         }
 
         return;
@@ -763,6 +769,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         if (!tokens.empty())
         {
+            activeDecider = opponent;
+
             cout << "\n" << opponent->getName() << ", choose a fog token to move: ";
             for (int t : tokens) cout << "   " << t;
             int tokenPos = getChoice(tokens);
@@ -783,6 +791,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             {
                 if (im->getMistToken(i) == tokenPos) { im->setMistToken(i , dest); break; }
             }
+
+            activeDecider = self;
         }
 
         return;
@@ -920,6 +930,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
 void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , Character* attacker )
 {
+    activeDecider = self;
+
 //<<<<<<<<<<<<<<<<< Dracula 
 
     if (card.getName() == "MistForm")
@@ -1210,6 +1222,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         }
         
         Card burn;
+        activeDecider = opponent;
         while (true)
         {
             cout << opponent->getName() << ", choose a card with " << number << "attack or defense: ";
@@ -1224,6 +1237,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
             cout << "Invalid input.\n";
         }
+        activeDecider = self;
         
         
         int burnBoost = burn.getBoost();
@@ -1450,6 +1464,8 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
             if (!tokens.empty())
             {
+                activeDecider = opponent;
+
                 cout << opponent->getName() << ", choose a fog token to move: ";
                 for (int t : tokens) cout << "   " << t;
                 int tokenPos = getChoice(tokens);
@@ -1465,6 +1481,8 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
                 for (int i = 0; i < 3; i++)
                     if (im->getMistToken(i) == tokenPos) { im->setMistToken(i , dest); break; }
+
+                activeDecider = self;
             }
         }
 

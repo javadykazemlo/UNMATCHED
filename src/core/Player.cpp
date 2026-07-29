@@ -13,6 +13,7 @@ Player::Player()
 {
     deck = nullptr;
     Age = 0;
+    AIcontrolled = false;
 }
 
 void Player::chooseCharacter(int choose , int owner)
@@ -66,6 +67,16 @@ void Player::setAge(const int& a)
 void Player::setfighterCount(int count)
 {
     this->fighterCount = count;
+}
+
+void Player::setAI(bool ai)
+{
+    this->AIcontrolled = ai;
+}
+
+bool Player::isAI() const
+{
+    return AIcontrolled;
 }
 
 string Player::getName() const

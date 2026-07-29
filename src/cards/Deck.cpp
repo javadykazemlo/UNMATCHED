@@ -749,3 +749,17 @@ const vector<Card>& Deck::gethand() const
 {
     return hand;
 }
+
+const vector<Card>& Deck::getDiscardPile() const
+{
+    return DiscardPile;
+}
+
+
+
+void Deck::loadState(const vector<Card>& deckCards, const vector<Card>& handCards, const vector<Card>& discardCards)
+{
+    deck = deckCards;
+    hand = handCards;
+    DiscardPile = discardCards;
+}

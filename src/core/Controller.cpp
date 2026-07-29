@@ -9,6 +9,7 @@
 #include "core/Controller.hpp"
 #include "GameTUI.hpp"
 #include "entities/invisible_man.hpp"
+#include "Save/SaveManager.hpp"
 
 using json = nlohmann::json;   
 using namespace std;
@@ -204,9 +205,9 @@ void Controller::playTurn()
             current->getHero()->ability(bord , current);
 
     
-            cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn";
+            cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn\n 5.Save Game";
             cout << "\nChoose a action: ";
-            Todo = getChoice({1,2,3,4});
+            Todo = getChoice({1,2,3,4,5});
             
             Character* ch;
             int k = 1;
@@ -282,6 +283,11 @@ void Controller::playTurn()
                 case 4:
                 {
                     break;
+                }
+                case 5:
+                {
+                    SaveGame();
+                    continue; // does not consume the turn, ask again
                 }
                 default:
                 {
@@ -806,10 +812,37 @@ bool Controller::isGameOver()
     return end_game();
 }
 
-void Controller::SaveGame()
-{
-    
 
+void Controller::SaveGame(const string& filename)
+{
+    if (SaveManager::saveGame(current, enemy, filename))
+        cout << "\n✅ Game saved to \"" << filename << "\".\n";
+    else
+        cout << "\n❌ Failed to save the game.\n";
+}
+
+bool Controller::LoadGame(Player player[2], const string& filename)
+{
+    Player* loadedCurrent = nullptr;
+    Player* loadedEnemy = nullptr;
+
+    if (!SaveManager::loadGame(bord, player, loadedCurrent, loadedEnemy, filename))
+    {
+        cout << "\n❌ Failed to load the game from \"" << filename << "\".\n";
+        return false;
+    }
+
+    current = loadedCurrent;
+    enemy = loadedEnemy;
+
+    cancelEffectDR = false;
+    cancelEffectSH = false;
+    cancelEffectIM = false;
+    gamerand = 0;
+    GuessElementary = false;
+
+    cout << "\n✅ Game loaded from \"" << filename << "\".\n";
+    return true;
 }
 
 bool Controller::end_game() const

@@ -48,7 +48,8 @@ public:
     Character* getCharacterAt(int position);
     bool isGameOver();
     
-    void SaveGame();    
+    void SaveGame(const std::string& filename = "save.json");
+    bool LoadGame(Player player[2], const std::string& filename = "save.json");
     bool end_game() const;
 
     void applyEffect(Card& card, Card& enemycard, Player* self, Player* opponent, Character* attacker, Character* defender, bool woncombat);

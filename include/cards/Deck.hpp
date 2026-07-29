@@ -41,5 +41,10 @@ public:
     
     const std::vector<Card>& getdeck() const;
     const std::vector<Card>& gethand() const;
+    const std::vector<Card>& getDiscardPile() const;
+
+
+
+    void loadState(const std::vector<Card>& deckCards,const std::vector<Card>& handCards,const std::vector<Card>& discardCards);
     ~Deck() = default;
 };

@@ -736,7 +736,12 @@ int Deck::getdiscardSize() const
 
 Card Deck::getHandcard(int index)
 {
-    Card selected = hand[index];
+    Card selected;
+    if(index < 0 || index >= (int)hand.size())
+        return selected;
+
+    selected = hand[index];
+    
     return selected;
 }
 

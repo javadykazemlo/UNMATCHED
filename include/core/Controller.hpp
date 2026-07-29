@@ -44,6 +44,7 @@ private:
     Character* aiCardFighter = nullptr; 
 
     int boardDistance(int from, int to);
+    void damageAllFighters(Player* p, int damage);
 
     int aiScoreAction(int action, Player* decider);
     int aiScoreFighter(int idx, Player* decider);

@@ -59,9 +59,10 @@ void Dracula::ability(Bord& bord , Player* player)
                 catch(const runtime_error& e)
                 {
                     cout << e.what() << endl;
-                    for(int i = 0 ; i <  player->getfighterCount() ; i++)
+                    for(Character* fighter : player->getCharacters())
                     {
-                        player->getsidekick(i)->takeDamage(2);
+                        if(fighter && fighter->checkalive())
+                            fighter->takeDamage(2);
                     }
                     cout << "All character on team took 2 damage";
                 }

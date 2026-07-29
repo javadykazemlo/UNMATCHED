@@ -33,6 +33,7 @@ public:
     std::vector<Character*>& getCharacters();
     Character* getHero() const;
     Character* getsidekick(int i) const;
+    Character* getFighter(int i) const;
     int getfighterCount() const;
 
     Deck* getDeck() const ;

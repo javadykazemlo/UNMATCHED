@@ -252,10 +252,7 @@ void Controller::playTurn()
                     catch(const runtime_error& e)
                     {
                         cout << e.what() << endl;
-                        for(int i = 0 ; i <  current->getfighterCount() ; i++)
-                        {
-                            current->getsidekick(i)->takeDamage(2);
-                        }
+                        damageAllFighters(current, 2);
                         cout << "All character on team took 2 damage";
                     }
 
@@ -788,17 +785,17 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     if (attackValue > defenseValue) 
     {
         int damage = attackValue - defenseValue;
-        cout << "\n💥 " << current->getName() << " deals " << damage << " damage!\n";
-        enemy->getHero()->takeDamage(damage);
+        cout << "\n💥 " << current->getName() << " deals " << damage << " damage to " << defender->getName() << "!\n";
+        defender->takeDamage(damage);
 
-        if(!enemy->getHero()->checkalive() && enemy->getHero()->getSpace() != -1)
+        if(!defender->checkalive() && defender->getSpace() != -1)
         {
-            bord.deletCharacter(enemy->getHero()->getSpace());
-            enemy->getHero()->setSpace(-1);
+            bord.deletCharacter(defender->getSpace());
+            defender->setSpace(-1);
         }
 
-        cout << "  " << enemy->getName() << " HP: " << enemy->getHero()->getHp() 
-        << "/" << enemy->getHero()->getMaxhp() << "\n";
+        cout << "  " << defender->getName() << " HP: " << defender->getHp() 
+        << "/" << defender->getMaxhp() << "\n";
         attackerWon = true;
     }
     else 
@@ -1107,6 +1104,23 @@ int Controller::aiInt(Player* decider)
     return x;
 }
 
+void Controller::damageAllFighters(Player* p, int damage)
+{
+    if(!p) return;
+
+    for(Character* c : p->getCharacters())
+    {
+        if(c && c->checkalive())
+        {
+            c->takeDamage(damage);
+            if(!c->checkalive() && c->getSpace() != -1)
+            {
+                bord.deletCharacter(c->getSpace());
+                c->setSpace(-1);
+            }
+        }
+    }
+}
 
 Bord& Controller::getBord()
 {
@@ -1139,8 +1153,8 @@ void Controller::SaveGame(const string& filename)
     if (SaveManager::saveGame(current, enemy, filename))
         cout << "\n✅ Game saved to \"" << filename << "\".\n";
     else
-        cout << "\n❌ Failed to save the game.\n";
-
+        cout << "\n❌ Failed to save the game.\n";     
+    
     gamerand--;
 }
 

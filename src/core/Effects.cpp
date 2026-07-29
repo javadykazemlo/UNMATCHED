@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <limits>
 #include <stdexcept>
+#include <algorithm>
 #include "core/Controller.hpp"
 #include "entities/invisible_man.hpp"
 
@@ -25,23 +26,23 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         cout << card.geteffect() << endl;
 
-        vector<int> defendzon = bord.getCharacterZone(defender);
+        vector<int> defendZones = bord.getCharacterZone(defender);
 
         int amount = 0;
 
-        for(int adjen : defendzon)
+        for(int i = 1 ; i < self->getfighterCount() ; i++)
         {
-            if(bord.getSpaceStatus(adjen))
+            Character* sister = self->getFighter(i);
+            if(sister == nullptr || !sister->checkalive())
+                continue;
+
+            vector<int> sisterZones = bord.getposZone(sister->getSpace());
+            for(int z : sisterZones)
             {
-                for(int i = 1 ; i < 4 ; i++)
+                if(find(defendZones.begin() , defendZones.end() , z) != defendZones.end())
                 {
-                    if(bord.getCharacter(self->getsidekick(i)->checkalive()))
-                    {
-                        if(bord.getCharacter(adjen) == bord.getCharacter(self->getsidekick(i)->getSpace()))
-                        {
-                            amount++;
-                        }
-                    }
+                    amount++;
+                    break;
                 }
             }
         }
@@ -114,7 +115,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 }
 
                 Card selected;
-                selected = self->getDeck()->playCard(choice , selected);
+                selected = self->getDeck()->playCard(choice - 1 , selected);
     
                 card.setAttack(card.getAttack() + 1);
                 cout << "Card " << card.getName() << " gained +1 attack.\n";
@@ -163,10 +164,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         catch(const runtime_error& e)
         {
             cout << e.what() << endl;
-            for(int i = 0 ; i <  self->getfighterCount() ; i++)
-            {
-                self->getsidekick(i)->takeDamage(2);
-            }
+            damageAllFighters(self, 2);
             cout << "All character on team took 2 damage";
         }
 
@@ -322,10 +320,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             catch(const runtime_error& e)
             {
                 cout << e.what() << endl;
-                for(int i = 0 ; i <  opponent->getfighterCount() ; i++)
-                {
-                    opponent->getsidekick(i)->takeDamage(2);
-                }
+                damageAllFighters(opponent, 2);
                 cout << "All character on team took 2 damage";
             }
         }
@@ -340,10 +335,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             catch(const runtime_error& e)
             {
                 cout << e.what() << endl;
-                for(int i = 0 ; i <  self->getfighterCount() ; i++)
-                {
-                    self->getsidekick(i)->takeDamage(2);
-                }
+                damageAllFighters(self, 2);
                 cout << "All character on team took 2 damage";
             }
         }
@@ -492,10 +484,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         catch(const runtime_error& e)
         {
             cout << e.what() << endl;
-            for(int i = 0 ; i <  self->getfighterCount() ; i++)
-            {
-                self->getsidekick(i)->takeDamage(2);
-            }
+            damageAllFighters(self, 2);
             cout << "All character on team took 2 damage";
         }
 
@@ -610,10 +599,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         catch(const runtime_error& e)
         {
             cout << e.what() << endl;
-            for(int i = 0 ; i <  self->getfighterCount() ; i++)
-            {
-                self->getsidekick(i)->takeDamage(2);
-            }
+            damageAllFighters(self, 2);
             cout << "All character on team took 2 damage";
         }
 
@@ -817,10 +803,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         catch(const runtime_error& e)
         {
             cout << e.what() << endl;
-            for(int i = 0 ; i <  self->getfighterCount() ; i++)
-            {
-                self->getsidekick(i)->takeDamage(2);
-            }
+            damageAllFighters(self, 2);
             cout << "All character on team took 2 damage";
         }
 
@@ -979,27 +962,31 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         self->getHero()->heal(2);
         cout << "Dracula recovered 2 health.\n";
 
-        vector<int> zonCanPlace;
-        zonCanPlace = bord.getCharacterZone(self->getHero());
-        
-        int pos;
-        for(int i = 1 ; i < 4 ; i++)
-        {
-            zonCanPlace = bord.getEmptyZone(zonCanPlace);
-            if(!self->getsidekick(i)->checkalive())
-            {
-                cout << "\nAvailable spaces for the Sister:  ";
-                for(int i = 0 ; i < zonCanPlace.size() ; i++)
-                {
-                    cout << zonCanPlace[i] << "   ";
-                }
-                pos = getChoice(zonCanPlace);
-                self->getsidekick(i)->setSpace(pos);
-                self->getsidekick(i)->heal(1);
-                bord.addCharacter(pos , self->getsidekick(i));
-                cout << self->getsidekick(i)->getName() << " place on " << pos;
+        vector<int> heroZones = bord.getCharacterZone(self->getHero());
 
+        for(int i = 1 ; i < self->getfighterCount() ; i++)
+        {
+            Character* sister = self->getFighter(i);
+            if(sister == nullptr || sister->checkalive())
+                continue;
+
+            vector<int> spaces = bord.getEmptyZone(heroZones);
+            if(spaces.empty())
+            {
+                cout << "\nNo available space to place " << sister->getName() << ".\n";
+                continue;
             }
+
+            cout << "\nAvailable spaces for " << sister->getName() << ":  ";
+            for(int s : spaces)
+            {
+                cout << s << "   ";
+            }
+            int pos = getChoice(spaces);
+            sister->setSpace(pos);
+            sister->heal(1);
+            bord.addCharacter(pos , sister);
+            cout << sister->getName() << " placed on " << pos << ".\n";
         }
 
         return;
@@ -1082,17 +1069,16 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         number = 0;
         for(int adjenc : target)
         {
-            if(!bord.isEmpty(adjenc))
+            if(bord.isEmpty(adjenc))
+                continue;
+
+            Character* occupant = bord.getCharacter(adjenc);
+            for(int i = 1 ; i < self->getfighterCount() ; i++)
             {
-                for(int i = 1 ; i < 4 ; i++)
+                Character* sister = self->getFighter(i);
+                if(sister != nullptr && sister->checkalive() && occupant == sister)
                 {
-                    if(self->getsidekick(i)->checkalive())
-                    {
-                        if(bord.getCharacter(adjenc) == self->getsidekick(i))
-                        {
-                            number++;
-                        }
-                    }
+                    number++;
                 }
             }
         }
@@ -1119,42 +1105,41 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         cout << "\nEffect >> " << card.geteffect() << endl; 
 
         Character* holmes = self->getHero();
-        Character* watson = self->getsidekick(1);
-        vector<int> adjacent = bord.getCharacterAdjacent(holmes);
-        vector<int> emptyAdjacent;
+        Character* watson = self->getFighter(1);
 
+        if (watson != nullptr && watson->checkalive())
+        {
+            vector<int> adjacent = bord.getCharacterAdjacent(holmes);
+            vector<int> emptyAdjacent;
 
-        for (auto pos : adjacent)
-        {
-            if (bord.isEmpty(pos))
+            for (auto pos : adjacent)
             {
-                emptyAdjacent.push_back(pos);
-            }
-            
-        }
-        if (!emptyAdjacent.empty())
-        {
-            for (int i = 0; i < 32; i++)
-            {
-                if (bord.getCharacter(i) == watson)
+                if (bord.isEmpty(pos))
                 {
-                    bord.deletCharacter(i);
-                    break;
+                    emptyAdjacent.push_back(pos);
                 }
             }
+
+            if (!emptyAdjacent.empty())
+            {
+                if (watson->getSpace() != -1)
+                {
+                    bord.deletCharacter(watson->getSpace());
+                }
+
+                bord.addCharacter(emptyAdjacent[0] , watson);
+                cout << "Watson placed adjacent to Holmes.\n";
+            }
+            else
+            {
+                cout << "No empty space adjacent to Holmes for Watson.\n";
+            }
+        }
+        else
+        {
+            cout << "Watson is not available.\n";
         }
 
-        for (int i = 0; i < emptyAdjacent.size() ; i++)
-        {
-            if(bord.isEmpty(emptyAdjacent[i]))
-            {
-                bord.addCharacter(emptyAdjacent[i],watson);     
-                break; 
-            }
-            
-        }
-        
-          
         holmes->heal(1);
         cout << "Holmes healed 1 HP \n";
         
@@ -1166,10 +1151,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         catch(const runtime_error& e)
         {
             cout << e.what() << endl;
-            for(int i = 0 ; i <  self->getfighterCount() ; i++)
-            {
-                self->getsidekick(i)->takeDamage(2);
-            }
+            damageAllFighters(self, 2);
             cout << "All character on team took 2 damage";
         }
         

@@ -14,8 +14,6 @@ include_directories(
 
 add_subdirectory(external/ftxui)
 
-find_package(nlohmann_json 3.11 REQUIRED)
-
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 add_executable(a ${SOURCES})
@@ -24,7 +22,6 @@ target_link_libraries(a PRIVATE
     ftxui::screen
     ftxui::dom
     ftxui::component
-    nlohmann_json::nlohmann_json
 )
 
 if(WIN32)

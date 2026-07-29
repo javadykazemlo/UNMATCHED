@@ -108,7 +108,7 @@ bool Bord::checkzone(int zo)
 
 bool Bord::canAttack(int attacktype , int pos)
 {
-    if(attacktype == 1) //Melee
+    if(attacktype == 0) //Melee
     {
         for(int neighbor : spaces[pos].adjacent)
         {
@@ -121,8 +121,15 @@ bool Bord::canAttack(int attacktype , int pos)
     {
         for(int zon : spaces[pos].zone)
         {
-            if(spaces[zon].character != nullptr)
-            return true;
+            for(int i = 0; i < 32; i++)
+            {
+                if(i == pos) continue;
+                if(spaces[i].character != nullptr &&
+                   find(spaces[i].zone.begin(), spaces[i].zone.end(), zon) != spaces[i].zone.end())
+                {
+                    return true;
+                }
+            }
         }
     }
     return false;
@@ -132,7 +139,7 @@ vector<Character*> Bord::getAttackCharacters(int attacktype , int pos)
 {
     vector<Character*> result;
 
-    if(attacktype == 1)
+    if(attacktype == 0) //Melee
     {
         for(int neighbor : spaces[pos].adjacent)
         {
@@ -141,12 +148,21 @@ vector<Character*> Bord::getAttackCharacters(int attacktype , int pos)
         }
     }
 
-    else
+    else //Ranged
     {
+        vector<bool> added(32, false);
         for(int zon : spaces[pos].zone)
         {
-            if(spaces[zon].character != nullptr)
-            result.push_back(spaces[zon].character);
+            for(int i = 0; i < 32; i++)
+            {
+                if(i == pos || added[i]) continue;
+                if(spaces[i].character != nullptr &&
+                   find(spaces[i].zone.begin(), spaces[i].zone.end(), zon) != spaces[i].zone.end())
+                {
+                    result.push_back(spaces[i].character);
+                    added[i] = true;
+                }
+            }
         }
 
     }

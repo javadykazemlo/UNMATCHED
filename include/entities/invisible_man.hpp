@@ -11,7 +11,7 @@ private:
 public:
     invisible_man(int owner);
 
-    void ability(Bord bord , Player* player) override;
+    void ability(Bord& bord , Player* player) override;
 
     void setMistToken(int index , int pos);
     int getMistToken(int index) const;

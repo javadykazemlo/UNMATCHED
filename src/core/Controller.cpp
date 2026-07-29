@@ -14,6 +14,42 @@
 
 using namespace std;
 
+void Controller::startMenu(Player player[2])
+{
+    cout << "1. New Game\n2. Load Game\nChoose an option: ";
+    int choice = 0;
+    cin >> choice;
+
+    if (choice == 2)
+    {
+        cout << "Choose a save slot to load (1-3): ";
+        int slot = 0;
+        cin >> slot;
+        while (slot < 1 || slot > 3)
+        {
+            cout << "Invalid slot. Choose 1-3: ";
+            cin >> slot;
+        }
+        string slotFile = "save" + to_string(slot) + ".json";
+
+        if (LoadGame(player, slotFile))
+        {
+            cout << "\nResuming saved game...\n";
+        }
+        else
+        {
+            cout << "\nNo valid save found in that slot, starting a new game instead.\n";
+            GameTUI::showWelcome();
+            choosePlayers(player);
+        }
+    }
+    else
+    {
+        GameTUI::showWelcome();
+        choosePlayers(player);
+    }
+}
+
 void Controller::choosePlayers(Player player[2])
 {
     string n;
@@ -252,10 +288,7 @@ void Controller::playTurn()
                     catch(const runtime_error& e)
                     {
                         cout << e.what() << endl;
-                        for(int i = 0 ; i <  current->getfighterCount() ; i++)
-                        {
-                            current->getsidekick(i)->takeDamage(2);
-                        }
+                        damageAllFighters(current, 2);
                         cout << "All character on team took 2 damage";
                     }
 
@@ -314,8 +347,11 @@ void Controller::playTurn()
                 }
                 case 5:
                 {
-                    SaveGame();
-                    continue; // does not consume the turn, ask again
+                    cout << "\nChoose a save slot (1-3): ";
+                    int slot = getChoice({1, 2, 3});
+                    string slotFile = "save" + to_string(slot) + ".json";
+                    SaveGame(slotFile);
+                    continue;
                 }
                 default:
                 {
@@ -633,6 +669,11 @@ void Controller::startCombat()
         Card attackCard = chooseCombatCard(current , attacker , true);
         Card defenseCard = chooseCombatCard(enemy , defender , false);
     
+        if(attackCard.getAttack() == 0) 
+        {
+            cout << "You have no attack cards. Cannot attack this turn.\n";
+            return;
+        }
         resolveCombat(attackCard, defenseCard , attacker , defender);
     }
     else
@@ -783,17 +824,17 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     if (attackValue > defenseValue) 
     {
         int damage = attackValue - defenseValue;
-        cout << "\n💥 " << current->getName() << " deals " << damage << " damage!\n";
-        enemy->getHero()->takeDamage(damage);
+        cout << "\n💥 " << current->getName() << " deals " << damage << " damage to " << defender->getName() << "!\n";
+        defender->takeDamage(damage);
 
-        if(!enemy->getHero()->checkalive() && enemy->getHero()->getSpace() != -1)
+        if(!defender->checkalive() && defender->getSpace() != -1)
         {
-            bord.deletCharacter(enemy->getHero()->getSpace());
-            enemy->getHero()->setSpace(-1);
+            bord.deletCharacter(defender->getSpace());
+            defender->setSpace(-1);
         }
 
-        cout << "  " << enemy->getName() << " HP: " << enemy->getHero()->getHp() 
-        << "/" << enemy->getHero()->getMaxhp() << "\n";
+        cout << "  " << defender->getName() << " HP: " << defender->getHp() 
+        << "/" << defender->getMaxhp() << "\n";
         attackerWon = true;
     }
     else 
@@ -1102,6 +1143,23 @@ int Controller::aiInt(Player* decider)
     return x;
 }
 
+void Controller::damageAllFighters(Player* p, int damage)
+{
+    if(!p) return;
+
+    for(Character* c : p->getCharacters())
+    {
+        if(c && c->checkalive())
+        {
+            c->takeDamage(damage);
+            if(!c->checkalive() && c->getSpace() != -1)
+            {
+                bord.deletCharacter(c->getSpace());
+                c->setSpace(-1);
+            }
+        }
+    }
+}
 
 Bord& Controller::getBord()
 {
@@ -1131,7 +1189,9 @@ bool Controller::isGameOver()
 
 void Controller::SaveGame(const string& filename)
 {
-    if (SaveManager::saveGame(current, enemy, filename))
+    if (SaveManager::saveGame(current, enemy,
+                               gamerand, cancelEffectDR, cancelEffectSH, cancelEffectIM, GuessElementary,
+                               filename))
         cout << "\n✅ Game saved to \"" << filename << "\".\n";
     else
         cout << "\n❌ Failed to save the game.\n";
@@ -1141,8 +1201,15 @@ bool Controller::LoadGame(Player player[2], const string& filename)
 {
     Player* loadedCurrent = nullptr;
     Player* loadedEnemy = nullptr;
+    int loadedGamerand = 0;
+    bool loadedCancelDR = false;
+    bool loadedCancelSH = false;
+    bool loadedCancelIM = false;
+    bool loadedGuessElementary = false;
 
-    if (!SaveManager::loadGame(bord, player, loadedCurrent, loadedEnemy, filename))
+    if (!SaveManager::loadGame(bord, player, loadedCurrent, loadedEnemy,
+                                loadedGamerand, loadedCancelDR, loadedCancelSH, loadedCancelIM, loadedGuessElementary,
+                                filename))
     {
         cout << "\n❌ Failed to load the game from \"" << filename << "\".\n";
         return false;
@@ -1151,11 +1218,11 @@ bool Controller::LoadGame(Player player[2], const string& filename)
     current = loadedCurrent;
     enemy = loadedEnemy;
 
-    cancelEffectDR = false;
-    cancelEffectSH = false;
-    cancelEffectIM = false;
-    gamerand = 0;
-    GuessElementary = false;
+    cancelEffectDR = loadedCancelDR;
+    cancelEffectSH = loadedCancelSH;
+    cancelEffectIM = loadedCancelIM;
+    gamerand = loadedGamerand;
+    GuessElementary = loadedGuessElementary;
 
     cout << "\n✅ Game loaded from \"" << filename << "\".\n";
     return true;

@@ -14,6 +14,7 @@ Player::Player()
     deck = nullptr;
     Age = 0;
     AIcontrolled = false;
+    fighterCount = 0;
 }
 
 void Player::chooseCharacter(int choose , int owner)
@@ -102,6 +103,13 @@ Character* Player::getHero() const
 Character* Player::getsidekick(int i) const
 {
     if (i >= 0 && i < (int)fighters.size() && fighters[i] && fighters[i]->checkalive())
+        return fighters[i];
+    return nullptr;
+}
+
+Character* Player::getFighter(int i) const
+{
+    if (i >= 0 && i < (int)fighters.size())
         return fighters[i];
     return nullptr;
 }

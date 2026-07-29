@@ -176,7 +176,10 @@ void SaveManager::playerFromJson(Player& player, const json& j)
 // ---------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------
-bool SaveManager::saveGame(Player* current, Player* enemy, const string& filepath)
+bool SaveManager::saveGame(Player* current, Player* enemy,
+                            int gamerand, bool cancelEffectDR, bool cancelEffectSH,
+                            bool cancelEffectIM, bool guessElementary,
+                            const string& filepath)
 {
     if (!current || !enemy)
         return false;
@@ -185,6 +188,12 @@ bool SaveManager::saveGame(Player* current, Player* enemy, const string& filepat
     {
         json root;
         root["currentOwner"] = current->getHero()->getowner();
+
+        root["gamerand"]        = gamerand;
+        root["cancelEffectDR"]  = cancelEffectDR;
+        root["cancelEffectSH"]  = cancelEffectSH;
+        root["cancelEffectIM"]  = cancelEffectIM;
+        root["guessElementary"] = guessElementary;
 
         json players = json::array();
         players.push_back(playerToJson(*current));
@@ -208,6 +217,8 @@ bool SaveManager::saveGame(Player* current, Player* enemy, const string& filepat
 
 bool SaveManager::loadGame(Bord& bord, Player players[2],
                             Player*& currentOut, Player*& enemyOut,
+                            int& gamerandOut, bool& cancelEffectDROut, bool& cancelEffectSHOut,
+                            bool& cancelEffectIMOut, bool& guessElementaryOut,
                             const string& filepath)
 {
     try
@@ -226,6 +237,12 @@ bool SaveManager::loadGame(Bord& bord, Player players[2],
         playerFromJson(players[0], root["players"][0]);
         playerFromJson(players[1], root["players"][1]);
 
+        gamerandOut        = root.value("gamerand", 0);
+        cancelEffectDROut  = root.value("cancelEffectDR", false);
+        cancelEffectSHOut  = root.value("cancelEffectSH", false);
+        cancelEffectIMOut  = root.value("cancelEffectIM", false);
+        guessElementaryOut = root.value("guessElementary", false);
+
         int currentOwner = root.value("currentOwner", 1);
 
         if (players[0].getHero()->getowner() == currentOwner)
@@ -239,7 +256,6 @@ bool SaveManager::loadGame(Bord& bord, Player players[2],
             enemyOut   = &players[0];
         }
 
-        // Re-place every living character on the board at its saved space.
         for (int p = 0; p < 2; p++)
         {
             for (Character* ch : players[p].getCharacters())

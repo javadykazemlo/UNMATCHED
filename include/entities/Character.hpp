@@ -18,7 +18,7 @@ public:
     Character(const std::string& name, int hp, int move
         , int attacktyp , int owner , bool her);
 
-    virtual void ability(Bord bord , Player* player) = 0;
+    virtual void ability(Bord& bord , Player* player) = 0;
     bool checkalive() const;
     void takeDamage(int damage);
     void heal(int amount) ;

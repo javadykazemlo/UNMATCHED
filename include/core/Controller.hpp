@@ -44,6 +44,7 @@ private:
     Character* aiCardFighter = nullptr; 
 
     int boardDistance(int from, int to);
+    void damageAllFighters(Player* p, int damage);
 
     int aiScoreAction(int action, Player* decider);
     int aiScoreFighter(int idx, Player* decider);
@@ -59,6 +60,7 @@ private:
 public:
     Controller() = default;
     
+    void startMenu(Player player[2]);
     void choosePlayers(Player player[2]);
     void chooseCharacters();
     void plaseSidekicks(Player& player);

@@ -207,7 +207,7 @@ void Deck::buildDeck(int hero)
                 0,
                 timing::None,
                 1,
-                "Name an attack or defense value. Your opponent must reveal and discard a matching card. The opposing hero suffers damage equal to that card's boost value. Otherwise they reveal their hand."
+                "Name an attack or defense value. Your opponent must reveal and discard a matching card. \nThe opposing hero suffers damage equal to that card's boost value. Otherwise they reveal their hand."
             );
         }
 
@@ -380,7 +380,7 @@ void Deck::buildDeck(int hero)
                 3,
                 timing::AfterCombat,
                 2,
-                "Your opponent may discard a card to stop you; otherwise you scatter every fog token to new spaces."
+                "Your opponent may discard a card to stop you;\n otherwise you scatter every fog token to new spaces."
             );
         }
 

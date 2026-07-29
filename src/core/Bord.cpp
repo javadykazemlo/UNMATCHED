@@ -185,7 +185,8 @@ vector<int> Bord::getEmptyZone(vector<int> zon) const
     {
         for (int i = 0; i < 32; i++)
         {
-            if ((find(spaces[i].zone.begin(),spaces[i].zone.end(),zon[j]) != spaces[i].zone.end() ) && spaces[i].character == nullptr)
+            if ((find(spaces[i].zone.begin(),spaces[i].zone.end(),zon[j]) 
+                    != spaces[i].zone.end() ) && spaces[i].character == nullptr)
             {
                 result.push_back(i);
             }

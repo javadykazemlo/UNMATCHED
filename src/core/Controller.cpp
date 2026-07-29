@@ -44,7 +44,7 @@ void Controller::choosePlayers(Player player[2])
         a = getInt();
         player[1].setAge(a);
 
-        cout << "Second player, enter your name: ";
+        cout << "\nSecond player, enter your name: ";
         getline(cin >> ws , n);
         player[1].setName(n);
     }
@@ -231,7 +231,7 @@ void Controller::playTurn()
             cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn\n 5.Save Game";
             cout << "\nChoose a action: ";
             aiDecisionKind = AIDecision::ActionChoice;
-            Todo = getChoice({1,2,3,4});
+            Todo = getChoice({1,2,3,4,5});
             aiDecisionKind = AIDecision::Generic;
             
             Character* ch;
@@ -865,12 +865,6 @@ bool Controller::getYesNo()
     return (choice == 'y' || choice == 'Y');
 }
 
-// ── Part 3: heuristic AI ───────────────────────────────────────────────────
-// getChoice()/getYesNo() route here when the active decider is AI-controlled.
-// aiDecisionKind (set right before the relevant getChoice() call at each of the
-// handful of strategic decision points) tells us what the list of ints means,
-// so we can score each option instead of just picking randomly.
-
 int Controller::boardDistance(int from, int to)
 {
     if(from == to) return 0;
@@ -918,13 +912,13 @@ int Controller::aiScoreAction(int action, Player* decider)
 
     switch(action)
     {
-        case 3: // Attack — best outcome when it's actually available
+        case 3:
             return (canAttackAny && hasAttackCard) ? 100 : -50;
-        case 2: // Scheme — good value when there's a card to spend
+        case 2: 
             return hasSchemeCard ? 55 : -50;
-        case 1: // Maneuver — always safe, moderate default
+        case 1:
             return 40;
-        case 4: // End turn — last resort
+        case 4:
             return 5;
     }
     return 0;
@@ -957,11 +951,11 @@ int Controller::aiScoreMove(int destination, Player* decider)
     bool lowHp = mover->getHp() <= mover->getMaxhp() / 3;
 
     if(lowHp)
-        return min(dist, 6) * 10; // hurt: put distance between us and the enemy
+        return min(dist, 6) * 10; 
 
-    int score = 100 - min(dist, 10) * 8; // healthy: closing the gap is good
+    int score = 100 - min(dist, 10) * 8; 
     if(bord.canAttack(mover->getAttacktype() , destination))
-        score += 30; // landing somewhere we could already attack from is great
+        score += 30; 
 
     return score;
 }
@@ -976,8 +970,8 @@ int Controller::aiScoreAttackTarget(int idx, Player* decider)
 
     int score = 0;
     if(target->isHero())
-        score += 60; // downing the hero wins the game
-    score += (target->getMaxhp() - target->getHp()) * 3; // finish off weakened targets
+        score += 60; 
+    score += (target->getMaxhp() - target->getHp()) * 3; 
     score += max(0 , 20 - target->getHp());
 
     return score;
@@ -1007,11 +1001,11 @@ int Controller::aiScoreCardChoice(int idx, Player* decider)
     switch(aiCardPurpose)
     {
         case AICardPurpose::Attack:
-            return c.getAttack() * 10; // hit as hard as possible
+            return c.getAttack() * 10; 
         case AICardPurpose::Defense:
-            return c.getAttack() * 10; // block as much as possible (value lives in getAttack())
+            return c.getAttack() * 10;
         case AICardPurpose::Boost:
-            return c.getBoost() * 6 - c.getAttack() * 4; // spend low-combat-value cards for movement
+            return c.getBoost() * 6 - c.getAttack() * 4;
         case AICardPurpose::Scheme:
             return c.getBoost() * 8 + c.getAttack() * 2;
     }
@@ -1023,7 +1017,7 @@ void Controller::aiThink(Player* decider)
     cout << "🤖 " << decider->getName() << " is thinking";
     cout.flush();
 
-    int ms = 2500 + (rand() % 1500); // ~2.5–4s, feels natural instead of a fixed tick
+    int ms = 2500 + (rand() % 1500);
     int dots = 4;
     for(int i = 0 ; i < dots ; i++)
     {

@@ -23,27 +23,17 @@ private:
     int gamerand = 0;
     bool GuessElementary = false;
 
-    // Which Player is currently the one making a decision. getInt()/getChoice()/getYesNo()
-    // check this to decide whether to read the terminal or ask the AI decision stub.
-    // Falls back to `current` when left null. Set it right before any block of decisions
-    // that belongs to a specific player (see plaseSidekicks, chooseCombatCard, resolveCombat,
-    // applyEffect/applyEffectScheme, and the few spots inside them that address the opponent).
     Player* activeDecider = nullptr;
 
-    // ── AI heuristic context ───────────────────────────────────────────────
-    // getChoice()/getYesNo() only ever see a bare list of ints, so to score them
-    // meaningfully we tag *what kind* of decision it is right before the call,
-    // plus whatever extra context that kind of scoring needs. Always reset to
-    // Generic right after, so it never leaks into the next unrelated call.
     enum class AIDecision
     {
-        Generic,        // no scoring context available -> fall back to a light random pick
-        ActionChoice,   // 1..4 : Maneuver / Scheme / Attack / End turn
-        FighterSelect,  // valid[i] indexes into aiCharacterOptions
-        MoveDestination,// valid[i] is a board position; aiMovingCharacter is who's moving
-        AttackTarget,   // valid[i] indexes into aiCharacterOptions (enemy fighters in range)
-        CardSelect,     // valid[i] indexes into decider's hand; aiCardPurpose says why
-        BoostChoice     // the "use boost?" y/n
+        Generic,        
+        ActionChoice,   
+        FighterSelect,  
+        MoveDestination,
+        AttackTarget,   
+        CardSelect,     
+        BoostChoice
     };
     enum class AICardPurpose { Attack, Defense, Boost, Scheme };
 
@@ -51,7 +41,7 @@ private:
     AICardPurpose aiCardPurpose = AICardPurpose::Attack;
     std::vector<Character*> aiCharacterOptions;
     Character* aiMovingCharacter = nullptr;
-    Character* aiCardFighter = nullptr; // who the CardSelect decision is being made for (ownership check)
+    Character* aiCardFighter = nullptr; 
 
     int boardDistance(int from, int to);
 
@@ -64,7 +54,7 @@ private:
     int aiChoose(const std::vector<int>& valid, Player* decider);
     bool aiYesNo(Player* decider);
     int aiInt(Player* decider);
-    void aiThink(Player* decider); // small pause + "thinking..." message before the AI answers
+    void aiThink(Player* decider);
 
 public:
     Controller() = default;

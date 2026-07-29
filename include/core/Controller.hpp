@@ -60,6 +60,7 @@ private:
 public:
     Controller() = default;
     
+    void startMenu(Player player[2]);
     void choosePlayers(Player player[2]);
     void chooseCharacters();
     void plaseSidekicks(Player& player);

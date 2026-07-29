@@ -14,6 +14,42 @@
 
 using namespace std;
 
+void Controller::startMenu(Player player[2])
+{
+    cout << "1. New Game\n2. Load Game\nChoose an option: ";
+    int choice = 0;
+    cin >> choice;
+
+    if (choice == 2)
+    {
+        cout << "Choose a save slot to load (1-3): ";
+        int slot = 0;
+        cin >> slot;
+        while (slot < 1 || slot > 3)
+        {
+            cout << "Invalid slot. Choose 1-3: ";
+            cin >> slot;
+        }
+        string slotFile = "save" + to_string(slot) + ".json";
+
+        if (LoadGame(player, slotFile))
+        {
+            cout << "\nResuming saved game...\n";
+        }
+        else
+        {
+            cout << "\nNo valid save found in that slot, starting a new game instead.\n";
+            GameTUI::showWelcome();
+            choosePlayers(player);
+        }
+    }
+    else
+    {
+        GameTUI::showWelcome();
+        choosePlayers(player);
+    }
+}
+
 void Controller::choosePlayers(Player player[2])
 {
     string n;
@@ -311,8 +347,11 @@ void Controller::playTurn()
                 }
                 case 5:
                 {
-                    SaveGame();
-                    continue; // does not consume the turn, ask again
+                    cout << "\nChoose a save slot (1-3): ";
+                    int slot = getChoice({1, 2, 3});
+                    string slotFile = "save" + to_string(slot) + ".json";
+                    SaveGame(slotFile);
+                    continue;
                 }
                 default:
                 {
@@ -1150,20 +1189,27 @@ bool Controller::isGameOver()
 
 void Controller::SaveGame(const string& filename)
 {
-    if (SaveManager::saveGame(current, enemy, filename))
+    if (SaveManager::saveGame(current, enemy,
+                               gamerand, cancelEffectDR, cancelEffectSH, cancelEffectIM, GuessElementary,
+                               filename))
         cout << "\n✅ Game saved to \"" << filename << "\".\n";
     else
-        cout << "\n❌ Failed to save the game.\n";     
-    
-    gamerand--;
+        cout << "\n❌ Failed to save the game.\n";
 }
 
 bool Controller::LoadGame(Player player[2], const string& filename)
 {
     Player* loadedCurrent = nullptr;
     Player* loadedEnemy = nullptr;
+    int loadedGamerand = 0;
+    bool loadedCancelDR = false;
+    bool loadedCancelSH = false;
+    bool loadedCancelIM = false;
+    bool loadedGuessElementary = false;
 
-    if (!SaveManager::loadGame(bord, player, loadedCurrent, loadedEnemy, filename))
+    if (!SaveManager::loadGame(bord, player, loadedCurrent, loadedEnemy,
+                                loadedGamerand, loadedCancelDR, loadedCancelSH, loadedCancelIM, loadedGuessElementary,
+                                filename))
     {
         cout << "\n❌ Failed to load the game from \"" << filename << "\".\n";
         return false;
@@ -1172,11 +1218,11 @@ bool Controller::LoadGame(Player player[2], const string& filename)
     current = loadedCurrent;
     enemy = loadedEnemy;
 
-    cancelEffectDR = false;
-    cancelEffectSH = false;
-    cancelEffectIM = false;
-    gamerand = 0;
-    GuessElementary = false;
+    cancelEffectDR = loadedCancelDR;
+    cancelEffectSH = loadedCancelSH;
+    cancelEffectIM = loadedCancelIM;
+    gamerand = loadedGamerand;
+    GuessElementary = loadedGuessElementary;
 
     cout << "\n✅ Game loaded from \"" << filename << "\".\n";
     return true;

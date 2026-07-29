@@ -17,6 +17,7 @@ private:
 
     std::vector<Character*> fighters;
     Deck* deck;
+    bool AIcontrolled;
 public:
     Player();
     void chooseCharacter(int , int owner);
@@ -24,6 +25,8 @@ public:
     void setName(const std::string& n);
     void setAge(const int& a);
     void setfighterCount(int count);
+    void setAI(bool ai);
+    bool isAI() const;
 
     std::string getName() const;
     int getAge() const;

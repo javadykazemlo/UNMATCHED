@@ -10,7 +10,7 @@ invisible_man::invisible_man(int owner): Character("invisible man", 15, 2, 0 , o
     mistTokens = {-1 , -1 , -1};
 }
 
-void invisible_man::ability(Bord bord , Player* player)
+void invisible_man::ability(Bord& bord , Player* player)
 {
     cout << "\nInvisible Man's ability:\n";
     cout << " - While defending on a space with a fog token, his defense card value gains +1 (not a card effect, cannot be cancelled by Feint or similar).\n";

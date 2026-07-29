@@ -710,11 +710,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
     }
 
-    else if (card.getName() == "Emerge From Mist")
+    else if (card.getName() == "Emerge from Mist")
     {
         if (cancelEffectIM)
         {
-            cout << "Emerge From Mist effect was canceled.\n";
+            cout << "Emerge from Mist effect was canceled.\n";
             return;
         }
 
@@ -949,7 +949,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             cout << "Choose a space for Dracula: ";
             pos = getInt();
-            if(pos > 0 && pos < 31 && bord.isEmpty(pos))
+            if(pos >= 0 && pos <= 31 && bord.isEmpty(pos))
             {
                 bord.deletCharacter(self->getHero()->getSpace());
                 bord.addCharacter(pos , self->getHero());

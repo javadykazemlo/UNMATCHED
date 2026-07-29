@@ -633,6 +633,11 @@ void Controller::startCombat()
         Card attackCard = chooseCombatCard(current , attacker , true);
         Card defenseCard = chooseCombatCard(enemy , defender , false);
     
+        if(attackCard.getAttack() == 0) 
+        {
+            cout << "You have no attack cards. Cannot attack this turn.\n";
+            return;
+        }
         resolveCombat(attackCard, defenseCard , attacker , defender);
     }
     else
@@ -1135,6 +1140,8 @@ void Controller::SaveGame(const string& filename)
         cout << "\n✅ Game saved to \"" << filename << "\".\n";
     else
         cout << "\n❌ Failed to save the game.\n";
+
+    gamerand--;
 }
 
 bool Controller::LoadGame(Player player[2], const string& filename)

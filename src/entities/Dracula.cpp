@@ -11,7 +11,7 @@ Dracula::Dracula(int owner): Character("Dracula", 13, 2, 0 , owner , true)
 }
 
 
-void Dracula::ability(Bord bord , Player* player)
+void Dracula::ability(Bord& bord , Player* player)
 {
     
     cout << "\nDo you want to use Dracula's ability? (y/n): ";

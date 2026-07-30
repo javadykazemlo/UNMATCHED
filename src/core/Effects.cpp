@@ -1224,9 +1224,9 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         
         int burnBoost = burn.getBoost();
 
-        opponent->getHero()->takeDamage(burnBoost);
+        Rival->takeDamage(burnBoost);
 
-        cout << opponent->getHero()->getName() << " took " << burnBoost << " damamge" << endl;
+        cout << Rival->getName() << " took " << burnBoost << " damamge" << endl;
 
         return;
 

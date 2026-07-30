@@ -266,12 +266,11 @@ void Controller::playTurn()
     
             cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn\n 5.Save Game";
             cout << "\nChoose a action: ";
+
             aiDecisionKind = AIDecision::ActionChoice;
             Todo = getChoice({1,2,3,4,5});
             aiDecisionKind = AIDecision::Generic;
-            
-            Character* ch;
-            int k = 1;
+
             
             switch(Todo)
             {
@@ -314,7 +313,9 @@ void Controller::playTurn()
                     cout << "Choose a character to move: ";
                     aiDecisionKind = AIDecision::FighterSelect;
                     aiCharacterOptions = choices;
+
                     choose = getChoice({valid});
+
                     aiDecisionKind = AIDecision::Generic;
                     Character* selected = choices[choose - 1];
 
@@ -423,7 +424,6 @@ void Controller::move(int mov ,Character* selected)
     vector<int> currently;
     vector<int> next;
     vector<bool> visited(32,false);
-    vector<int> tunnel;
 
     validSpaces.push_back(place);
     currently.push_back(place);

@@ -18,17 +18,17 @@ void Controller::startMenu(Player player[2])
 {
     cout << "1. New Game\n2. Load Game\nChoose an option: ";
     int choice = 0;
-    cin >> choice;
+    choice = getChoice({1,2});
 
     if (choice == 2)
     {
         cout << "Choose a save slot to load (1-3): ";
         int slot = 0;
-        cin >> slot;
+        slot = getChoice({1,2,3});
         while (slot < 1 || slot > 3)
         {
             cout << "Invalid slot. Choose 1-3: ";
-            cin >> slot;
+            slot = getChoice({1,2,3});
         }
         string slotFile = "save" + to_string(slot) + ".json";
 
@@ -85,7 +85,7 @@ void Controller::choosePlayers(Player player[2])
         player[1].setName(n);
     }
 
-    // Single-player: the human always goes first, regardless of age.
+
     if(singlePlayer || player[0].getAge() <= player[1].getAge())
     {
         current = &player[0];
@@ -1189,8 +1189,8 @@ bool Controller::isGameOver()
 
 void Controller::SaveGame(const string& filename)
 {
-    if (SaveManager::saveGame(current, enemy,
-                               gamerand, cancelEffectDR, cancelEffectSH, cancelEffectIM, GuessElementary,
+    if (SaveManager::saveGame(current, enemy, gamerand,
+                               cancelEffectDR, cancelEffectSH, cancelEffectIM, GuessElementary,
                                filename))
         cout << "\n✅ Game saved to \"" << filename << "\".\n";
     else
@@ -1208,8 +1208,8 @@ bool Controller::LoadGame(Player player[2], const string& filename)
     bool loadedGuessElementary = false;
 
     if (!SaveManager::loadGame(bord, player, loadedCurrent, loadedEnemy,
-                                loadedGamerand, loadedCancelDR, loadedCancelSH, loadedCancelIM, loadedGuessElementary,
-                                filename))
+                                loadedGamerand, loadedCancelDR, loadedCancelSH,
+                                loadedCancelIM, loadedGuessElementary, filename))
     {
         cout << "\n❌ Failed to load the game from \"" << filename << "\".\n";
         return false;

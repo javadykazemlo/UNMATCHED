@@ -18,17 +18,17 @@ void Controller::startMenu(Player player[2])
 {
     cout << "1. New Game\n2. Load Game\nChoose an option: ";
     int choice = 0;
-    cin >> choice;
+    choice = getChoice({1,2});
 
     if (choice == 2)
     {
         cout << "Choose a save slot to load (1-3): ";
         int slot = 0;
-        cin >> slot;
+        slot = getChoice({1,2,3});
         while (slot < 1 || slot > 3)
         {
             cout << "Invalid slot. Choose 1-3: ";
-            cin >> slot;
+            slot = getChoice({1,2,3});
         }
         string slotFile = "save" + to_string(slot) + ".json";
 
@@ -85,7 +85,7 @@ void Controller::choosePlayers(Player player[2])
         player[1].setName(n);
     }
 
-    // Single-player: the human always goes first, regardless of age.
+
     if(singlePlayer || player[0].getAge() <= player[1].getAge())
     {
         current = &player[0];
@@ -266,12 +266,11 @@ void Controller::playTurn()
     
             cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn\n 5.Save Game";
             cout << "\nChoose a action: ";
+
             aiDecisionKind = AIDecision::ActionChoice;
             Todo = getChoice({1,2,3,4,5});
             aiDecisionKind = AIDecision::Generic;
-            
-            Character* ch;
-            int k = 1;
+
             
             switch(Todo)
             {
@@ -314,7 +313,9 @@ void Controller::playTurn()
                     cout << "Choose a character to move: ";
                     aiDecisionKind = AIDecision::FighterSelect;
                     aiCharacterOptions = choices;
+
                     choose = getChoice({valid});
+
                     aiDecisionKind = AIDecision::Generic;
                     Character* selected = choices[choose - 1];
 
@@ -423,7 +424,6 @@ void Controller::move(int mov ,Character* selected)
     vector<int> currently;
     vector<int> next;
     vector<bool> visited(32,false);
-    vector<int> tunnel;
 
     validSpaces.push_back(place);
     currently.push_back(place);
@@ -1189,8 +1189,8 @@ bool Controller::isGameOver()
 
 void Controller::SaveGame(const string& filename)
 {
-    if (SaveManager::saveGame(current, enemy,
-                               gamerand, cancelEffectDR, cancelEffectSH, cancelEffectIM, GuessElementary,
+    if (SaveManager::saveGame(current, enemy, gamerand,
+                               cancelEffectDR, cancelEffectSH, cancelEffectIM, GuessElementary,
                                filename))
         cout << "\n✅ Game saved to \"" << filename << "\".\n";
     else
@@ -1208,8 +1208,8 @@ bool Controller::LoadGame(Player player[2], const string& filename)
     bool loadedGuessElementary = false;
 
     if (!SaveManager::loadGame(bord, player, loadedCurrent, loadedEnemy,
-                                loadedGamerand, loadedCancelDR, loadedCancelSH, loadedCancelIM, loadedGuessElementary,
-                                filename))
+                                loadedGamerand, loadedCancelDR, loadedCancelSH,
+                                loadedCancelIM, loadedGuessElementary, filename))
     {
         cout << "\n❌ Failed to load the game from \"" << filename << "\".\n";
         return false;

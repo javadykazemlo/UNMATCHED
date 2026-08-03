@@ -8,9 +8,7 @@
 using json = nlohmann::json;
 using namespace std;
 
-// ---------------------------------------------------------------------
-// Card <-> json
-// ---------------------------------------------------------------------
+
 json SaveManager::cardToJson(const Card& card)
 {
     json j;
@@ -37,10 +35,7 @@ Card SaveManager::cardFromJson(const json& j)
     );
 }
 
-// ---------------------------------------------------------------------
-// Character -> json (loading characters happens through
-// Player::chooseCharacter, see playerFromJson below)
-// ---------------------------------------------------------------------
+
 json SaveManager::characterToJson(Character* character)
 {
     json j;
@@ -53,7 +48,6 @@ json SaveManager::characterToJson(Character* character)
     j["owner"]      = character->getowner();
     j["isHero"]     = static_cast<bool>(character->isHero());
 
-    // Invisible Man carries extra state (his 3 fog tokens).
     if (invisible_man* im = dynamic_cast<invisible_man*>(character))
     {
         json tokens = json::array();
@@ -65,9 +59,7 @@ json SaveManager::characterToJson(Character* character)
     return j;
 }
 
-// ---------------------------------------------------------------------
-// Deck -> json
-// ---------------------------------------------------------------------
+
 json SaveManager::deckToJson(Deck* deck)
 {
     json j;
@@ -90,9 +82,7 @@ json SaveManager::deckToJson(Deck* deck)
     return j;
 }
 
-// ---------------------------------------------------------------------
-// hero name -> chooseCharacter() choice
-// ---------------------------------------------------------------------
+
 int SaveManager::heroChoiceFromName(const string& name)
 {
     if (name == "Dracula")       return 1;
@@ -101,9 +91,7 @@ int SaveManager::heroChoiceFromName(const string& name)
     return 0;
 }
 
-// ---------------------------------------------------------------------
-// Player -> json
-// ---------------------------------------------------------------------
+
 json SaveManager::playerToJson(Player& player)
 {
     json j;
@@ -125,8 +113,7 @@ json SaveManager::playerToJson(Player& player)
     return j;
 }
 
-// json -> Player (rebuilds fighters/deck through the normal game API,
-// then overwrites their state with what was saved)
+
 void SaveManager::playerFromJson(Player& player, const json& j)
 {
     player.setName(j.at("name").get<string>());
@@ -173,9 +160,7 @@ void SaveManager::playerFromJson(Player& player, const json& j)
     player.getDeck()->loadState(deckCards, handCards, discardCards);
 }
 
-// ---------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------
+
 bool SaveManager::saveGame(Player* current, Player* enemy,
                             int gamerand, bool cancelEffectDR, bool cancelEffectSH,
                             bool cancelEffectIM, bool guessElementary,

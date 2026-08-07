@@ -1,16 +1,13 @@
-#include <cstdlib>
-#include <ctime>
-#include "Controller.hpp"
+#include "graphics/GameWindow.hpp"
 
 int main()
 {
-    srand(static_cast<unsigned int>(time(0)));
-
-    Controller controller;
-    Player player[2];
-
-    controller.startMenu(player);
-    controller.playTurn();
-
-  	return 0;
+    GameWindow gw;
+    while (gw.isOpen())
+    {
+        gw.pollAndHandleEvents();
+        gw.clear();
+        gw.display();
+    }
+    return 0;
 }

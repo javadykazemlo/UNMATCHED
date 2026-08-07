@@ -99,7 +99,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             cout << "Do you want to remove a card?(y/n): ";
             if(getYesNo())
             {
-                self->getDeck()->showHand(self->getName());
                 int handSize = self->getDeck()->gethandSize();
     
                 int choice;
@@ -453,7 +452,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         {
             cout << "Sherlock won the combat.\n";
             cout << "Opponent's hand:\n";
-            opponent->getDeck()->showHand(opponent->getName());
         }
         else
         {
@@ -487,8 +485,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             damageAllFighters(self, 2);
             cout << "All character on team took 2 damage";
         }
-
-        self->getDeck()->showHand(self->getName());
 
         int handSize = self->getDeck()->gethandSize();
         cout << "Choose the first card to put on top of your deck: ";
@@ -535,7 +531,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         if (willDiscard)
         {
-            opponent->getDeck()->showHand(opponent->getName());
             int handSize = opponent->getDeck()->gethandSize();
 
             cout << "Choose a card to discard: ";
@@ -1199,7 +1194,6 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             cout << "The opponent has no card with an attack or defense value of " << number << ".\n";
 
-            opponent->getDeck()->showHand(opponent->getName());
             return;
         }
         
@@ -1235,8 +1229,6 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     else if (card.getName() == "Eliminate the Impossible")
     {
         cout << "\nEffect >> " << card.geteffect() << endl; 
-
-        opponent->getDeck()->showHand(opponent->getName());
 
         int index;
         while (true)

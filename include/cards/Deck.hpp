@@ -21,10 +21,6 @@ public:
     void discardCard(const Card& card);
     Card removeFromHand(int index);
     void putOnTop(const Card& card);
-    
-    void showCard(const Card& card) const;
-    void showDeck(std::string name) const;
-    void showHand(std::string name) const;
 
     std::vector<int> getAttackCardIndices() const;
     std::vector<int> getDefenseCardIndices() const;

@@ -8,7 +8,6 @@
 #include <chrono>
 #include <thread>
 #include "core/Controller.hpp"
-#include "GameTUI.hpp"
 #include "entities/invisible_man.hpp"
 #include "Save/SaveManager.hpp"
 
@@ -39,13 +38,11 @@ void Controller::startMenu(Player player[2])
         else
         {
             cout << "\nNo valid save found in that slot, starting a new game instead.\n";
-            GameTUI::showWelcome();
             choosePlayers(player);
         }
     }
     else
     {
-        GameTUI::showWelcome();
         choosePlayers(player);
     }
 }
@@ -254,9 +251,6 @@ void Controller::playTurn()
         {
             activeDecider = current;
 
-            // نمایش TUI (نقشه و اطلاعات کاراتر ها و اطلاعات کارت ها)
-            GameTUI::render(*current, *enemy, current, bord);
-
             cout << "\n═══════════════════════════════════════════════════════════════════════════════" << endl;
             cout << "                          " << current->getName() << "'s turn\n";
            
@@ -391,7 +385,6 @@ void Controller::playTurn()
         HandSize = current->getDeck()->gethandSize();
         while(HandSize > 7)
         {
-            current->getDeck()->showHand(current->getName());
             cout << endl << "Enter the card number to remove: ";
             index = getInt();
 
@@ -505,7 +498,6 @@ int Controller::boost()
         cout << "🟥No boost used.\n\n";
         return 0;
     }
-    current->getDeck()->showHand(current->getName());
     int choos = current->getDeck()->gethandSize();
 
     vector<int> valid;

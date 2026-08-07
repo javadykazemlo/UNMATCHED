@@ -7,7 +7,6 @@
 #include <stdexcept>
 
 #include "cards/Deck.hpp"
-#include "GameTUI.hpp"
 
 using namespace std;
 
@@ -593,72 +592,6 @@ void Deck::putOnTop(const Card& card)
     deck.push_back(card);
 }
 
-
-void Deck::showCard(const Card& card) const 
-{
-    cout << "┌────────────────────────────────────────────────────┐\n";
-    cout << "│ " << left << setw(50) << card.getName() << " │\n";
-    cout << "├────────────────────────────────────────────────────┤\n";
-    cout << "│ " << left << setw(50) << (card.getOwnerString() + " · " + card.getTypeString()) << "  │\n";
-    cout << "├────────────────────────────────────────────────────┤\n";
-
-    if (card.isAttack()) 
-    {
-        cout << "│ " << left << setw(50) << ("Attack: " + to_string(card.getAttack())) << "│\n";
-    } else if (card.isDefense()) 
-    {
-        cout << "│ " << left << setw(50) << ("Defense: " + to_string(card.getAttack())) << "│\n";
-    } else if (card.isVersatile()) 
-    {
-        cout << "│ " << left << setw(50) << ("Attack/Defense: " + to_string(card.getAttack()) + "/" + to_string(card.getAttack())) << "│\n";
-    }
-
-    cout << "│ " << left << setw(50) << ("Boost: " + to_string(card.getBoost())) << " │\n";
-
-    cout << "├────────────────────────────────────────────────────┤\n";
-
-    string effect = card.geteffect();
-    int maxWidth = 48;
-    while (effect.length() > maxWidth) 
-    {
-        int space = effect.rfind(' ', maxWidth);
-        if (space == string::npos) space = maxWidth;
-        cout << "│ " << left << setw(50) << effect.substr(0, space) << " │\n";
-        effect = effect.substr(space + 1);
-    }
-    if (!effect.empty()) 
-    {
-        cout << "│ " << left << setw(50) << effect << " │\n";
-    }
-
-    cout << "└────────────────────────────────────────────────────┘\n";
-    
-}
-
-void Deck::showDeck(string name) const 
-{
-    int width = 100;
-
-    cout << endl;
-    GameTUI g;
-    for (auto& line : g.buildHandPanel(getdeck() , name , g.GREEN , width))
-        cout << line << "\n";
-
-    cout << "\n";
-
-}
-
-void Deck::showHand(string name) const
-{
-    int width = 100;
-
-    cout << endl;
-    GameTUI g;
-    for (auto& line : g.buildHandPanel(gethand() , name , g.GREEN , width))
-        cout << line << "\n";
-
-    cout << "\n";
-}
 
 
 

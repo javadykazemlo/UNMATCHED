@@ -4,6 +4,7 @@
 #include <vector>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
+#include "core/UIBridge.hpp"
 #include "entities/Character.hpp"
 #include "cards/Deck.hpp"
 #include "cards/Card.hpp"
@@ -12,6 +13,7 @@ class Controller
 {
 private:
     Bord bord;
+    UIBridge* ui = nullptr; // null => fall back to console (cin/cout), unchanged behavior
 
     Player* current = nullptr;
     Player* enemy = nullptr;
@@ -59,6 +61,9 @@ private:
 
 public:
     Controller() = default;
+
+    void setUIBridge(UIBridge* bridge); // call this once, before startMenu(), when running with a GUI
+    std::string getLine(); // used for player name input (console or GUI)
     
     void startMenu(Player player[2]);
     void choosePlayers(Player player[2]);

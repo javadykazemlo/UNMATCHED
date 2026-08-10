@@ -57,7 +57,7 @@ void Controller::choosePlayers(Player player[2])
     player[0].setAge(a);
 
     cout << "\nFirst player, enter your name: ";
-    getline(cin , n);
+    n = getLine();
     player[0].setName(n);
 
     cout << "\nPlay single-player against the AI? (y/n): ";
@@ -78,7 +78,7 @@ void Controller::choosePlayers(Player player[2])
         player[1].setAge(a);
 
         cout << "\nSecond player, enter your name: ";
-        getline(cin >> ws , n);
+        n = getLine();
         player[1].setName(n);
     }
 
@@ -242,6 +242,8 @@ void Controller::plaseSidekicks(Player& player)
 
 void Controller::playTurn()
 {
+    if (ui) ui->setInPlayPhase(true);
+
     int Todo = 0;
     while(!end_game())
     {
@@ -405,6 +407,7 @@ void Controller::playTurn()
         swap(current, enemy);
     }
 
+    if (ui) ui->setInPlayPhase(false);
 }
 
 
@@ -847,11 +850,27 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
 }
 
 
+void Controller::setUIBridge(UIBridge* bridge)
+{
+    ui = bridge;
+}
+
+std::string Controller::getLine()
+{
+    if (ui) return ui->requestLine();
+
+    std::string n;
+    getline(cin >> ws, n);
+    return n;
+}
+
 int Controller::getInt()
 {
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
         return aiInt(decider);
+
+    if (ui) return ui->requestInt();
 
     int x;
 
@@ -878,6 +897,8 @@ int Controller::getChoice(std::vector<int> valid)
     if(decider && decider->isAI())
         return aiChoose(valid, decider);
 
+    if (ui) return ui->requestChoice(valid);
+
     while(true)
     {
         int x = getInt();
@@ -892,6 +913,8 @@ bool Controller::getYesNo()
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
         return aiYesNo(decider);
+
+    if (ui) return ui->requestYesNo();
 
     char choice;
     cin >> choice;

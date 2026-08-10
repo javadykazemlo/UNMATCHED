@@ -248,23 +248,23 @@ void GameWindow::pumpEngineOutput()
     if (inputBridge_.waitingForInput() && inputBridge_.generation() != lastSeenGeneration_)
     {
         lastSeenGeneration_ = inputBridge_.generation();
-        promptText_ += outputCapture_.consume();
+        promptText_ = outputCapture_.consume(); // only this prompt's own text
         recentLog_ += promptText_;
         if (recentLog_.size() > 4000) recentLog_ = recentLog_.substr(recentLog_.size() - 4000);
         classifyPrompt();
         rebuildPromptWidgets();
-        promptText_.clear();
     }
 }
 
 // ── classification ──────────────────────────────────────────────────────
 void GameWindow::classifyPrompt()
 {
-    const std::string& t = recentLog_;
-    // look only at the most recent chunk for classification so an old
-    // matching keyword from earlier narration cannot mis-trigger a screen
-    std::size_t start = t.size() > 600 ? t.size() - 600 : 0;
-    std::string tail = t.substr(start);
+    // Classify using ONLY the text produced since the previous prompt
+    // (promptText_), never the cumulative recentLog_. Otherwise a short
+    // keyword from an earlier screen (e.g. the very first "1. New Game")
+    // would still be inside a trailing window many prompts later and keep
+    // re-triggering the wrong screen forever.
+    const std::string& tail = promptText_;
 
     if (has(tail, "1. New Game") && has(tail, "2. Load Game"))
     { promptKind_ = PromptKind::MainMenu; promptTitle_ = "UNMATCHED"; return; }
@@ -309,7 +309,7 @@ void GameWindow::rebuildPromptWidgets()
     promptOptions_.clear();
     promptInts_.clear();
 
-    const std::string& t = recentLog_;
+    const std::string& t = promptText_;
     sf::Vector2f base = { 460.f, 340.f };
     float bw = 300.f, bh = 54.f, gap = 14.f;
 

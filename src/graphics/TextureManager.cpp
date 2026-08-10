@@ -1,30 +1,70 @@
 #include "graphics/TextureManager.hpp"
-#include <stdexcept>
+#include <iostream>
+
+TextureManager& TextureManager::instance()
+{
+    static TextureManager mgr;
+    return mgr;
+}
 
 sf::Texture& TextureManager::getTexture(const std::string& key, const std::string& path)
 {
-    auto it = textures.find(key);
-    if (it != textures.end())
+    auto it = textures_.find(key);
+    if (it != textures_.end())
         return it->second;
 
     sf::Texture tex;
     if (!tex.loadFromFile(path))
-        throw std::runtime_error("Failed to load texture: " + path);
-
-    auto [inserted, ok] = textures.emplace(key, std::move(tex));
-    return inserted->second;
+    {
+        std::cerr << "[TextureManager] could not load texture '" << path
+                   << "', using placeholder instead.\n";
+        return buildPlaceholder(sf::Color(70, 60, 80));
+    }
+    tex.setSmooth(true);
+    auto result = textures_.emplace(key, std::move(tex));
+    return result.first->second;
 }
 
 sf::Font& TextureManager::getFont(const std::string& key, const std::string& path)
 {
-    auto it = fonts.find(key);
-    if (it != fonts.end())
+    auto it = fonts_.find(key);
+    if (it != fonts_.end())
         return it->second;
 
     sf::Font font;
     if (!font.openFromFile(path))
-        throw std::runtime_error("Failed to load font: " + path);
+    {
+        std::cerr << "[TextureManager] could not load font '" << path << "'.\n";
+    }
+    auto result = fonts_.emplace(key, std::move(font));
+    return result.first->second;
+}
 
-    auto [inserted, ok] = fonts.emplace(key, std::move(font));
-    return inserted->second;
+const sf::Font& TextureManager::titleFont()
+{
+    return getFont("cinzel", "assets/fonts/Cinzel-Bold.ttf");
+}
+
+const sf::Font& TextureManager::bodyFont()
+{
+    return getFont("cinzel", "assets/fonts/Cinzel-Bold.ttf");
+}
+
+sf::Texture& TextureManager::buildPlaceholder(sf::Color tint)
+{
+    std::uint32_t key = tint.toInteger();
+    auto it = placeholders_.find(key);
+    if (it != placeholders_.end())
+        return it->second;
+
+    sf::Image img({64, 64}, tint);
+    sf::Texture tex;
+    (void)tex.loadFromImage(img);
+    auto result = placeholders_.emplace(key, std::move(tex));
+    return result.first->second;
+}
+
+sf::Texture& TextureManager::getPlaceholder(sf::Color tint)
+{
+    return buildPlaceholder(tint);
 }

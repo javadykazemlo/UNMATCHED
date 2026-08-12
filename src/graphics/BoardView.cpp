@@ -1,189 +1,203 @@
 #include "graphics/BoardView.hpp"
-#include "graphics/UI.hpp"
-#include <algorithm>
+#include "core/Bord.hpp"
+#include "entities/Character.hpp"
+#include "graphics/TextureManager.hpp"
 #include <cmath>
+#include <string>
 
-BoardView::BoardView(sf::Vector2f position, sf::Vector2f size)
-    : position_(position), size_(size)
+namespace
 {
-}
-
-void BoardView::setPosition(sf::Vector2f pos) { position_ = pos; }
-void BoardView::setSize(sf::Vector2f size) { size_ = size; }
-void BoardView::setBoard(Bord* board) { board_ = board; }
-void BoardView::setHighlighted(const std::vector<int>& spaces) { highlighted_ = spaces; }
-void BoardView::setSelected(int space) { selected_ = space; }
-
-// Hand-authored layout that mirrors the shape of Bord's adjacency graph
-// (two starting rooms at 4 and 15, four secret-passage rooms at the
-// corners: 0, 12, 17, 23). Values are fractions of the panel size.
-sf::Vector2f BoardView::nodeLayoutFraction(int i)
-{
-    static const sf::Vector2f layout[32] = {
-        {0.10f, 0.16f}, {0.05f, 0.32f}, {0.20f, 0.08f}, {0.30f, 0.14f},
-        {0.16f, 0.44f}, {0.30f, 0.34f}, {0.20f, 0.56f}, {0.28f, 0.64f},
-        {0.14f, 0.66f}, {0.30f, 0.74f}, {0.42f, 0.80f}, {0.40f, 0.66f},
-        {0.50f, 0.90f}, {0.55f, 0.62f}, {0.65f, 0.56f}, {0.80f, 0.50f},
-        {0.45f, 0.56f}, {0.55f, 0.40f}, {0.62f, 0.28f}, {0.72f, 0.26f},
-        {0.38f, 0.24f}, {0.35f, 0.18f}, {0.55f, 0.16f}, {0.66f, 0.08f},
-        {0.76f, 0.06f}, {0.84f, 0.14f}, {0.72f, 0.20f}, {0.82f, 0.24f},
-        {0.62f, 0.44f}, {0.70f, 0.47f}, {0.80f, 0.63f}, {0.68f, 0.63f}
-    };
-    if (i < 0 || i >= 32) return {0.5f, 0.5f};
-    return layout[i];
-}
-
-sf::Vector2f BoardView::nodePixelPos(int index) const
-{
-    sf::Vector2f f = nodeLayoutFraction(index);
-    float pad = 30.f;
-    return {
-        position_.x + pad + f.x * (size_.x - 2.f * pad),
-        position_.y + pad + f.y * (size_.y - 2.f * pad)
+    const sf::Color ZONE_COLORS[] = {
+        sf::Color(60, 92, 64, 110),   // 1 green
+        sf::Color(120, 45, 48, 105),  // 2 red
+        sf::Color(48, 75, 112, 110),  // 3 blue
+        sf::Color(142, 112, 48, 105), // 4 yellow/gold
+        sf::Color(88, 62, 112, 110),  // 5 purple
+        sf::Color(43, 100, 96, 105),  // 6 teal
+        sf::Color(130, 78, 38, 105)   // 7 orange
     };
 }
 
-bool BoardView::isSecretPassage(int index) const
+BoardView::BoardView(const TextureManager* textures_)
+    : textures(textures_)
 {
-    return index == 0 || index == 12 || index == 17 || index == 23;
+    buildLayout();
 }
 
-void BoardView::updateHover(sf::Vector2f mousePos)
+void BoardView::buildLayout()
 {
-    hoveredNode_ = -1;
+    // Presentation-only coordinates for the exact 32 logical spaces.
+    positions = {
+        sf::Vector2f{800.f,135.f},
+        {700.f,150.f}, {900.f,150.f},
+        {620.f,205.f}, {735.f,210.f}, {865.f,210.f}, {980.f,205.f},
+        {555.f,285.f}, {670.f,270.f}, {800.f,260.f}, {930.f,270.f}, {1045.f,285.f},
+        {545.f,375.f}, {660.f,360.f}, {735.f,365.f}, {865.f,365.f}, {940.f,360.f}, {1055.f,375.f},
+        {555.f,470.f}, {670.f,455.f}, {800.f,465.f}, {930.f,455.f}, {1045.f,470.f},
+        {620.f,535.f}, {735.f,520.f}, {865.f,520.f}, {980.f,535.f},
+        {700.f,575.f}, {800.f,555.f}, {900.f,575.f},
+        {750.f,115.f}, {850.f,115.f}
+    };
+}
+
+sf::Color BoardView::zoneColor(int zone) const
+{
+    if (zone >= 1 && zone <= 7) return ZONE_COLORS[zone - 1];
+    return sf::Color(70,70,70,90);
+}
+
+int BoardView::primaryZone(const Bord& board, int space) const
+{
+    const std::vector<int> zones = board.getposZone(space);
+    return zones.empty() ? 0 : zones.front();
+}
+
+void BoardView::drawZones(sf::RenderTarget& target, const Bord& board) const
+{
+    // Each logical space is tinted using its actual zone membership. Shared
+    // spaces receive a neutral gold tint so the multiple-zone nature remains
+    // visible without inventing a second zone system.
     for (int i = 0; i < 32; ++i)
     {
-        sf::Vector2f p = nodePixelPos(i);
-        sf::Vector2f d = mousePos - p;
-        if (d.x * d.x + d.y * d.y <= nodeRadius_ * nodeRadius_)
+        const std::vector<int> zones = board.getposZone(i);
+        if (zones.empty()) continue;
+
+        sf::CircleShape glow(32.f);
+        glow.setOrigin({32.f,32.f});
+        glow.setPosition(positions[i]);
+
+        if (zones.size() == 1)
+            glow.setFillColor(zoneColor(zones.front()));
+        else
+            glow.setFillColor(sf::Color(165, 130, 63, 95));
+
+        glow.setOutlineColor(sf::Color(180, 155, 105, 65));
+        glow.setOutlineThickness(1.f);
+        target.draw(glow);
+    }
+}
+
+void BoardView::drawConnections(sf::RenderTarget& target, const Bord& board) const
+{
+    for (int i = 0; i < 32; ++i)
+    {
+        for (int j : board.getposAdjacent(i))
         {
-            hoveredNode_ = i;
-            break;
+            if (j < 0 || j >= 32 || j <= i)
+                continue;
+
+            sf::Vertex line[2];
+
+            line[0].position = positions[i];
+            line[0].color = sf::Color(154, 130, 88, 135);
+
+            line[1].position = positions[j];
+            line[1].color = sf::Color(154, 130, 88, 135);
+
+            //target.draw(line, sf::PrimitiveType::Lines);
+            target.draw(line, 2, sf::PrimitiveType::Lines);
         }
     }
 }
 
-int BoardView::click(sf::Vector2f mousePos) const
+void BoardView::draw(sf::RenderTarget& target, const Bord& board,
+                     int selectedSpace, const std::vector<int>& highlightedSpaces) const
 {
-    for (int i = 0; i < 32; ++i)
+    sf::RectangleShape panel({700.f, 585.f});
+    panel.setPosition({450.f, 88.f});
+    panel.setFillColor(sf::Color(7, 10, 13, textures && textures->get("board") ? 85 : 248));
+    panel.setOutlineColor(sf::Color(110, 87, 55));
+    panel.setOutlineThickness(2.f);
+    target.draw(panel);
+
+    if (textures)
     {
-        sf::Vector2f p = nodePixelPos(i);
-        sf::Vector2f d = mousePos - p;
-        if (d.x * d.x + d.y * d.y <= nodeRadius_ * nodeRadius_)
-            return i;
-    }
-    return -1;
-}
-
-void BoardView::draw(sf::RenderTarget& target) const
-{
-    if (!board_) return;
-
-    // panel background --------------------------------------------------------
-    sf::RectangleShape bg(size_);
-    bg.setPosition(position_);
-    bg.setFillColor(sf::Color(14, 12, 18));
-    bg.setOutlineColor(Theme::PanelBorder);
-    bg.setOutlineThickness(2.f);
-    target.draw(bg);
-
-    // edges ---------------------------------------------------------------------
-    sf::VertexArray lines(sf::PrimitiveType::Lines);
-    for (int i = 0; i < 32; ++i)
-    {
-        for (int n : board_->getposAdjacent(i))
+        if (const sf::Texture* boardTexture = textures->get("board"))
         {
-            if (n <= i) continue; // draw each edge once
-            sf::Vertex a, b;
-            a.position = nodePixelPos(i);
-            b.position = nodePixelPos(n);
-            a.color = b.color = sf::Color(90, 80, 70, 160);
-            lines.append(a);
-            lines.append(b);
-        }
-    }
-    target.draw(lines);
-
-    // secret passage web (dotted gold lines between the 4 tunnel rooms) --------
-    static const int secret[4] = {0, 12, 17, 23};
-    for (int a = 0; a < 4; ++a)
-    {
-        for (int b = a + 1; b < 4; ++b)
-        {
-            sf::Vector2f p1 = nodePixelPos(secret[a]);
-            sf::Vector2f p2 = nodePixelPos(secret[b]);
-            sf::Vector2f dir = p2 - p1;
-            float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-            if (len < 1.f) continue;
-            dir /= len;
-            for (float t = 0.f; t < len; t += 14.f)
+            sf::Sprite sprite(*boardTexture);
+            const sf::Vector2u size = boardTexture->getSize();
+            if (size.x > 0 && size.y > 0)
             {
-                sf::CircleShape dot(1.6f);
-                dot.setFillColor(sf::Color(196, 164, 86, 120));
-                dot.setPosition(p1 + dir * t - sf::Vector2f(1.6f, 1.6f));
-                target.draw(dot);
+                sprite.setScale({684.f / static_cast<float>(size.x),
+                                 569.f / static_cast<float>(size.y)});
+                sprite.setPosition({458.f, 96.f});
+                target.draw(sprite);
             }
         }
     }
+    else
+    {
+        sf::RectangleShape inner({684.f, 569.f});
+        inner.setPosition({458.f, 96.f});
+        inner.setFillColor(sf::Color(15, 24, 27, 255));
+        inner.setOutlineColor(sf::Color(43, 66, 63));
+        inner.setOutlineThickness(1.f);
+        target.draw(inner);
+    }
 
-    // nodes ----------------------------------------------------------------------
+    sf::CircleShape lake(105.f);
+    lake.setOrigin({105.f,105.f});
+    lake.setPosition({800.f,365.f});
+    lake.setFillColor(sf::Color(7, 34, 43, 170));
+    lake.setOutlineColor(sf::Color(47, 79, 82, 155));
+    lake.setOutlineThickness(2.f);
+    target.draw(lake);
+
+    drawZones(target, board);
+    drawConnections(target, board);
+
     for (int i = 0; i < 32; ++i)
     {
-        sf::Vector2f p = nodePixelPos(i);
-        Character* occupant = board_->getCharacter(i);
-        bool isHighlighted = std::find(highlighted_.begin(), highlighted_.end(), i) != highlighted_.end();
-        bool isHovered = (hoveredNode_ == i);
-        bool isSelected = (selected_ == i);
+        const std::vector<int> zones = board.getposZone(i);
+        const int zone = primaryZone(board, i);
 
-        if (occupant)
-        {
-            CharacterView cv(p, nodeRadius_ + (isHovered ? 3.f : 0.f));
-            cv.setCharacter(occupant);
-            cv.setCompact(true);
-            cv.setSelected(isSelected);
-            cv.draw(target);
-        }
+        bool highlighted = false;
+        for (int h : highlightedSpaces)
+            if (h == i) { highlighted = true; break; }
+
+        sf::CircleShape space(22.f);
+        space.setOrigin({22.f,22.f});
+        space.setPosition(positions[i]);
+
+        if (i == selectedSpace)
+            space.setFillColor(sf::Color(205, 156, 58, 245));
+        else if (highlighted)
+            space.setFillColor(sf::Color(70, 130, 82, 245));
+        else if (zones.size() > 1)
+            space.setFillColor(sf::Color(119, 93, 48, 235));
         else
         {
-            sf::CircleShape node(nodeRadius_);
-            node.setOrigin({ nodeRadius_, nodeRadius_ });
-            node.setPosition(p);
+            const sf::Color c = zoneColor(zone);
+            space.setFillColor(sf::Color(c.r, c.g, c.b, 205));
+        }
 
-            if (isSelected)
-            {
-                node.setFillColor(Theme::GoldBright);
-                node.setOutlineColor(sf::Color::White);
-            }
-            else if (isHighlighted)
-            {
-                node.setFillColor(sf::Color(60, 130, 80, 220));
-                node.setOutlineColor(Theme::Success);
-            }
-            else if (isSecretPassage(i))
-            {
-                node.setFillColor(sf::Color(40, 30, 45));
-                node.setOutlineColor(Theme::Gold);
-            }
-            else
-            {
-                node.setFillColor(sf::Color(30, 26, 34));
-                node.setOutlineColor(sf::Color(110, 100, 90));
-            }
-            node.setOutlineThickness(isHovered ? 3.f : 2.f);
-            target.draw(node);
+        space.setOutlineColor(sf::Color(221, 198, 149, 205));
+        space.setOutlineThickness(1.6f);
+        target.draw(space);
 
-            sf::Text label(Theme::bodyFont(), std::to_string(i), 11);
-            label.setFillColor(isHighlighted || isSelected ? sf::Color::Black : Theme::TextMuted);
-            Theme::centerOrigin(label);
-            label.setPosition(p);
-            target.draw(label);
+    }
+}
+
+int BoardView::getSpaceAt(sf::Vector2f mouse) const
+{
+    float best = 9999.f;
+    int index = -1;
+    for (int i = 0; i < 32; ++i)
+    {
+        const float dx = mouse.x - positions[i].x;
+        const float dy = mouse.y - positions[i].y;
+        const float d = std::sqrt(dx * dx + dy * dy);
+        if (d < 30.f && d < best)
+        {
+            best = d;
+            index = i;
         }
     }
+    return index;
+}
 
-    // legend -----------------------------------------------------------------
-    sf::Text legend(Theme::bodyFont(),
-                     "gold ring = secret passage    green = available    dotted line = tunnel network", 11);
-    legend.setFillColor(Theme::TextMuted);
-    legend.setPosition({ position_.x + 10.f, position_.y + size_.y - 18.f });
-    target.draw(legend);
+sf::Vector2f BoardView::getPosition(int space) const
+{
+    if (space < 0 || space >= 32) return {-100.f, -100.f};
+    return positions[space];
 }

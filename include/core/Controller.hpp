@@ -4,16 +4,27 @@
 #include <vector>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
-#include "core/UIBridge.hpp"
 #include "entities/Character.hpp"
 #include "cards/Deck.hpp"
 #include "cards/Card.hpp"
 
+class GameWindow;
+
 class Controller
 {
+public:
+    friend class GameWindow;
+    enum class GuiSetupStage
+    {
+        PlayerInfo,
+        CharacterSelection,
+        HeroPosition,
+        SidekickPlacement,
+        Ready
+    };
+
 private:
     Bord bord;
-    UIBridge* ui = nullptr; // null => fall back to console (cin/cout), unchanged behavior
 
     Player* current = nullptr;
     Player* enemy = nullptr;
@@ -43,7 +54,15 @@ private:
     AICardPurpose aiCardPurpose = AICardPurpose::Attack;
     std::vector<Character*> aiCharacterOptions;
     Character* aiMovingCharacter = nullptr;
-    Character* aiCardFighter = nullptr; 
+    Character* aiCardFighter = nullptr;
+
+
+    GuiSetupStage guiSetupStage = GuiSetupStage::PlayerInfo;
+    Player* guiPlayers = nullptr;
+    int guiCharacterPlayerIndex = -1;
+    int guiPositionPlayerIndex = -1;
+    int guiSidekickPlayerIndex = -1;
+    int guiSidekickIndex = 1;
 
     int boardDistance(int from, int to);
     void damageAllFighters(Player* p, int damage);
@@ -59,11 +78,8 @@ private:
     int aiInt(Player* decider);
     void aiThink(Player* decider);
 
-public:
-    Controller() = default;
 
-    void setUIBridge(UIBridge* bridge); // call this once, before startMenu(), when running with a GUI
-    std::string getLine(); // used for player name input (console or GUI)
+    Controller() = default;
     
     void startMenu(Player player[2]);
     void choosePlayers(Player player[2]);
@@ -84,7 +100,7 @@ public:
     bool getYesNo();
     
     Bord& getBord();
-    Player* getCurrentPlayer();
+    Player* getCurrentPlayer() const;
     Player* getEnemyPlayer();
     Character* getCharacterAt(int position);
     bool isGameOver();
@@ -95,6 +111,36 @@ public:
 
     void applyEffect(Card& card, Card& enemycard, Player* self, Player* opponent, Character* attacker, Character* defender, bool woncombat);
     void applyEffectScheme(Card& card, Player* self, Player* opponent, Character* attacker);
+
+    bool beginGuiSetup(Player players[2]);
+    bool guiFinishPlayerSetup(const std::string& player1Name, int player1Age,
+                              const std::string& player2Name, int player2Age,
+                              bool player2AI);
+    GuiSetupStage getGuiSetupStage() const;
+    Player* getGuiSetupPlayer() const;
+    std::vector<int> getGuiCharacterChoices() const;
+    std::vector<int> getGuiPlacementSpaces() const;
+    bool guiChooseCharacter(int hero);
+    bool guiChooseHeroPosition(int side);
+    bool guiPlaceSidekick(int space);
+    bool isGuiSetupReady() const;
+
+    bool startGuiGame(Player players[2], int hero1, int hero2,
+                      const std::string& player1Name = "Player 1",
+                      const std::string& player2Name = "Player 2",
+                      bool player2AI = false);
+    std::vector<int> getValidMoveSpaces(Character* selected, int movement) const;
+    bool guiMove(Character* selected, int movement, int destination);
+    bool guiAttack(Character* attacker, Character* defender,
+                   int attackCardIndex, int defenseCardIndex);
+    std::vector<int> getGuiAttackCards(Character* attacker) const;
+    std::vector<int> getGuiDefenseCards(Character* defender) const;
+    bool guiDrawCard();
+    bool guiPlayCard(int index);
+    int getActionCount() const;
+    void guiEndAction();
+    void guiEndTurn();
+    bool isCurrentPlayer(const Character* character) const;
 
     ~Controller() = default;
 };

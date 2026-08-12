@@ -1,156 +1,170 @@
 #include "graphics/CardView.hpp"
-#include "graphics/UI.hpp"
+#include "cards/Card.hpp"
+#include "graphics/TextureManager.hpp"
+#include <algorithm>
+#include <sstream>
 
-CardView::CardView(sf::Vector2f position, sf::Vector2f size)
-    : position_(position), size_(size)
+CardView::CardView(const sf::Font& font_, const TextureManager* textures_)
+    : font(font_), textures(textures_) {}
+
+std::string CardView::textureId(const Card& card) const
 {
-}
-
-void CardView::setCard(const Card& card) { card_ = card; hasCard_ = true; }
-void CardView::setPosition(sf::Vector2f pos) { position_ = pos; }
-void CardView::setSize(sf::Vector2f size) { size_ = size; }
-void CardView::setFaceDown(bool faceDown) { faceDown_ = faceDown; }
-void CardView::setSelected(bool selected) { selected_ = selected; }
-void CardView::setHighlighted(bool highlighted) { highlighted_ = highlighted; }
-void CardView::setIndex(int handIndex) { index_ = handIndex; }
-
-sf::FloatRect CardView::getBounds() const
-{
-    return sf::FloatRect(position_, size_);
-}
-
-bool CardView::contains(sf::Vector2f point) const
-{
-    return getBounds().contains(point);
-}
-
-void CardView::updateHover(sf::Vector2f mousePos)
-{
-    hovered_ = contains(mousePos);
-}
-
-sf::Color CardView::colorForType(CardType type)
-{
-    switch (type)
+    std::string id = "card_";
+    for (char c : card.getName())
     {
-        case CardType::Attack:     return Theme::AttackCard;
-        case CardType::Defense:    return Theme::DefenseCard;
-        case CardType::Versatile:  return Theme::VersatileCard;
-        case CardType::Scheme:     return Theme::SchemeCard;
+        if (c >= 'A' && c <= 'Z') id += static_cast<char>(c - 'A' + 'a');
+        else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) id += c;
+        else id += '_';
     }
-    return Theme::PanelBorder;
+    while (!id.empty() && id.back() == '_') id.pop_back();
+    return id;
 }
 
-void CardView::draw(sf::RenderTarget& target) const
+void CardView::drawWrappedText(sf::RenderTarget& target, const std::string& text,
+                               sf::Vector2f position, unsigned size,
+                               float maxWidth, sf::Color color, int maxLines) const
 {
-    sf::Vector2f pos = position_;
-    if (hovered_ && !faceDown_) pos.y -= 10.f; // lift on hover, like a hand of cards
+    std::istringstream words(text);
+    std::string word;
+    std::string line;
+    int lineNo = 0;
 
-    sf::RectangleShape body(size_);
-    body.setPosition(pos);
-    body.setFillColor(sf::Color(24, 20, 26));
-    body.setOutlineThickness(selected_ ? 3.f : 2.f);
-    body.setOutlineColor(selected_ ? Theme::GoldBright
-                          : highlighted_ ? Theme::Success
-                          : Theme::PanelBorder);
+    auto drawLine = [&](const std::string& value)
+    {
+        sf::Text t(font, value, size);
+        t.setPosition({position.x, position.y + lineNo * (size + 3.f)});
+        t.setFillColor(color);
+        target.draw(t);
+        ++lineNo;
+    };
+
+    while (words >> word && lineNo < maxLines)
+    {
+        const std::string candidate = line.empty() ? word : line + " " + word;
+        sf::Text probe(font, candidate, size);
+        if (probe.getLocalBounds().size.x <= maxWidth)
+            line = candidate;
+        else
+        {
+            if (!line.empty()) drawLine(line);
+            line = word;
+        }
+    }
+    if (!line.empty() && lineNo < maxLines) drawLine(line);
+}
+
+void CardView::drawCard(sf::RenderTarget& target, const Card& card,
+                        sf::FloatRect rect, bool selected) const
+{
+    if (textures)
+    {
+        if (const sf::Texture* texture = textures->get(textureId(card)))
+        {
+            sf::Sprite sprite(*texture);
+            const sf::Vector2u size = texture->getSize();
+            if (size.x > 0 && size.y > 0)
+            {
+                sprite.setScale({rect.size.x / static_cast<float>(size.x),
+                                 rect.size.y / static_cast<float>(size.y)});
+                sprite.setPosition(rect.position);
+                target.draw(sprite);
+
+                if (selected)
+                {
+                    sf::RectangleShape outline(rect.size);
+                    outline.setPosition(rect.position);
+                    outline.setFillColor(sf::Color::Transparent);
+                    outline.setOutlineColor(sf::Color(238, 201, 117));
+                    outline.setOutlineThickness(3.f);
+                    target.draw(outline);
+                }
+                return;
+            }
+        }
+    }
+
+    sf::Color accent = card.isAttack() ? sf::Color(130, 37, 40)
+                     : card.isDefense() ? sf::Color(43, 76, 108)
+                     : card.isScheme() ? sf::Color(91, 61, 118)
+                     : sf::Color(125, 91, 42);
+
+    sf::RectangleShape body(rect.size);
+    body.setPosition(rect.position);
+    body.setFillColor(sf::Color(17, 17, 23, 252));
+    body.setOutlineColor(selected ? sf::Color(238, 201, 117) : accent);
+    body.setOutlineThickness(selected ? 3.f : 1.5f);
     target.draw(body);
 
-    if (faceDown_ || !hasCard_)
-    {
-        sf::RectangleShape inner(sf::Vector2f(size_.x - 14.f, size_.y - 14.f));
-        inner.setPosition({ pos.x + 7.f, pos.y + 7.f });
-        inner.setFillColor(sf::Color(16, 13, 18));
-        inner.setOutlineThickness(1.f);
-        inner.setOutlineColor(Theme::Gold);
-        target.draw(inner);
-
-        sf::Text mark(Theme::titleFont(), "U", static_cast<unsigned int>(size_.x * 0.35f));
-        mark.setFillColor(Theme::Gold);
-        Theme::centerOrigin(mark);
-        mark.setPosition({ pos.x + size_.x / 2.f, pos.y + size_.y / 2.f });
-        target.draw(mark);
-        return;
-    }
-
-    // header strip colored by card type -------------------------------------
-    sf::Color typeColor = colorForType(card_.getType());
-    sf::RectangleShape header(sf::Vector2f(size_.x, size_.y * 0.16f));
-    header.setPosition(pos);
-    header.setFillColor(typeColor);
+    sf::RectangleShape header({rect.size.x, 27.f});
+    header.setPosition(rect.position);
+    header.setFillColor(sf::Color(accent.r, accent.g, accent.b, 150));
     target.draw(header);
 
-    // attack / value badge ----------------------------------------------------
-    float badgeR = size_.x * 0.16f;
-    sf::CircleShape badge(badgeR);
-    badge.setOrigin({ badgeR, badgeR });
-    badge.setPosition({ pos.x + size_.x - badgeR - 4.f, pos.y + badgeR + 4.f });
-    badge.setFillColor(sf::Color(10, 8, 12));
-    badge.setOutlineColor(Theme::Gold);
-    badge.setOutlineThickness(2.f);
-    target.draw(badge);
-
-    sf::Text valueText(Theme::titleFont(), std::to_string(card_.getAttack()),
-                        static_cast<unsigned int>(badgeR * 1.1f));
-    valueText.setFillColor(Theme::GoldBright);
-    Theme::centerOrigin(valueText);
-    valueText.setPosition(badge.getPosition());
-    target.draw(valueText);
-
-    // name --------------------------------------------------------------------
-    sf::Text name(Theme::titleFont(), card_.getName(), 15);
-    name.setFillColor(Theme::TextLight);
-    name.setStyle(sf::Text::Bold);
-    name.setPosition({ pos.x + 8.f, pos.y + size_.y * 0.16f + 6.f });
-    // shrink to fit width
-    while (name.getLocalBounds().size.x > size_.x - badgeR * 2.f - 12.f && name.getCharacterSize() > 9)
-    {
-        name.setCharacterSize(name.getCharacterSize() - 1);
-    }
+    sf::Text name(font, card.getName(), 10);
+    name.setPosition({rect.position.x + 5.f, rect.position.y + 5.f});
+    name.setFillColor(sf::Color(241, 229, 204));
     target.draw(name);
 
-    // type / timing tag ---------------------------------------------------
-    sf::Text tag(Theme::bodyFont(), card_.getTypeString() + " \u00B7 " + card_.getTimingString(), 10);
-    tag.setFillColor(Theme::TextMuted);
-    tag.setPosition({ pos.x + 8.f, pos.y + size_.y * 0.16f + 26.f });
-    target.draw(tag);
+    sf::Text type(font, card.getTypeString(), 8);
+    type.setPosition({rect.position.x + 5.f, rect.position.y + 31.f});
+    type.setFillColor(sf::Color(177, 168, 153));
+    target.draw(type);
 
-    // effect text -----------------------------------------------------------
-    sf::Text effect(Theme::bodyFont(), "", 11);
-    effect.setFillColor(Theme::TextLight);
-    effect.setString(Theme::wordWrap(Theme::bodyFont(), card_.geteffect(), 11, size_.x - 16.f));
-    effect.setPosition({ pos.x + 8.f, pos.y + size_.y * 0.16f + 44.f });
-    target.draw(effect);
-
-    // boost badge, bottom-left ----------------------------------------------
-    if (card_.getBoost() > 0)
-    {
-        sf::Text boost(Theme::bodyFont(), "+" + std::to_string(card_.getBoost()) + " boost", 11);
-        boost.setFillColor(Theme::Gold);
-        boost.setPosition({ pos.x + 8.f, pos.y + size_.y - 20.f });
-        target.draw(boost);
-    }
-
-    // owner marker, bottom-right ---------------------------------------------
-    sf::Text owner(Theme::bodyFont(), card_.getOwnerString(), 10);
-    owner.setFillColor(Theme::TextMuted);
-    sf::FloatRect ob = owner.getLocalBounds();
-    owner.setPosition({ pos.x + size_.x - ob.size.x - 8.f, pos.y + size_.y - 20.f });
+    sf::Text owner(font, card.getOwnerString(), 7);
+    owner.setPosition({rect.position.x + 5.f, rect.position.y + 46.f});
+    owner.setFillColor(sf::Color(143, 137, 127));
     target.draw(owner);
 
-    // hand index chip, top-left ----------------------------------------------
-    if (index_ >= 0)
-    {
-        sf::CircleShape idx(10.f);
-        idx.setPosition({ pos.x + 4.f, pos.y + 4.f });
-        idx.setFillColor(sf::Color(0, 0, 0, 180));
-        idx.setOutlineColor(Theme::Gold);
-        idx.setOutlineThickness(1.f);
-        target.draw(idx);
+    sf::Text value(font, "V " + std::to_string(card.getAttack()), 9);
+    value.setPosition({rect.position.x + rect.size.x - 38.f, rect.position.y + 31.f});
+    value.setFillColor(sf::Color(232, 207, 152));
+    target.draw(value);
 
-        sf::Text idxText(Theme::bodyFont(), std::to_string(index_), 12);
-        idxText.setFillColor(Theme::GoldBright);
-        Theme::centerOrigin(idxText);
-        idxText.setPosition({ pos.x + 14.f, pos.y + 14.f });
-        target.draw(idxText);
+    sf::Text boost(font, "B " + std::to_string(card.getBoost()), 9);
+    boost.setPosition({rect.position.x + 5.f, rect.position.y + rect.size.y - 30.f});
+    boost.setFillColor(sf::Color(208, 183, 126));
+    target.draw(boost);
+
+    sf::Text timing(font, card.getTimingString(), 7);
+    timing.setPosition({rect.position.x + 5.f, rect.position.y + rect.size.y - 17.f});
+    timing.setFillColor(sf::Color(143, 137, 127));
+    target.draw(timing);
+
+    drawWrappedText(target, card.geteffect(),
+                    {rect.position.x + 5.f, rect.position.y + 60.f},
+                    7, rect.size.x - 10.f, sf::Color(196, 190, 177), 7);
+}
+
+void CardView::drawHand(sf::RenderTarget& target, const std::vector<Card>& cards,
+                        int selectedIndex) const
+{
+    const float x = 525.f;
+    const float y = 714.f;
+    const float w = 93.f;
+    const float h = 145.f;
+    const float gap = 5.f;
+
+    const int visible = std::min(7, static_cast<int>(cards.size()));
+    for (int i = 0; i < visible; ++i)
+    {
+        sf::FloatRect rect({x + i * (w + gap), y}, {w, h});
+        if (i == selectedIndex) rect.position.y -= 12.f;
+        drawCard(target, cards[i], rect, i == selectedIndex);
     }
+}
+
+int CardView::getCardAt(sf::Vector2f mouse, int cardCount) const
+{
+    const float x = 525.f;
+    const float y = 714.f;
+    const float w = 93.f;
+    const float h = 145.f;
+    const float gap = 5.f;
+
+    for (int i = 0; i < std::min(7, cardCount); ++i)
+    {
+        sf::FloatRect rect({x + i * (w + gap), y}, {w, h});
+        if (rect.contains(mouse)) return i;
+    }
+    return -1;
 }

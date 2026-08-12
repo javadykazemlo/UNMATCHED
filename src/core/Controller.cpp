@@ -57,7 +57,7 @@ void Controller::choosePlayers(Player player[2])
     player[0].setAge(a);
 
     cout << "\nFirst player, enter your name: ";
-    n = getLine();
+    getline(cin , n);
     player[0].setName(n);
 
     cout << "\nPlay single-player against the AI? (y/n): ";
@@ -78,7 +78,7 @@ void Controller::choosePlayers(Player player[2])
         player[1].setAge(a);
 
         cout << "\nSecond player, enter your name: ";
-        n = getLine();
+        getline(cin >> ws , n);
         player[1].setName(n);
     }
 
@@ -242,8 +242,6 @@ void Controller::plaseSidekicks(Player& player)
 
 void Controller::playTurn()
 {
-    if (ui) ui->setInPlayPhase(true);
-
     int Todo = 0;
     while(!end_game())
     {
@@ -407,7 +405,6 @@ void Controller::playTurn()
         swap(current, enemy);
     }
 
-    if (ui) ui->setInPlayPhase(false);
 }
 
 
@@ -850,27 +847,11 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
 }
 
 
-void Controller::setUIBridge(UIBridge* bridge)
-{
-    ui = bridge;
-}
-
-std::string Controller::getLine()
-{
-    if (ui) return ui->requestLine();
-
-    std::string n;
-    getline(cin >> ws, n);
-    return n;
-}
-
 int Controller::getInt()
 {
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
         return aiInt(decider);
-
-    if (ui) return ui->requestInt();
 
     int x;
 
@@ -897,8 +878,6 @@ int Controller::getChoice(std::vector<int> valid)
     if(decider && decider->isAI())
         return aiChoose(valid, decider);
 
-    if (ui) return ui->requestChoice(valid);
-
     while(true)
     {
         int x = getInt();
@@ -913,8 +892,6 @@ bool Controller::getYesNo()
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
         return aiYesNo(decider);
-
-    if (ui) return ui->requestYesNo();
 
     char choice;
     cin >> choice;
@@ -1181,7 +1158,7 @@ Bord& Controller::getBord()
     return bord;
 }
 
-Player* Controller::getCurrentPlayer()
+Player* Controller::getCurrentPlayer() const
 {
     return current;
 }
@@ -1241,6 +1218,604 @@ bool Controller::LoadGame(Player player[2], const string& filename)
 
     cout << "\n✅ Game loaded from \"" << filename << "\".\n";
     return true;
+}
+
+
+
+bool Controller::beginGuiSetup(Player players[2])
+{
+    if (!players) return false;
+
+    guiPlayers = players;
+    players[0].reset();
+    players[1].reset();
+
+    bord = Bord();
+    current = nullptr;
+    enemy = nullptr;
+    activeDecider = nullptr;
+
+    gamerand = 0;
+    guiCharacterPlayerIndex = -1;
+    guiPositionPlayerIndex = -1;
+    guiSidekickPlayerIndex = -1;
+    guiSidekickIndex = 1;
+    guiSetupStage = GuiSetupStage::PlayerInfo;
+    return true;
+}
+
+bool Controller::guiFinishPlayerSetup(const std::string& player1Name, int player1Age,
+                                      const std::string& player2Name, int player2Age,
+                                      bool player2AI)
+{
+    if (!guiPlayers || player1Name.empty() || player1Age <= 0)
+        return false;
+
+    if (!player2AI && (player2Name.empty() || player2Age <= 0))
+        return false;
+
+    guiPlayers[0].setName(player1Name);
+    guiPlayers[0].setAge(player1Age);
+    guiPlayers[0].setAI(false);
+
+    guiPlayers[1].setAI(player2AI);
+    if (player2AI)
+    {
+        guiPlayers[1].setName("AI");
+        guiPlayers[1].setAge(player1Age);
+    }
+    else
+    {
+        guiPlayers[1].setName(player2Name);
+        guiPlayers[1].setAge(player2Age);
+    }
+
+    // Exactly the same starting-player rule as choosePlayers().
+    if (player2AI || guiPlayers[0].getAge() <= guiPlayers[1].getAge())
+    {
+        current = &guiPlayers[0];
+        enemy = &guiPlayers[1];
+    }
+    else
+    {
+        current = &guiPlayers[1];
+        enemy = &guiPlayers[0];
+    }
+
+    activeDecider = current;
+    guiCharacterPlayerIndex = (current == &guiPlayers[0]) ? 0 : 1;
+    guiSetupStage = GuiSetupStage::CharacterSelection;
+
+    // In case an AI is ever the first player, let the core choose automatically.
+    if (current->isAI())
+    {
+        const auto choices = getGuiCharacterChoices();
+        if (!choices.empty())
+            guiChooseCharacter(choices.front());
+    }
+
+    return true;
+}
+
+Controller::GuiSetupStage Controller::getGuiSetupStage() const
+{
+    return guiSetupStage;
+}
+
+Player* Controller::getGuiSetupPlayer() const
+{
+    if (!guiPlayers) return nullptr;
+
+    if (guiSetupStage == GuiSetupStage::CharacterSelection && guiCharacterPlayerIndex >= 0)
+        return &guiPlayers[guiCharacterPlayerIndex];
+
+    if (guiSetupStage == GuiSetupStage::HeroPosition && guiPositionPlayerIndex >= 0)
+        return &guiPlayers[guiPositionPlayerIndex];
+
+    if (guiSetupStage == GuiSetupStage::SidekickPlacement && guiSidekickPlayerIndex >= 0)
+        return &guiPlayers[guiSidekickPlayerIndex];
+
+    return current;
+}
+
+std::vector<int> Controller::getGuiCharacterChoices() const
+{
+    std::vector<int> choices = {1, 2, 3};
+    if (!guiPlayers || guiCharacterPlayerIndex < 0)
+        return {};
+
+    const int other = guiCharacterPlayerIndex == 0 ? 1 : 0;
+    if (guiPlayers[other].getHero())
+    {
+        const std::string name = guiPlayers[other].getHero()->getName();
+        if (name == "Dracula")
+            choices.erase(std::remove(choices.begin(), choices.end(), 1), choices.end());
+        else if (name == "sherlock")
+            choices.erase(std::remove(choices.begin(), choices.end(), 2), choices.end());
+        else if (name == "invisible man")
+            choices.erase(std::remove(choices.begin(), choices.end(), 3), choices.end());
+    }
+
+    return choices;
+}
+
+std::vector<int> Controller::getGuiPlacementSpaces() const
+{
+    if ((guiSetupStage != GuiSetupStage::SidekickPlacement &&
+         guiSetupStage != GuiSetupStage::HeroPosition) ||
+        !guiPlayers || guiSidekickPlayerIndex < 0)
+        return {};
+
+    Player& player = guiPlayers[guiSidekickPlayerIndex];
+    Character* hero = player.getHero();
+    if (!hero) return {};
+
+    const std::vector<int> zone = bord.getCharacterZone(hero);
+    const std::vector<int> spaces = bord.getEmptyZone(zone);
+
+    std::vector<int> result;
+    for (int pos : spaces)
+        if (!bord.getSpaceStatus(pos))
+            result.push_back(pos);
+
+    return result;
+}
+
+bool Controller::guiChooseCharacter(int hero)
+{
+    if (guiSetupStage != GuiSetupStage::CharacterSelection ||
+        !guiPlayers || guiCharacterPlayerIndex < 0)
+        return false;
+
+    const std::vector<int> valid = getGuiCharacterChoices();
+    if (std::find(valid.begin(), valid.end(), hero) == valid.end())
+        return false;
+
+    Player& player = guiPlayers[guiCharacterPlayerIndex];
+    const int owner = guiCharacterPlayerIndex == 0 ? 1 : 2;
+    player.chooseCharacter(hero, owner);
+
+    // Move to the other player's character choice.
+    const int other = guiCharacterPlayerIndex == 0 ? 1 : 0;
+    if (!guiPlayers[other].getHero())
+    {
+        guiCharacterPlayerIndex = other;
+
+        if (guiPlayers[other].isAI())
+        {
+            const auto choices = getGuiCharacterChoices();
+            if (choices.empty()) return false;
+            guiPlayers[other].chooseCharacter(choices.front(), other + 1);
+        }
+    }
+
+    if (guiPlayers[0].getHero() && guiPlayers[1].getHero())
+    {
+        guiCharacterPlayerIndex = -1;
+        guiPositionPlayerIndex = (current == &guiPlayers[0]) ? 0 : 1;
+        guiSetupStage = GuiSetupStage::HeroPosition;
+
+        if (current->isAI())
+            return guiChooseHeroPosition(1);
+    }
+
+    return true;
+}
+
+bool Controller::guiChooseHeroPosition(int side)
+{
+    if (guiSetupStage != GuiSetupStage::HeroPosition ||
+        !guiPlayers || guiPositionPlayerIndex < 0 ||
+        (side != 1 && side != 2))
+        return false;
+
+    Character* currentHero = current ? current->getHero() : nullptr;
+    Character* enemyHero = enemy ? enemy->getHero() : nullptr;
+
+    if (!currentHero || !enemyHero)
+        return false;
+
+    // Place heroes on the board.
+    const int currentPos = (side == 1) ? 4 : 15;
+    const int enemyPos   = (side == 1) ? 15 : 4;
+
+    bord.addCharacter(currentPos, currentHero);
+    bord.addCharacter(enemyPos, enemyHero);
+
+    // Start sidekick placement with the player who chooses first.
+    guiSidekickPlayerIndex = (current == &guiPlayers[0]) ? 0 : 1;
+    guiSidekickIndex = 1;
+
+    Player& firstPlayer = guiPlayers[guiSidekickPlayerIndex];
+
+    // ---------------------------------------------------------
+    // INVISIBLE MAN
+    // ---------------------------------------------------------
+    // Invisible Man has no physical sidekicks.
+    // His mist tokens are placed automatically.
+    if (firstPlayer.getHero()->getName() == "invisible man")
+    {
+        auto* im = dynamic_cast<invisible_man*>(firstPlayer.getHero());
+
+        if (im)
+        {
+            const std::vector<int> spaces = getGuiPlacementSpaces();
+
+            int token = 0;
+
+            for (int pos : spaces)
+            {
+                if (token >= 3)
+                    break;
+
+                if (!bord.getSpaceStatus(pos))
+                {
+                    im->setMistToken(token, pos);
+                    ++token;
+                }
+            }
+        }
+
+        // Invisible Man is finished.
+        // Move to the other player.
+        guiSidekickPlayerIndex =
+            (guiSidekickPlayerIndex == 0) ? 1 : 0;
+
+        guiSidekickIndex = 1;
+    }
+
+    // ---------------------------------------------------------
+    // CHECK THE NEXT PLAYER
+    // ---------------------------------------------------------
+
+    Player& sidekickPlayer = guiPlayers[guiSidekickPlayerIndex];
+
+    // If the next player is also Invisible Man,
+    // there are no physical sidekicks to place.
+    if (sidekickPlayer.getHero()->getName() == "invisible man")
+    {
+        auto* im = dynamic_cast<invisible_man*>(
+            sidekickPlayer.getHero());
+
+        if (im)
+        {
+            const std::vector<int> spaces =
+                getGuiPlacementSpaces();
+
+            int token = 0;
+
+            for (int pos : spaces)
+            {
+                if (token >= 3)
+                    break;
+
+                if (!bord.getSpaceStatus(pos))
+                {
+                    im->setMistToken(token, pos);
+                    ++token;
+                }
+            }
+        }
+
+        guiSetupStage = GuiSetupStage::Ready;
+        return true;
+    }
+
+    // ---------------------------------------------------------
+    // NORMAL PLAYER
+    // ---------------------------------------------------------
+    // The player has physical sidekicks.
+    // Let the GUI display the sidekick placement screen.
+    guiSetupStage = GuiSetupStage::SidekickPlacement;
+
+    return true;
+}
+
+bool Controller::guiPlaceSidekick(int space)
+{
+    if (guiSetupStage != GuiSetupStage::SidekickPlacement ||
+        !guiPlayers || guiSidekickPlayerIndex < 0)
+        return false;
+
+    const std::vector<int> valid = getGuiPlacementSpaces();
+    if (std::find(valid.begin(), valid.end(), space) == valid.end())
+        return false;
+
+    Player& player = guiPlayers[guiSidekickPlayerIndex];
+    if (guiSidekickIndex >= player.getfighterCount())
+        return false;
+
+    Character* fighter = player.getFighter(guiSidekickIndex);
+    if (!fighter) return false;
+
+    bord.addCharacter(space, fighter);
+    ++guiSidekickIndex;
+
+    if (guiSidekickIndex >= player.getfighterCount())
+    {
+        const int other = guiSidekickPlayerIndex == 0 ? 1 : 0;
+        Player& otherPlayer = guiPlayers[other];
+
+        if (otherPlayer.getHero()->getName() == "invisible man")
+        {
+            auto* im = dynamic_cast<invisible_man*>(otherPlayer.getHero());
+            const std::vector<int> spaces = bord.getEmptyZone(
+                bord.getCharacterZone(otherPlayer.getHero()));
+
+            if (im)
+            {
+                int token = 0;
+                for (int pos : spaces)
+                {
+                    if (token == 3) break;
+                    if (!bord.getSpaceStatus(pos))
+                        im->setMistToken(token++, pos);
+                }
+            }
+            guiSetupStage = GuiSetupStage::Ready;
+            return true;
+        }
+
+        guiSidekickPlayerIndex = other;
+        guiSidekickIndex = 1;
+    }
+
+    return true;
+}
+
+bool Controller::isGuiSetupReady() const
+{
+    return guiSetupStage == GuiSetupStage::Ready;
+}
+
+bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
+                              const std::string& player1Name,
+                              const std::string& player2Name,
+                              bool player2AI)
+{
+    if (!players || hero1 < 1 || hero1 > 3 || hero2 < 1 || hero2 > 3 || hero1 == hero2)
+        return false;
+
+    players[0].setName(player1Name);
+    players[0].setAge(0);
+    players[0].setAI(false);
+    players[1].setName(player2Name);
+    players[1].setAge(0);
+    players[1].setAI(player2AI);
+
+    players[0].chooseCharacter(hero1, 1);
+    players[1].chooseCharacter(hero2, 2);
+
+    current = &players[0];
+    enemy = &players[1];
+    activeDecider = current;
+    gamerand = 0;
+
+    // Same opening hero spaces as the original console setup.
+    bord.addCharacter(4, current->getHero());
+    bord.addCharacter(15, enemy->getHero());
+
+    auto placeSidekicks = [this](Player& player)
+    {
+        Character* hero = player.getHero();
+        if (!hero) return;
+
+        const std::vector<int> zone = bord.getCharacterZone(hero);
+        const std::vector<int> available = bord.getEmptyZone(zone);
+
+        if (hero->getName() == "invisible man")
+        {
+            auto* im = dynamic_cast<invisible_man*>(hero);
+            if (!im) return;
+            int placed = 0;
+            for (int pos : available)
+            {
+                if (placed == 3) break;
+                im->setMistToken(placed++, pos);
+            }
+            return;
+        }
+
+        for (int i = 1; i < player.getfighterCount(); ++i)
+        {
+            Character* fighter = player.getFighter(i);
+            if (!fighter || !fighter->checkalive()) continue;
+            for (int pos : available)
+            {
+                if (!bord.getSpaceStatus(pos))
+                {
+                    bord.addCharacter(pos, fighter);
+                    break;
+                }
+            }
+        }
+    };
+
+    placeSidekicks(players[0]);
+    placeSidekicks(players[1]);
+    return true;
+}
+
+std::vector<int> Controller::getValidMoveSpaces(Character* selected, int movement) const
+{
+    std::vector<int> result;
+    if (!selected || movement < 0 || selected->getSpace() < 0 || selected->getSpace() >= 32)
+        return result;
+
+    std::vector<int> frontier{selected->getSpace()};
+    std::vector<bool> visited(32, false);
+    visited[selected->getSpace()] = true;
+    result.push_back(selected->getSpace());
+
+    auto* im = dynamic_cast<invisible_man*>(selected);
+
+    for (int step = 0; step < movement; ++step)
+    {
+        std::vector<int> next;
+        for (int pos : frontier)
+        {
+            std::vector<int> neighbors = bord.getposAdjacent(pos);
+            const std::vector<int> passages = bord.getSecretPassages(pos);
+            neighbors.insert(neighbors.end(), passages.begin(), passages.end());
+
+            if (im && im->isMistPosition(pos))
+            {
+                for (int mist : im->getMistTokens())
+                    if (mist >= 0 && mist != pos) neighbors.push_back(mist);
+            }
+
+            for (int n : neighbors)
+            {
+                if (n < 0 || n >= 32 || visited[n]) continue;
+                Character* occupant = bord.getCharacter(n);
+                if (!occupant)
+                {
+                    visited[n] = true;
+                    next.push_back(n);
+                    result.push_back(n);
+                }
+                else if (occupant->getowner() == selected->getowner())
+                {
+                    visited[n] = true;
+                    next.push_back(n);
+                }
+            }
+        }
+        frontier = next;
+        if (frontier.empty()) break;
+    }
+    return result;
+}
+
+bool Controller::guiMove(Character* selected, int movement, int destination)
+{
+    if (!selected || !isCurrentPlayer(selected)) return false;
+    const std::vector<int> valid = getValidMoveSpaces(selected, movement);
+    if (std::find(valid.begin(), valid.end(), destination) == valid.end()) return false;
+    if (selected->getSpace() == destination) return true;
+
+    const int old = selected->getSpace();
+    if (old >= 0) bord.deletCharacter(old);
+    bord.addCharacter(destination, selected);
+    return true;
+}
+
+
+std::vector<int> Controller::getGuiAttackCards(Character* attacker) const
+{
+    std::vector<int> result;
+    if (!attacker || !current || !current->getDeck() || !isCurrentPlayer(attacker))
+        return result;
+
+    const auto& hand = current->getDeck()->gethand();
+    for (int i = 0; i < static_cast<int>(hand.size()); ++i)
+    {
+        const Card& card = hand[i];
+        const bool ownerOK = attacker->isHero()
+            ? (card.isHero() || card.isAnyowner())
+            : (card.issideKick() || card.isAnyowner());
+
+        if (ownerOK && (card.isAttack() || card.isVersatile()))
+            result.push_back(i);
+    }
+    return result;
+}
+
+std::vector<int> Controller::getGuiDefenseCards(Character* defender) const
+{
+    std::vector<int> result;
+    if (!defender || !enemy || !enemy->getDeck())
+        return result;
+
+    const auto& hand = enemy->getDeck()->gethand();
+    for (int i = 0; i < static_cast<int>(hand.size()); ++i)
+    {
+        const Card& card = hand[i];
+        const bool ownerOK = defender->isHero()
+            ? (card.isHero() || card.isAnyowner())
+            : (card.issideKick() || card.isAnyowner());
+
+        if (ownerOK && (card.isDefense() || card.isVersatile()))
+            result.push_back(i);
+    }
+    return result;
+}
+
+bool Controller::guiAttack(Character* attacker, Character* defender,
+                            int attackCardIndex, int defenseCardIndex)
+{
+    if (!attacker || !defender || !current || !enemy) return false;
+    if (!isCurrentPlayer(attacker) || defender->getowner() == attacker->getowner()) return false;
+
+    bool targetFound = false;
+    for (Character* target : bord.getAttackCharacters(attacker->getAttacktype(), attacker->getSpace()))
+        if (target == defender) { targetFound = true; break; }
+    if (!targetFound) return false;
+
+    Deck* attackDeck = current->getDeck();
+    Deck* defenseDeck = enemy->getDeck();
+    if (!attackDeck || !defenseDeck) return false;
+    if (attackCardIndex < 0 || attackCardIndex >= attackDeck->gethandSize()) return false;
+    if (defenseCardIndex < 0 || defenseCardIndex >= defenseDeck->gethandSize()) return false;
+
+    Card attackCard = attackDeck->getHandcard(attackCardIndex);
+    Card defenseCard = defenseDeck->getHandcard(defenseCardIndex);
+
+    const bool attackOwnerOK = attacker->isHero()
+        ? (attackCard.isHero() || attackCard.isAnyowner())
+        : (attackCard.issideKick() || attackCard.isAnyowner());
+    const bool defenseOwnerOK = defender->isHero()
+        ? (defenseCard.isHero() || defenseCard.isAnyowner())
+        : (defenseCard.issideKick() || defenseCard.isAnyowner());
+
+    if (!attackOwnerOK || !defenseOwnerOK) return false;
+    if (!(attackCard.isAttack() || attackCard.isVersatile())) return false;
+    if (!(defenseCard.isDefense() || defenseCard.isVersatile())) return false;
+
+    Card selectedAttack;
+    Card selectedDefense;
+    selectedAttack = attackDeck->playCard(attackCardIndex, selectedAttack);
+    selectedDefense = defenseDeck->playCard(defenseCardIndex, selectedDefense);
+    resolveCombat(selectedAttack, selectedDefense, attacker, defender);
+    return true;
+}
+
+bool Controller::guiDrawCard()
+{
+    if (!current || !current->getDeck()) return false;
+    try
+    {
+        current->getDeck()->draw();
+        return true;
+    }
+    catch (const std::runtime_error&)
+    {
+        damageAllFighters(current, 2);
+        return false;
+    }
+}
+
+bool Controller::guiPlayCard(int index)
+{
+    if (!current || !current->getDeck()) return false;
+    if (index < 0 || index >= current->getDeck()->gethandSize()) return false;
+
+    Card selected;
+    selected = current->getDeck()->playCard(index, selected);
+    return true;
+}
+
+int Controller::getActionCount() const { return gamerand; }
+void Controller::guiEndAction() { if (gamerand < 2) ++gamerand; }
+void Controller::guiEndTurn()
+{
+    gamerand = 0;
+    std::swap(current, enemy);
+}
+
+bool Controller::isCurrentPlayer(const Character* character) const
+{
+    return character && current && character->getowner() == current->getHero()->getowner();
 }
 
 bool Controller::end_game() const

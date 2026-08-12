@@ -1220,6 +1220,237 @@ bool Controller::LoadGame(Player player[2], const string& filename)
     return true;
 }
 
+
+bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
+                              const std::string& player1Name,
+                              const std::string& player2Name,
+                              bool player2AI)
+{
+    if (!players || hero1 < 1 || hero1 > 3 || hero2 < 1 || hero2 > 3 || hero1 == hero2)
+        return false;
+
+    players[0].setName(player1Name);
+    players[0].setAge(0);
+    players[0].setAI(false);
+
+    players[1].setName(player2Name);
+    players[1].setAge(0);
+    players[1].setAI(player2AI);
+
+    players[0].chooseCharacter(hero1, 1);
+    players[1].chooseCharacter(hero2, 2);
+
+    current = &players[0];
+    enemy = &players[1];
+    gamerand = 0;
+    activeDecider = current;
+
+    // Preserve the original opening hero positions used by chooseCharacters().
+    bord.addCharacter(4, current->getHero());
+    bord.addCharacter(15, enemy->getHero());
+
+    // GUI setup uses the first legal empty spaces instead of asking for
+    // console input. The board topology and zone rules are unchanged.
+    auto placeSidekicksGui = [this](Player& player)
+    {
+        Character* hero = player.getHero();
+        if (!hero) return;
+
+        std::vector<int> zone = bord.getCharacterZone(hero);
+        std::vector<int> spaces = bord.getEmptyZone(zone);
+
+        if (hero->getName() == "invisible man")
+        {
+            invisible_man* im = dynamic_cast<invisible_man*>(hero);
+            for (int i = 0; i < 3 && i < static_cast<int>(spaces.size()); ++i)
+                im->setMistToken(i, spaces[i]);
+            return;
+        }
+
+        int needed = player.getfighterCount() - 1;
+        int placed = 0;
+        for (int i = 1; i < player.getfighterCount() && placed < needed; ++i)
+        {
+            Character* fighter = player.getFighter(i);
+            if (!fighter || !fighter->checkalive()) continue;
+
+            for (int pos : spaces)
+            {
+                if (!bord.getSpaceStatus(pos))
+                {
+                    bord.addCharacter(pos, fighter);
+                    ++placed;
+                    break;
+                }
+            }
+        }
+    };
+
+    placeSidekicksGui(players[0]);
+    placeSidekicksGui(players[1]);
+    return true;
+}
+
+std::vector<int> Controller::getValidMoveSpaces(Character* selected, int movement) const
+{
+    std::vector<int> result;
+    if (!selected || movement < 0 || selected->getSpace() < 0 || selected->getSpace() >= 32)
+        return result;
+
+    std::vector<int> currently{selected->getSpace()};
+    std::vector<bool> visited(32, false);
+    visited[selected->getSpace()] = true;
+    result.push_back(selected->getSpace());
+
+    invisible_man* im = dynamic_cast<invisible_man*>(selected);
+
+    for (int step = 0; step < movement; ++step)
+    {
+        std::vector<int> next;
+
+        for (int currentPos : currently)
+        {
+            std::vector<int> neighbors = bord.getposAdjacent(currentPos);
+            std::vector<int> tunnel = bord.getSecretPassages(currentPos);
+            neighbors.insert(neighbors.end(), tunnel.begin(), tunnel.end());
+
+            if (im && im->isMistPosition(currentPos))
+            {
+                for (int mistPos : im->getMistTokens())
+                    if (mistPos != -1 && mistPos != currentPos)
+                        neighbors.push_back(mistPos);
+            }
+
+            for (int pos : neighbors)
+            {
+                if (pos < 0 || pos >= 32 || visited[pos])
+                    continue;
+
+                Character* target = bord.getCharacter(pos);
+
+                if (!target)
+                {
+                    result.push_back(pos);
+                    next.push_back(pos);
+                    visited[pos] = true;
+                }
+                else if (selected->getowner() == target->getowner())
+                {
+                    next.push_back(pos);
+                    visited[pos] = true;
+                }
+            }
+        }
+
+        currently = next;
+        if (currently.empty())
+            break;
+    }
+
+    return result;
+}
+
+bool Controller::guiMove(Character* selected, int movement, int destination)
+{
+    std::vector<int> valid = getValidMoveSpaces(selected, movement);
+    if (std::find(valid.begin(), valid.end(), destination) == valid.end())
+        return false;
+
+    int oldSpace = selected->getSpace();
+    if (oldSpace >= 0)
+        bord.deletCharacter(oldSpace);
+
+    bord.addCharacter(destination, selected);
+    return true;
+}
+
+bool Controller::guiAttack(Character* attacker, Character* defender,
+                            int attackCardIndex, int defenseCardIndex)
+{
+    if (!attacker || !defender || !attacker->checkalive() || !defender->checkalive())
+        return false;
+
+    if (attacker->getowner() != current->getHero()->getowner())
+        return false;
+
+    if (defender->getowner() == attacker->getowner())
+        return false;
+
+    std::vector<Character*> attackTargets =
+        bord.getAttackCharacters(attacker->getAttacktype(), attacker->getSpace());
+
+    bool targetFound = false;
+    for (Character* c : attackTargets)
+    {
+        if (c == defender && c->checkalive() && c->getowner() != attacker->getowner())
+        {
+            targetFound = true;
+            break;
+        }
+    }
+
+    if (!targetFound)
+        return false;
+
+    Deck* atkDeck = current->getDeck();
+    Deck* defDeck = enemy->getDeck();
+    if (!atkDeck || !defDeck)
+        return false;
+
+    if (attackCardIndex < 0 || attackCardIndex >= atkDeck->gethandSize() ||
+        defenseCardIndex < 0 || defenseCardIndex >= defDeck->gethandSize())
+        return false;
+
+    Card attackCard = atkDeck->getHandcard(attackCardIndex);
+    Card defenseCard = defDeck->getHandcard(defenseCardIndex);
+
+    bool attackOwnerOK = attacker->isHero()
+        ? (attackCard.isHero() || attackCard.isAnyowner())
+        : (attackCard.issideKick() || attackCard.isAnyowner());
+
+    bool defenseOwnerOK = defender->isHero()
+        ? (defenseCard.isHero() || defenseCard.isAnyowner())
+        : (defenseCard.issideKick() || defenseCard.isAnyowner());
+
+    bool attackTypeOK = attackCard.isAttack() || attackCard.isVersatile();
+    bool defenseTypeOK = defenseCard.isDefense() || defenseCard.isVersatile();
+
+    if (!attackOwnerOK || !defenseOwnerOK || !attackTypeOK || !defenseTypeOK)
+        return false;
+
+    Card selectedAttack;
+    Card selectedDefense;
+    selectedAttack = atkDeck->playCard(attackCardIndex, selectedAttack);
+    selectedDefense = defDeck->playCard(defenseCardIndex, selectedDefense);
+
+    // Use the existing combat-resolution implementation. Cards whose effects
+    // require additional console choices remain handled by the existing core
+    // until their individual choice dialogs are migrated to GUI actions.
+    resolveCombat(selectedAttack, selectedDefense, attacker, defender);
+    return true;
+}
+
+int Controller::getActionCount() const
+{
+    return gamerand;
+}
+
+void Controller::guiEndAction()
+{
+    ++gamerand;
+}
+
+void Controller::guiEndTurn()
+{
+    gamerand = 0;
+    std::swap(current, enemy);
+}
+
+bool Controller::isCurrentPlayer(const Character* character) const
+{
+    return character && current && character->getowner() == current->getHero()->getowner();
+}
+
 bool Controller::end_game() const
 {
     Character* hero1 = current->getHero();

@@ -1,748 +1,568 @@
 #include "graphics/GameWindow.hpp"
+#include "graphics/BoardView.hpp"
+#include "graphics/CharacterView.hpp"
 #include "graphics/CardView.hpp"
-#include "graphics/TextureManager.hpp"
-#include <cctype>
+#include "graphics/DeckView.hpp"
+#include "graphics/UI.hpp"
+#include "entities/Character.hpp"
+#include "cards/Deck.hpp"
+
 #include <algorithm>
 #include <sstream>
+#include <stdexcept>
 
-// ─────────────────────────────────────────────────────────────────────────
-//  InputBridge / OutputCapture
-// ─────────────────────────────────────────────────────────────────────────
-void InputBridge::pushLine(const std::string& line)
-{
-    std::lock_guard<std::mutex> lk(mutex_);
-    queue_.push(line + "\n");
-    cv_.notify_one();
-}
-
-InputBridge::int_type InputBridge::underflow()
-{
-    if (gptr() < egptr())
-        return traits_type::to_int_type(*gptr());
-
-    std::unique_lock<std::mutex> lk(mutex_);
-    waiting_.store(true);
-    generation_.fetch_add(1);
-    cv_.wait(lk, [this] { return !queue_.empty(); });
-    waiting_.store(false);
-
-    current_ = queue_.front();
-    queue_.pop();
-    char* begin = &current_[0];
-    setg(begin, begin, begin + current_.size());
-    return traits_type::to_int_type(*begin);
-}
-
-OutputCapture::int_type OutputCapture::overflow(int_type ch)
-{
-    if (ch != traits_type::eof())
-    {
-        std::lock_guard<std::mutex> lk(mutex_);
-        buffer_ += static_cast<char>(ch);
-    }
-    return ch;
-}
-
-std::string OutputCapture::consume()
-{
-    std::lock_guard<std::mutex> lk(mutex_);
-    std::string out = std::move(buffer_);
-    buffer_.clear();
-    return out;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-//  small text-parsing helpers (purely cosmetic: they only decide which
-//  buttons to draw, the real validation always happens inside Controller)
-// ─────────────────────────────────────────────────────────────────────────
 namespace
 {
-    bool has(const std::string& hay, const std::string& needle)
-    {
-        return hay.find(needle) != std::string::npos;
-    }
-
-    std::vector<int> intsAfter(const std::string& text, const std::string& label)
-    {
-        std::vector<int> out;
-        std::size_t pos = text.rfind(label);
-        if (pos == std::string::npos) return out;
-        pos += label.size();
-        std::size_t end = text.find('\n', pos);
-        std::string seg = (end == std::string::npos) ? text.substr(pos) : text.substr(pos, end - pos);
-
-        std::size_t i = 0;
-        while (i < seg.size())
-        {
-            if (std::isdigit(static_cast<unsigned char>(seg[i])))
-            {
-                std::size_t j = i;
-                while (j < seg.size() && std::isdigit(static_cast<unsigned char>(seg[j]))) ++j;
-                try { out.push_back(std::stoi(seg.substr(i, j - i))); } catch (...) {}
-                i = j;
-            }
-            else ++i;
-        }
-        return out;
-    }
-
-    std::vector<std::pair<int, std::string>> numberedList(const std::string& text)
-    {
-        std::vector<std::pair<int, std::string>> out;
-        std::size_t i = 0;
-        while (i < text.size())
-        {
-            std::size_t lineEnd = text.find('\n', i);
-            std::string line = (lineEnd == std::string::npos) ? text.substr(i) : text.substr(i, lineEnd - i);
-
-            std::size_t s = line.find_first_not_of(" \t");
-            if (s != std::string::npos)
-            {
-                std::size_t d = s;
-                while (d < line.size() && std::isdigit(static_cast<unsigned char>(line[d]))) ++d;
-                if (d > s && d < line.size() && line[d] == '.')
-                {
-                    try
-                    {
-                        int num = std::stoi(line.substr(s, d - s));
-                        std::size_t nameStart = d + 1;
-                        while (nameStart < line.size() && line[nameStart] == ' ') ++nameStart;
-                        std::string name = line.substr(nameStart);
-                        while (!name.empty() && (name.back() == '\r' || name.back() == ' ')) name.pop_back();
-                        if (!name.empty()) out.emplace_back(num, name);
-                    }
-                    catch (...) {}
-                }
-            }
-            if (lineEnd == std::string::npos) break;
-            i = lineEnd + 1;
-        }
-        return out;
-    }
+    const sf::Color BG(7, 8, 13);
+    const sf::Color GOLD(210, 177, 105);
+    const sf::Color PARCHMENT(225, 216, 190);
+    const sf::Color RED(143, 33, 36);
+    const sf::Color BLUE(43, 85, 126);
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-//  GameWindow
-// ─────────────────────────────────────────────────────────────────────────
+GameWindow::~GameWindow() = default;
+
 GameWindow::GameWindow()
-    : window_(sf::VideoMode({1600u, 900u}), "UNMATCHED - Cobble & Fog"),
-      boardView_({40.f, 210.f}, {900.f, 560.f}),
-      handView_({40.f, 700.f}, {1520.f, 190.f}),
-      player1Panel_({960.f, 20.f}, {300.f, 180.f}, sf::Color(35, 16, 20, 235), Theme::Player1),
-      player2Panel_({1270.f, 20.f}, {300.f, 180.f}, sf::Color(16, 24, 38, 235), Theme::Player2),
-      actionsPanelBg_({960.f, 210.f}, {610.f, 300.f}),
-      promptPanelBg_({420.f, 260.f}, {760.f, 420.f}),
-      logPanelBg_({960.f, 520.f}, {610.f, 170.f})
+    : window(sf::VideoMode({1600u, 900u}), "UNMATCHED - Dark Gothic Edition")
 {
-    window_.setFramerateLimit(60);
+    window.setFramerateLimit(60);
 
-    sf::View view(sf::Vector2f(800.f, 450.f), sf::Vector2f(1600.f, 900.f));
-    window_.setView(view);
+    if (!font.openFromFile("assets/fonts/Cinzel-Bold.ttf"))
+        throw std::runtime_error("Could not load assets/fonts/Cinzel-Bold.ttf");
 
-    buildStaticLayout();
-
-    savedCoutBuf_ = std::cout.rdbuf(&outputCapture_);
-    savedCinBuf_ = std::cin.rdbuf(&inputBridge_);
-
-    engineThread_ = std::thread(&GameWindow::runEngine, this);
+    boardView = std::make_unique<BoardView>();
+    characterView = std::make_unique<CharacterView>();
+    cardView = std::make_unique<CardView>(font);
+    deckView = std::make_unique<DeckView>();
+    ui = std::make_unique<UI>(font);
 }
 
-GameWindow::~GameWindow()
+void GameWindow::run()
 {
-    // The engine thread may be permanently parked inside std::cin waiting
-    // for an answer nobody will ever send once the window is closed; it is
-    // not safe to join it, so let it die with the process instead.
-    if (engineThread_.joinable())
-        engineThread_.detach();
-
-    std::cin.rdbuf(savedCinBuf_);
-    std::cout.rdbuf(savedCoutBuf_);
-}
-
-void GameWindow::runEngine()
-{
-    try
+    while (window.isOpen())
     {
-        controller_.startMenu(players_);
-        while (!controller_.end_game())
-            controller_.playTurn();
+        processEvents();
+        update();
+
+        window.clear(BG);
+        render();
+        window.display();
     }
-    catch (const std::exception& e)
-    {
-        engineError_ = e.what();
-    }
-    catch (...)
-    {
-        engineError_ = "The game engine stopped unexpectedly.";
-    }
-    engineFinished_.store(true);
 }
 
-void GameWindow::buildStaticLayout()
+void GameWindow::processEvents()
 {
-    actionsPanelBg_.setTitle("ACTIONS");
-    logPanelBg_.setTitle("GAME LOG");
-    player1Panel_.setTitle("PLAYER 1");
-    player2Panel_.setTitle("PLAYER 2");
-    promptPanelBg_.setTitle("");
-}
-
-bool GameWindow::isOpen() const
-{
-    return window_.isOpen();
-}
-
-void GameWindow::send(const std::string& line)
-{
-    inputBridge_.pushLine(line);
-}
-
-void GameWindow::sendInt(int value)
-{
-    send(std::to_string(value));
-}
-
-// ── per-frame event handling ────────────────────────────────────────────
-void GameWindow::pollAndHandleEvents()
-{
-    pumpEngineOutput();
-
-    while (const std::optional<sf::Event> event = window_.pollEvent())
+    while (const std::optional event = window.pollEvent())
     {
         if (event->is<sf::Event::Closed>())
         {
-            window_.close();
+            window.close();
+            continue;
         }
-        else if (const auto* resized = event->getIf<sf::Event::Resized>())
+
+        if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>())
         {
-            (void)resized;
-            sf::View view(sf::Vector2f(800.f, 450.f), sf::Vector2f(1600.f, 900.f));
-            window_.setView(view);
-        }
-        else if (const auto* moved = event->getIf<sf::Event::MouseMoved>())
-        {
-            sf::Vector2f world = window_.mapPixelToCoords(moved->position);
-            handleMouseMoved(world);
-        }
-        else if (const auto* pressed = event->getIf<sf::Event::MouseButtonPressed>())
-        {
-            if (pressed->button == sf::Mouse::Button::Left)
+            if (mouse->button != sf::Mouse::Button::Left)
+                continue;
+
+            sf::Vector2f p = window.mapPixelToCoords(mouse->position);
+
+            switch (screen)
             {
-                sf::Vector2f world = window_.mapPixelToCoords(pressed->position);
-                handleMousePressed(world);
+                case Screen::MainMenu: handleMainMenuClick(p); break;
+                case Screen::Setup:    handleSetupClick(p); break;
+                case Screen::Game:     handleGameClick(p); break;
             }
-        }
-        else if (const auto* text = event->getIf<sf::Event::TextEntered>())
-        {
-            handleTextEntered(text->unicode);
-        }
-        else if (const auto* key = event->getIf<sf::Event::KeyPressed>())
-        {
-            handleKeyPressed(*key);
         }
     }
 }
 
-void GameWindow::pumpEngineOutput()
+void GameWindow::update()
 {
-    if (inputBridge_.waitingForInput() && inputBridge_.generation() != lastSeenGeneration_)
+    if (messageTimer > 0)
+        --messageTimer;
+}
+
+void GameWindow::render()
+{
+    switch (screen)
     {
-        lastSeenGeneration_ = inputBridge_.generation();
-        promptText_ = outputCapture_.consume(); // only this prompt's own text
-        recentLog_ += promptText_;
-        if (recentLog_.size() > 4000) recentLog_ = recentLog_.substr(recentLog_.size() - 4000);
-        classifyPrompt();
-        rebuildPromptWidgets();
+        case Screen::MainMenu: drawMainMenu(); break;
+        case Screen::Setup:    drawSetup(); break;
+        case Screen::Game:     drawGame(); break;
     }
 }
 
-// ── classification ──────────────────────────────────────────────────────
-void GameWindow::classifyPrompt()
+void GameWindow::drawMainMenu()
 {
-    // Classify using ONLY the text produced since the previous prompt
-    // (promptText_), never the cumulative recentLog_. Otherwise a short
-    // keyword from an earlier screen (e.g. the very first "1. New Game")
-    // would still be inside a trailing window many prompts later and keep
-    // re-triggering the wrong screen forever.
-    const std::string& tail = promptText_;
+    sf::RectangleShape bg({1600.f, 900.f});
+    bg.setFillColor(sf::Color(5, 6, 10));
+    window.draw(bg);
 
-    if (has(tail, "1. New Game") && has(tail, "2. Load Game"))
-    { promptKind_ = PromptKind::MainMenu; promptTitle_ = "UNMATCHED"; return; }
-
-    if (has(tail, "save slot"))
-    { promptKind_ = PromptKind::SaveSlot; promptTitle_ = "CHOOSE A SAVE SLOT"; return; }
-
-    if (has(tail, "enter your age"))
-    { promptKind_ = PromptKind::Age; promptTitle_ = "ASSESSMENT OF MORTALITY"; return; }
-
-    if (has(tail, "enter your name"))
-    { promptKind_ = PromptKind::Name; promptTitle_ = "DECLARE YOUR NAME"; return; }
-
-    if (has(tail, "(y/n)"))
-    { promptKind_ = PromptKind::YesNo; promptTitle_ = "A DECISION IS REQUIRED"; return; }
-
-    if (has(tail, "choose your Character"))
-    { promptKind_ = PromptKind::CharacterSelect; promptTitle_ = "CHOOSE YOUR LEGEND"; return; }
-
-    if (has(tail, "left map"))
-    { promptKind_ = PromptKind::PositionSelect; promptTitle_ = "CHOOSE YOUR GROUND"; return; }
-
-    if (has(tail, "where do you want to place") || has(tail, "Select a destination"))
-    { promptKind_ = PromptKind::BoardPick; promptTitle_ = "CHOOSE A SPACE ON THE MAP"; return; }
-
-    if (has(tail, "guess the attack value"))
-    { promptKind_ = PromptKind::NumberGuess; promptTitle_ = "ELEMENTARY, MY DEAR..."; return; }
-
-    if (has(tail, "Choose a card") || has(tail, "Selected card:") || has(tail, "card number to remove"))
-    { promptKind_ = PromptKind::CardPick; promptTitle_ = "CHOOSE A CARD"; return; }
-
-    if (has(tail, "Choose a"))
-    { promptKind_ = PromptKind::NumberedChoice; promptTitle_ = "MAKE YOUR CHOICE"; return; }
-
-    promptKind_ = PromptKind::Generic;
-    promptTitle_ = "THE STORY CONTINUES";
-}
-
-void GameWindow::rebuildPromptWidgets()
-{
-    promptButtons_.clear();
-    promptOptions_.clear();
-    promptInts_.clear();
-
-    const std::string& t = promptText_;
-    sf::Vector2f base = { 460.f, 340.f };
-    float bw = 300.f, bh = 54.f, gap = 14.f;
-
-    switch (promptKind_)
+    // Procedural gothic city silhouette; no external background image is required.
+    for (int i = 0; i < 11; ++i)
     {
-        case PromptKind::MainMenu:
-            promptButtons_.emplace_back("\u2694  START", sf::Vector2f{base.x, base.y}, sf::Vector2f{bw, bh}, sf::Color(120, 20, 20));
-            promptButtons_.emplace_back("\U0001F4D6  LOAD GAME", sf::Vector2f{base.x, base.y + bh + gap}, sf::Vector2f{bw, bh});
-            promptButtons_.emplace_back("EXIT", sf::Vector2f{base.x, base.y + 2 * (bh + gap)}, sf::Vector2f{bw, bh});
-            break;
+        float x = i * 155.f - 40.f;
+        float h = 260.f + (i % 4) * 70.f;
 
-        case PromptKind::SaveSlot:
-            for (int i = 1; i <= 3; ++i)
-                promptButtons_.emplace_back("SLOT " + std::to_string(i),
-                    sf::Vector2f{base.x, base.y + (i - 1) * (bh + gap)}, sf::Vector2f{bw, bh});
-            break;
+        sf::RectangleShape building({145.f, h});
+        building.setPosition({x, 900.f - h});
+        building.setFillColor(sf::Color(12, 13, 18));
+        building.setOutlineColor(sf::Color(30, 30, 36));
+        building.setOutlineThickness(1.f);
+        window.draw(building);
 
-        case PromptKind::Age:
-            ageSpin_.setPosition({ base.x, base.y });
-            ageSpin_.setValue(25);
-            okButton_.setPosition({ base.x + 20.f, base.y + 90.f });
-            break;
-
-        case PromptKind::Name:
-            nameField_.setPosition({ base.x, base.y });
-            nameField_.setValue("");
-            nameField_.setFocused(true);
-            okButton_.setPosition({ base.x + 90.f, base.y + 70.f });
-            break;
-
-        case PromptKind::YesNo:
-            promptButtons_.emplace_back("YES", sf::Vector2f{base.x, base.y}, sf::Vector2f{140.f, bh}, Theme::Success);
-            promptButtons_.emplace_back("NO", sf::Vector2f{base.x + 160.f, base.y}, sf::Vector2f{140.f, bh}, Theme::Danger);
-            break;
-
-        case PromptKind::CharacterSelect:
+        for (int y = static_cast<int>(900.f - h + 40); y < 850; y += 65)
         {
-            std::vector<std::string> names = { "Dracula", "Sherlock", "Invisible Man" };
-            for (int i = 0; i < 3; ++i)
-                promptButtons_.emplace_back(names[i], sf::Vector2f{base.x, base.y + i * (bh + gap)}, sf::Vector2f{bw, bh});
-            break;
+            sf::RectangleShape lamp({8.f, 20.f});
+            lamp.setPosition({x + 25.f, static_cast<float>(y)});
+            lamp.setFillColor(sf::Color(120, 96, 55, 70));
+            window.draw(lamp);
         }
-
-        case PromptKind::PositionSelect:
-            promptButtons_.emplace_back("LEFT SIDE OF THE MAP", sf::Vector2f{base.x, base.y}, sf::Vector2f{bw, bh});
-            promptButtons_.emplace_back("RIGHT SIDE OF THE MAP", sf::Vector2f{base.x, base.y + bh + gap}, sf::Vector2f{bw, bh});
-            break;
-
-        case PromptKind::BoardPick:
-            promptInts_ = intsAfter(t, "Available space:");
-            if (promptInts_.empty()) promptInts_ = intsAfter(t, "Available spaces:");
-            boardView_.setHighlighted(promptInts_);
-            break;
-
-        case PromptKind::NumberGuess:
-            ageSpin_.setPosition({ base.x, base.y });
-            ageSpin_.setValue(2);
-            okButton_.setPosition({ base.x + 20.f, base.y + 90.f });
-            break;
-
-        case PromptKind::CardPick:
-        {
-            promptInts_ = intsAfter(t, "Available cards:");
-            handView_.setPlayableIndices(promptInts_);
-            handView_.setExpanded(true);
-            break;
-        }
-
-        case PromptKind::NumberedChoice:
-        {
-            promptOptions_ = numberedList(t);
-            int row = 0;
-            for (auto& opt : promptOptions_)
-            {
-                std::string label = std::to_string(opt.first) + ".  " + opt.second;
-                promptButtons_.emplace_back(label, sf::Vector2f{base.x, base.y + row * (bh + gap)}, sf::Vector2f{bw, bh});
-                ++row;
-            }
-            break;
-        }
-
-        case PromptKind::Generic:
-        default:
-            okButton_.setPosition({ base.x + 80.f, base.y + 120.f });
-            break;
     }
+
+    sf::CircleShape moon(90.f);
+    moon.setPosition({1250.f, 100.f});
+    moon.setFillColor(sf::Color(175, 169, 148, 18));
+    window.draw(moon);
+
+    sf::Text small(font, "THE ETERNAL BATTLE OF SHADOWS", 16);
+    auto sb = small.getLocalBounds();
+    small.setOrigin({sb.position.x + sb.size.x/2.f, sb.position.y + sb.size.y/2.f});
+    small.setPosition({800.f, 275.f});
+    small.setFillColor(sf::Color(157, 126, 69));
+    window.draw(small);
+
+    sf::Text title(font, "UNMATCHED", 64);
+    auto tb = title.getLocalBounds();
+    title.setOrigin({tb.position.x + tb.size.x/2.f, tb.position.y + tb.size.y/2.f});
+    title.setPosition({800.f, 335.f});
+    title.setFillColor(GOLD);
+    window.draw(title);
+
+    ui->drawButton(window, {{575.f, 425.f}, {450.f, 60.f}}, "START GAME", true, RED);
+    ui->drawButton(window, {{575.f, 505.f}, {450.f, 60.f}}, "LOAD GAME", false, GOLD);
+    ui->drawButton(window, {{575.f, 585.f}, {450.f, 60.f}}, "EXIT", false, GOLD);
+
+    ui->drawText(window, "SFML 3.x  •  C++17", {690.f, 690.f}, 14,
+                 sf::Color(125, 120, 112));
 }
 
-// ── input handling ──────────────────────────────────────────────────────
-void GameWindow::handleMouseMoved(sf::Vector2f pos)
+void GameWindow::drawSetup()
 {
-    for (auto& b : promptButtons_) b.updateHover(pos);
-    okButton_.updateHover(pos);
-    retreatButton_.updateHover(pos);
-    ageSpin_.updateHover(pos);
-    boardView_.updateHover(pos);
-    handView_.updateHover(pos);
-}
+    sf::RectangleShape bg({1600.f, 900.f});
+    bg.setFillColor(sf::Color(7, 8, 13));
+    window.draw(bg);
 
-void GameWindow::handleMousePressed(sf::Vector2f pos)
-{
-    nameField_.handleClick(pos);
+    sf::Text title(font, "ASSESSMENT OF MORTALITY", 32);
+    title.setPosition({555.f, 70.f});
+    title.setFillColor(GOLD);
+    window.draw(title);
 
-    switch (promptKind_)
+    ui->drawPanel(window, {{360.f, 155.f}, {880.f, 620.f}}, GOLD);
+
+    ui->drawText(window, "PLAYER 1", {430.f, 195.f}, 22, RED);
+    ui->drawText(window, "PLAYER 2", {885.f, 195.f}, 22, BLUE);
+
+    ui->drawText(window, "Choose your hero", {430.f, 250.f}, 16);
+    ui->drawText(window, "Choose opponent hero", {885.f, 250.f}, 16);
+
+    const char* heroes[] = {"DRACULA", "SHERLOCK", "INVISIBLE MAN"};
+
+    for (int i = 0; i < 3; ++i)
     {
-        case PromptKind::MainMenu:
-            if (promptButtons_.size() == 3)
-            {
-                if (promptButtons_[0].click(pos)) { send("1"); return; }
-                if (promptButtons_[1].click(pos)) { send("2"); return; }
-                if (promptButtons_[2].click(pos)) { window_.close(); return; }
-            }
-            break;
+        sf::FloatRect r1({410.f, 295.f + i*72.f}, {350.f, 54.f});
+        sf::FloatRect r2({865.f, 295.f + i*72.f}, {350.f, 54.f});
 
-        case PromptKind::SaveSlot:
-            for (std::size_t i = 0; i < promptButtons_.size(); ++i)
-                if (promptButtons_[i].click(pos)) { sendInt(static_cast<int>(i) + 1); return; }
-            break;
-
-        case PromptKind::Age:
-            if (ageSpin_.click(pos)) return;
-            if (okButton_.click(pos)) { sendInt(ageSpin_.getValue()); return; }
-            break;
-
-        case PromptKind::NumberGuess:
-            if (ageSpin_.click(pos)) return;
-            if (okButton_.click(pos)) { sendInt(ageSpin_.getValue()); return; }
-            break;
-
-        case PromptKind::Name:
-            if (okButton_.click(pos))
-            {
-                std::string v = nameField_.getValue();
-                if (v.empty()) v = "Player";
-                send(v);
-                return;
-            }
-            break;
-
-        case PromptKind::YesNo:
-            if (promptButtons_.size() == 2)
-            {
-                if (promptButtons_[0].click(pos)) { send("y"); return; }
-                if (promptButtons_[1].click(pos)) { send("n"); return; }
-            }
-            break;
-
-        case PromptKind::CharacterSelect:
-            for (std::size_t i = 0; i < promptButtons_.size(); ++i)
-                if (promptButtons_[i].click(pos)) { sendInt(static_cast<int>(i) + 1); return; }
-            break;
-
-        case PromptKind::PositionSelect:
-            if (promptButtons_.size() == 2)
-            {
-                if (promptButtons_[0].click(pos)) { send("1"); return; }
-                if (promptButtons_[1].click(pos)) { send("2"); return; }
-            }
-            break;
-
-        case PromptKind::BoardPick:
-        {
-            int node = boardView_.click(pos);
-            if (node >= 0) { sendInt(node); return; }
-            break;
-        }
-
-        case PromptKind::CardPick:
-        {
-            int idx = handView_.click(pos);
-            if (idx > 0) { sendInt(idx); return; }
-            break;
-        }
-
-        case PromptKind::NumberedChoice:
-            for (std::size_t i = 0; i < promptButtons_.size() && i < promptOptions_.size(); ++i)
-                if (promptButtons_[i].click(pos)) { sendInt(promptOptions_[i].first); return; }
-            // characters on screen are also clickable shortcuts ----------------
-            {
-                int boardHit = boardView_.click(pos);
-                if (boardHit >= 0)
-                {
-                    Character* c = controller_.getBord().getCharacter(boardHit);
-                    if (c)
-                    {
-                        for (auto& opt : promptOptions_)
-                            if (opt.second == c->getName()) { sendInt(opt.first); return; }
-                    }
-                }
-            }
-            break;
-
-        case PromptKind::Generic:
-        default:
-            if (okButton_.click(pos)) { sendInt(ageSpin_.getValue()); return; }
-            break;
+        ui->drawButton(window, r1, heroes[i], selectedHero1 == i+1, RED);
+        ui->drawButton(window, r2, heroes[i], selectedHero2 == i+1, BLUE);
     }
+
+    ui->drawButton(window, {{865.f, 535.f}, {350.f, 52.f}},
+                   player2AI ? "PLAYER 2 : AI" : "PLAYER 2 : HUMAN",
+                   player2AI, BLUE);
+
+    ui->drawText(window,
+                 "The GUI keeps the existing Bord adjacency and C++ game rules unchanged.",
+                 {425.f, 620.f}, 13, sf::Color(154, 147, 135));
+
+    ui->drawButton(window, {{490.f, 680.f}, {620.f, 58.f}},
+                   "ENTER THE BOARD", true, GOLD);
+
+    ui->drawText(window, "Choose two different heroes.", {620.f, 755.f}, 13,
+                 sf::Color(150, 70, 70));
 }
 
-void GameWindow::handleTextEntered(std::uint32_t unicode)
+void GameWindow::drawGame()
 {
-    if (promptKind_ == PromptKind::Name)
-        nameField_.handleTextEntered(unicode);
-}
+    // Background
+    sf::RectangleShape bg({1600.f, 900.f});
+    bg.setFillColor(sf::Color(7, 8, 12));
+    window.draw(bg);
 
-void GameWindow::handleKeyPressed(const sf::Event::KeyPressed& key)
-{
-    if (promptKind_ == PromptKind::Name && key.code == sf::Keyboard::Key::Enter)
+    // Top bar
+    sf::RectangleShape top({1600.f, 72.f});
+    top.setFillColor(sf::Color(10, 10, 16));
+    top.setOutlineColor(sf::Color(75, 62, 45));
+    top.setOutlineThickness(1.f);
+    window.draw(top);
+
+    sf::Text logo(font, "UNMATCHED", 28);
+    logo.setPosition({25.f, 18.f});
+    logo.setFillColor(GOLD);
+    window.draw(logo);
+
+    Player* current = controller.getCurrentPlayer();
+    Player* enemy = controller.getEnemyPlayer();
+
+    std::string turn = current ? current->getName() + "'S TURN" : "PLAYER TURN";
+    ui->drawText(window, turn, {660.f, 22.f}, 20, current && current->getHero()->getowner() == 1 ? RED : BLUE);
+
+    ui->drawText(window, "HERO PHASE", {775.f, 48.f}, 11, sf::Color(145, 138, 126));
+
+    ui->drawButton(window, {{1370.f, 15.f}, {92.f, 42.f}}, "RULES", false, GOLD);
+    ui->drawButton(window, {{1470.f, 15.f}, {105.f, 42.f}}, "EXIT", false, GOLD);
+
+    // Player panels
+    auto drawPlayerPanel = [&](Player* player, sf::FloatRect rect, sf::Color accent)
     {
-        std::string v = nameField_.getValue();
-        if (v.empty()) v = "Player";
-        send(v);
-    }
-}
+        ui->drawPanel(window, rect, accent);
 
-// ── drawing ──────────────────────────────────────────────────────────────
-void GameWindow::clear()
-{
-    window_.clear(Theme::Background);
+        if (!player || player->getCharacters().empty())
+            return;
 
-    drawBackdrop();
-    drawSceneIfStarted();
-    drawPromptPanel();
-    drawGameOverIfNeeded();
-}
+        Character* hero = player->getHero();
 
-void GameWindow::display()
-{
-    window_.display();
-}
+        ui->drawText(window, player->getName(), {rect.position.x + 22.f, rect.position.y + 18.f}, 20, accent);
+        ui->drawText(window, hero->getName(), {rect.position.x + 22.f, rect.position.y + 52.f}, 16, PARCHMENT);
 
-void GameWindow::drawBackdrop()
-{
-    sf::RectangleShape bg(sf::Vector2f(1600.f, 900.f));
-    bg.setPosition({0.f, 0.f});
-    bg.setFillColor(Theme::Background);
-    window_.draw(bg);
+        std::string hp = std::to_string(hero->getHp()) + "/" + std::to_string(hero->getMaxhp());
+        ui->drawText(window, hp, {rect.position.x + 22.f, rect.position.y + 82.f}, 14, PARCHMENT);
+        ui->drawHealth(window, {rect.position.x + 22.f, rect.position.y + 112.f},
+                       static_cast<float>(hero->getHp()) / std::max(1, hero->getMaxhp()),
+                       rect.size.x - 44.f, accent);
 
-    sf::Text title(Theme::titleFont(), "U N M A T C H E D", 30);
-    title.setFillColor(Theme::Gold);
-    Theme::centerOrigin(title);
-    title.setPosition({800.f, 40.f});
-    window_.draw(title);
-
-    sf::Text subtitle(Theme::bodyFont(), "Cobble & Fog", 16);
-    subtitle.setFillColor(Theme::TextMuted);
-    Theme::centerOrigin(subtitle);
-    subtitle.setPosition({800.f, 72.f});
-    window_.draw(subtitle);
-}
-
-void GameWindow::drawSceneIfStarted()
-{
-    Player* current = controller_.getCurrentPlayer();
-    Player* enemy = controller_.getEnemyPlayer();
-    if (!current || !enemy) return; // still in menu / setup screens
-
-    // player panels -----------------------------------------------------------
-    player1Panel_.draw(window_);
-    player2Panel_.draw(window_);
-
-    Player* panelOwners[2] = { current->getHero() && current->getHero()->getowner() == 1 ? current : enemy,
-                               nullptr };
-    // simpler: figure owner directly from character->getowner()
-    Player* p1 = (current->getHero() && current->getHero()->getowner() == 1) ? current : enemy;
-    Player* p2 = (p1 == current) ? enemy : current;
-
-    auto drawRoster = [this](Player* p, sf::Vector2f origin)
-    {
-        if (!p) return;
-        float x = origin.x;
-        float y = origin.y;
-        for (Character* c : p->getCharacters())
+        float y = rect.position.y + 155.f;
+        for (Character* c : player->getCharacters())
         {
-            if (!c) continue;
-            CharacterView cv({ x, y }, 26.f);
-            cv.setCharacter(c);
-            cv.draw(window_);
-            x += 70.f;
+            if (!c || c == hero) continue;
+
+            sf::CircleShape token(19.f);
+            token.setOrigin({19.f,19.f});
+            token.setPosition({rect.position.x + 45.f, y + 5.f});
+            token.setFillColor(accent);
+            token.setOutlineColor(sf::Color(210, 194, 160));
+            token.setOutlineThickness(1.f);
+            window.draw(token);
+
+            ui->drawText(window, c->getName(), {rect.position.x + 72.f, y - 7.f}, 12,
+                         c->checkalive() ? PARCHMENT : sf::Color(100,95,90));
+            ui->drawText(window, std::to_string(c->getHp()) + "/" + std::to_string(c->getMaxhp()),
+                         {rect.position.x + 72.f, y + 12.f}, 10, sf::Color(150,145,137));
+            y += 48.f;
         }
-        sf::Text name(Theme::bodyFont(), p->getName() + (p->isAI() ? " (AI)" : ""), 14);
-        name.setFillColor(Theme::TextLight);
-        name.setPosition({ origin.x - 5.f, origin.y + 60.f });
-        window_.draw(name);
     };
 
-    drawRoster(p1, { 985.f, 90.f });
-    drawRoster(p2, { 1295.f, 90.f });
+    drawPlayerPanel(current, {{20.f, 95.f}, {475.f, 540.f}}, RED);
+    drawPlayerPanel(enemy, {{1140.f, 95.f}, {440.f, 540.f}}, BLUE);
 
-    // board ---------------------------------------------------------------------
-    boardView_.setBoard(&controller_.getBord());
-    if (promptKind_ != PromptKind::BoardPick) boardView_.setHighlighted({});
-    boardView_.draw(window_);
-
-    // hand of the player currently deciding --------------------------------
-    Player* decider = current; // whichever player Controller last asked to act
-    handView_.setHand(decider->getDeck()->gethand());
-    handView_.setDeckCount(decider->getDeck()->getdeckSize());
-    handView_.setDiscardCount(decider->getDeck()->getdiscardSize());
-    if (promptKind_ != PromptKind::CardPick) handView_.clearPlayableIndices();
-    handView_.draw(window_);
-
-    // turn banner ---------------------------------------------------------------
-    sf::Text turnBanner(Theme::titleFont(), current->getName() + "'s turn", 20);
-    turnBanner.setFillColor(current->getHero() && current->getHero()->getowner() == 1 ? Theme::Player1 : Theme::Player2);
-    Theme::centerOrigin(turnBanner);
-    turnBanner.setPosition({490.f, 185.f});
-    window_.draw(turnBanner);
-
-    // log panel --------------------------------------------------------------------
-    logPanelBg_.draw(window_);
-    Label log(recentLog_.substr(recentLog_.size() > 900 ? recentLog_.size() - 900 : 0), 12, Theme::TextMuted);
-    log.setWrapWidth(580.f);
-    log.setPosition({ 972.f, 552.f });
-    log.draw(window_);
-
-    if (!inputBridge_.waitingForInput())
+    // Board
+    std::vector<int> highlights;
+    if (selectedCharacter >= 0 && current)
     {
-        sf::Text thinking(Theme::bodyFont(), "The story is unfolding...", 14);
-        thinking.setFillColor(Theme::Gold);
-        thinking.setPosition({972.f, 200.f});
-        window_.draw(thinking);
+        Character* c = current->getFighter(selectedCharacter);
+        if (c)
+            highlights = controller.getValidMoveSpaces(c, c->getMove());
+    }
+
+    boardView->draw(window, controller.getBord(), selectedSpace, highlights);
+
+    // Characters on the board
+    for (int i = 0; i < 32; ++i)
+    {
+        Character* c = controller.getCharacterAt(i);
+        if (!c) continue;
+
+        bool selected = c->getowner() == 1
+            ? (selectedCharacter >= 0 && current && current->getFighter(selectedCharacter) == c)
+            : (selectedEnemy == i);
+
+        characterView->draw(window, c, boardView->getPosition(i), selected);
+    }
+
+    // Bottom action area
+    ui->drawPanel(window, {{20.f, 655.f}, {475.f, 225.f}}, RED);
+    ui->drawText(window, "ACTIONS", {40.f, 675.f}, 18, RED);
+    ui->drawText(window, "Select a fighter, then choose a destination.", {40.f, 704.f}, 11,
+                 sf::Color(145, 140, 132));
+
+    ui->drawButton(window, {{40.f, 740.f}, {190.f, 48.f}}, "MOVE", true, sf::Color(70, 135, 85));
+    ui->drawButton(window, {{250.f, 740.f}, {190.f, 48.f}}, "ATTACK", attackMode, RED);
+    ui->drawButton(window, {{40.f, 800.f}, {190.f, 48.f}}, "SCHEME", false, sf::Color(100, 70, 125));
+    ui->drawButton(window, {{250.f, 800.f}, {190.f, 48.f}}, "END ACTION", false, GOLD);
+
+    // Hand
+    ui->drawPanel(window, {{510.f, 655.f}, {625.f, 225.f}}, GOLD);
+    ui->drawText(window, "YOUR HAND", {535.f, 675.f}, 18, GOLD);
+
+    if (current && current->getDeck())
+        cardView->drawHand(window, current->getDeck()->gethand(), selectedCard);
+
+    // Turn panel
+    ui->drawPanel(window, {{1155.f, 655.f}, {425.f, 225.f}}, BLUE);
+    ui->drawText(window, "TURN ORDER", {1180.f, 675.f}, 18, BLUE);
+    ui->drawText(window, current ? current->getName() : "-", {1180.f, 720.f}, 17, PARCHMENT);
+    ui->drawText(window, "ACTION " + std::to_string(controller.getActionCount()+1) + " / 2",
+                 {1180.f, 752.f}, 13, sf::Color(160, 153, 145));
+
+    if (current && current->getDeck())
+    {
+        deckView->draw(window, {1180.f, 790.f},
+                       current->getDeck()->getdeckSize(),
+                       current->getDeck()->getdiscardSize());
+
+        ui->drawText(window, "DECK " + std::to_string(current->getDeck()->getdeckSize()),
+                     {1265.f, 800.f}, 12, PARCHMENT);
+    }
+
+    ui->drawButton(window, {{1380.f, 800.f}, {175.f, 48.f}}, "END TURN", true, BLUE);
+
+    if (messageTimer > 0)
+        ui->drawText(window, message, {540.f, 625.f}, 12, sf::Color(220, 185, 100));
+}
+
+void GameWindow::handleMainMenuClick(sf::Vector2f p)
+{
+    if (sf::FloatRect({575.f,425.f},{450.f,60.f}).contains(p))
+    {
+        screen = Screen::Setup;
+        return;
+    }
+
+    if (sf::FloatRect({575.f,585.f},{450.f,60.f}).contains(p))
+    {
+        window.close();
     }
 }
 
-void GameWindow::drawPromptPanel()
+void GameWindow::handleSetupClick(sf::Vector2f p)
 {
-    if (!inputBridge_.waitingForInput()) return;
-    if (engineFinished_.load()) return;
-
-    bool overlayMode = (controller_.getCurrentPlayer() != nullptr && controller_.getEnemyPlayer() != nullptr);
-
-    Panel panel = overlayMode
-        ? Panel({420.f, 260.f}, {760.f, 300.f})
-        : Panel({420.f, 220.f}, {760.f, 480.f});
-    panel.draw(window_);
-
-    sf::Text title(Theme::titleFont(), promptTitle_, 24);
-    title.setFillColor(Theme::GoldBright);
-    Theme::centerOrigin(title);
-    title.setPosition({800.f, overlayMode ? 300.f : 265.f});
-    window_.draw(title);
-
-    switch (promptKind_)
+    for (int i = 0; i < 3; ++i)
     {
-        case PromptKind::Age:
-        {
-            sf::Text lbl(Theme::bodyFont(), "Enter age:", 16);
-            lbl.setFillColor(Theme::TextLight);
-            lbl.setPosition({460.f, 320.f});
-            window_.draw(lbl);
-            ageSpin_.draw(window_);
-            okButton_.draw(window_);
-            break;
-        }
-        case PromptKind::NumberGuess:
-        {
-            sf::Text lbl(Theme::bodyFont(), "Guess the attack value:", 16);
-            lbl.setFillColor(Theme::TextLight);
-            lbl.setPosition({460.f, 320.f});
-            window_.draw(lbl);
-            ageSpin_.draw(window_);
-            okButton_.draw(window_);
-            break;
-        }
-        case PromptKind::Name:
-            nameField_.draw(window_);
-            okButton_.draw(window_);
-            break;
+        if (sf::FloatRect({410.f, 295.f + i*72.f},{350.f,54.f}).contains(p))
+            selectedHero1 = i+1;
 
-        case PromptKind::BoardPick:
-        {
-            sf::Text hint(Theme::bodyFont(), "Click a glowing space on the map.", 15);
-            hint.setFillColor(Theme::TextMuted);
-            Theme::centerOrigin(hint);
-            hint.setPosition({800.f, overlayMode ? 340.f : 330.f});
-            window_.draw(hint);
-            break;
-        }
-
-        case PromptKind::CardPick:
-        {
-            sf::Text hint(Theme::bodyFont(), "Click a card in your hand below.", 15);
-            hint.setFillColor(Theme::TextMuted);
-            Theme::centerOrigin(hint);
-            hint.setPosition({800.f, overlayMode ? 340.f : 330.f});
-            window_.draw(hint);
-            break;
-        }
-
-        case PromptKind::Generic:
-        {
-            Label body(promptText_.empty() ? recentLog_.substr(recentLog_.size() > 400 ? recentLog_.size() - 400 : 0) : promptText_,
-                       14, Theme::TextLight);
-            body.setWrapWidth(680.f);
-            body.setPosition({460.f, 320.f});
-            body.draw(window_);
-
-            sf::Text lbl(Theme::bodyFont(), "Type a number and press OK:", 14);
-            lbl.setFillColor(Theme::TextMuted);
-            lbl.setPosition({460.f, overlayMode ? 400.f : 470.f});
-            window_.draw(lbl);
-            ageSpin_.setPosition({460.f, overlayMode ? 425.f : 495.f});
-            ageSpin_.draw(window_);
-            okButton_.draw(window_);
-            break;
-        }
-
-        default:
-            break;
+        if (sf::FloatRect({865.f, 295.f + i*72.f},{350.f,54.f}).contains(p))
+            selectedHero2 = i+1;
     }
 
-    for (auto& b : promptButtons_) b.draw(window_);
+    if (sf::FloatRect({865.f,535.f},{350.f,52.f}).contains(p))
+    {
+        player2AI = !player2AI;
+        return;
+    }
+
+    if (sf::FloatRect({490.f,680.f},{620.f,58.f}).contains(p))
+    {
+        if (selectedHero1 == selectedHero2)
+        {
+            message = "Choose two different heroes.";
+            messageTimer = 180;
+            return;
+        }
+        startGame();
+    }
 }
 
-void GameWindow::drawGameOverIfNeeded()
+void GameWindow::handleGameClick(sf::Vector2f p)
 {
-    if (!engineFinished_.load()) return;
+    // Exit button
+    if (sf::FloatRect({1470.f,15.f},{105.f,42.f}).contains(p))
+    {
+        window.close();
+        return;
+    }
 
-    sf::RectangleShape overlay(sf::Vector2f(1600.f, 900.f));
-    overlay.setFillColor(sf::Color(0, 0, 0, 210));
-    window_.draw(overlay);
+    // End turn
+    if (sf::FloatRect({1380.f,800.f},{175.f,48.f}).contains(p))
+    {
+        controller.guiEndTurn();
+        selectedCharacter = -1;
+        selectedSpace = -1;
+        selectedEnemy = -1;
+        selectedCard = -1;
+        attackMode = false;
+        return;
+    }
 
-    sf::Text title(Theme::titleFont(), "THE TALE HAS ENDED", 40);
-    title.setFillColor(Theme::GoldBright);
-    Theme::centerOrigin(title);
-    title.setPosition({800.f, 380.f});
-    window_.draw(title);
+    // Move
+    if (sf::FloatRect({40.f,740.f},{190.f,48.f}).contains(p))
+    {
+        attackMode = false;
+        message = "MOVE: select one of your fighters, then click a green board space.";
+        messageTimer = 240;
+        return;
+    }
 
-    std::string msg = engineError_.empty() ? "Thank you for playing." : engineError_;
-    sf::Text sub(Theme::bodyFont(), msg, 18);
-    sub.setFillColor(Theme::TextLight);
-    Theme::centerOrigin(sub);
-    sub.setPosition({800.f, 440.f});
-    window_.draw(sub);
+    // Attack
+    if (sf::FloatRect({250.f,740.f},{190.f,48.f}).contains(p))
+    {
+        if (selectedCharacter >= 0 && selectedEnemy >= 0 && selectedCard >= 0)
+        {
+            Player* cp = controller.getCurrentPlayer();
+            Character* attacker = cp ? cp->getFighter(selectedCharacter) : nullptr;
+            Character* defender = controller.getCharacterAt(selectedEnemy);
+            Player* ep = controller.getEnemyPlayer();
+            int defenseIndex = -1;
+
+            if (ep && ep->getDeck() && defender)
+            {
+                for (int i = 0; i < ep->getDeck()->gethandSize(); ++i)
+                {
+                    Card c = ep->getDeck()->getHandcard(i);
+                    bool ownerOK = defender->isHero()
+                        ? (c.isDefense() || c.isVersatile()) && (c.isHero() || c.isAnyowner())
+                        : (c.isDefense() || c.isVersatile()) && (c.issideKick() || c.isAnyowner());
+
+                    if (ownerOK) { defenseIndex = i; break; }
+                }
+            }
+
+            if (attacker && defender && defenseIndex >= 0 &&
+                controller.guiAttack(attacker, defender, selectedCard, defenseIndex))
+            {
+                controller.guiEndAction();
+                message = "Combat resolved.";
+                messageTimer = 150;
+                selectedCard = -1;
+                selectedEnemy = -1;
+
+                if (controller.getActionCount() >= 2)
+                {
+                    controller.guiEndTurn();
+                    selectedCharacter = -1;
+                }
+                return;
+            }
+
+            message = "Invalid attack/card/target selection.";
+            messageTimer = 180;
+            return;
+        }
+
+        attackMode = true;
+        message = "ATTACK: select attacker, enemy, attack card, then press ATTACK.";
+        messageTimer = 240;
+        return;
+    }
+
+    // End action
+    if (sf::FloatRect({250.f,800.f},{190.f,48.f}).contains(p))
+    {
+        controller.guiEndAction();
+        selectedCharacter = -1;
+        selectedSpace = -1;
+        selectedEnemy = -1;
+        selectedCard = -1;
+        attackMode = false;
+
+        if (controller.getActionCount() >= 2)
+            controller.guiEndTurn();
+        return;
+    }
+
+    // Card selection
+    Player* current = controller.getCurrentPlayer();
+    if (current && current->getDeck())
+    {
+        int c = cardView->getCardAt(p, current->getDeck()->gethandSize());
+        if (c >= 0)
+        {
+            selectedCard = c;
+            return;
+        }
+    }
+
+    // Board selection
+    int space = boardView->getSpaceAt(p);
+    if (space >= 0)
+    {
+        Character* occupant = controller.getCharacterAt(space);
+
+        if (occupant && controller.isCurrentPlayer(occupant))
+        {
+            selectedSpace = space;
+            Player* currentPlayer = controller.getCurrentPlayer();
+            for (int i = 0; i < currentPlayer->getfighterCount(); ++i)
+            {
+                if (currentPlayer->getFighter(i) == occupant)
+                {
+                    selectedCharacter = i;
+                    break;
+                }
+            }
+            return;
+        }
+
+        if (attackMode && occupant && !controller.isCurrentPlayer(occupant))
+        {
+            selectedEnemy = space;
+            return;
+        }
+
+        if (!attackMode && selectedCharacter >= 0)
+        {
+            Player* cp = controller.getCurrentPlayer();
+            Character* mover = cp ? cp->getFighter(selectedCharacter) : nullptr;
+
+            if (mover)
+            {
+                if (controller.guiMove(mover, mover->getMove(), space))
+                {
+                    controller.guiEndAction();
+                    message = "Movement completed.";
+                    messageTimer = 120;
+
+                    selectedSpace = space;
+                    if (controller.getActionCount() >= 2)
+                    {
+                        controller.guiEndTurn();
+                        selectedCharacter = -1;
+                        selectedSpace = -1;
+                    }
+                }
+                else
+                {
+                    message = "That destination is not legal for this movement.";
+                    messageTimer = 180;
+                }
+            }
+        }
+        return;
+    }
+}
+
+void GameWindow::startGame()
+{
+    if (!controller.startGuiGame(players, selectedHero1, selectedHero2,
+                                 "Player 1", player2AI ? "AI" : "Player 2",
+                                 player2AI))
+    {
+        message = "Could not start the game.";
+        messageTimer = 180;
+        return;
+    }
+
+    screen = Screen::Game;
+    selectedCharacter = -1;
+    selectedSpace = -1;
+    selectedEnemy = -1;
+    selectedCard = -1;
+    attackMode = false;
+}
+
+Character* GameWindow::characterAtScreen(sf::Vector2f p)
+{
+    int space = boardView->getSpaceAt(p);
+    return space >= 0 ? controller.getCharacterAt(space) : nullptr;
 }

@@ -91,5 +91,24 @@ public:
     void applyEffect(Card& card, Card& enemycard, Player* self, Player* opponent, Character* attacker, Character* defender, bool woncombat);
     void applyEffectScheme(Card& card, Player* self, Player* opponent, Character* attacker);
 
+
+    // --- SFML GUI bridge -------------------------------------------------
+ 
+    bool startGuiGame(Player players[2], int hero1, int hero2,
+                      const std::string& player1Name = "Player 1",
+                      const std::string& player2Name = "Player 2",
+                      bool player2AI = false);
+
+    std::vector<int> getValidMoveSpaces(Character* selected, int movement) const;
+    bool guiMove(Character* selected, int movement, int destination);
+
+    bool guiAttack(Character* attacker, Character* defender,
+                   int attackCardIndex, int defenseCardIndex);
+
+    int getActionCount() const;
+    void guiEndAction();
+    void guiEndTurn();
+    bool isCurrentPlayer(const Character* character) const;
+
     ~Controller() = default;
 };

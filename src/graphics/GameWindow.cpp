@@ -91,8 +91,6 @@ void GameWindow::loadCardAssets()
 
 void GameWindow::loadCharacterAssets()
 {
-    // Put real portrait PNGs here. Missing files are allowed; CharacterView
-    // automatically falls back to the character initial.
     textures.load("dracula", "assets/characters/dracula.png");
     textures.load("sherlock", "assets/characters/sherlock.png");
     textures.load("watson", "assets/characters/watson.png");
@@ -372,20 +370,18 @@ void GameWindow::drawSetupSidekicks()
     drawFullscreenTexture("setup");
 
     Player* player = controller.getGuiSetupPlayer();
-    ui->drawText(window, "PLACE YOUR FIGHTERS", {570.f, 65.f}, 30, GOLD);
+    ui->drawText(window, "PLACE YOUR FIGHTERS", {600.f, 40.f}, 30, GOLD);
 
     if (!player) return;
 
-    ui->drawPanel(window, {{245.f, 105.f}, {1110.f, 120.f}}, GOLD);
+    ui->drawPanel(window, {{245.f, 705.f}, {1110.f, 120.f}}, GOLD);
     ui->drawText(window, player->getName() + " - choose a starting space",
-                 {510.f, 145.f}, 17, PARCHMENT);
+                 {510.f, 745.f}, 17, PARCHMENT);
 
     ui->drawText(window,
         "Only spaces in your hero's starting zone are legal.",
-        {510.f, 178.f}, 11, sf::Color(165, 157, 145));
+        {510.f, 778.f}, 11, sf::Color(165, 157, 145));
 
-    // The board is already a presentation component; here it is used only to
-    // make the legal setup spaces visible and clickable.
     std::vector<int> valid = controller.getGuiPlacementSpaces();
     boardView->draw(window, controller.getBord(), -1, valid);
 
@@ -399,7 +395,7 @@ void GameWindow::drawSetupSidekicks()
 void GameWindow::drawSetupReady()
 {
     drawFullscreenTexture("setup");
-    ui->drawText(window, "THE BATTLE IS READY", {550.f, 150.f}, 34, GOLD);
+    ui->drawText(window, "THE BATTLE IS READY", {590.f, 150.f}, 34, GOLD);
     ui->drawPanel(window, {{360.f, 245.f}, {880.f, 360.f}}, GOLD);
 
     ui->drawText(window, "Players, characters and starting positions are set.",
@@ -878,7 +874,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
 void GameWindow::startGame()
 {
-    // Player objects are members of GameWindow, so Controller's pointers stay valid.
     players[0].reset();
     players[1].reset();
     controller = Controller();

@@ -63,6 +63,7 @@ private:
     int guiPositionPlayerIndex = -1;
     int guiSidekickPlayerIndex = -1;
     int guiSidekickIndex = 1;
+    int guiSidekicksDonePlayers = 0;
 
     int boardDistance(int from, int to);
     void damageAllFighters(Player* p, int damage);

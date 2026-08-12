@@ -26,17 +26,16 @@ BoardView::BoardView(const TextureManager* textures_)
 
 void BoardView::buildLayout()
 {
-    // Presentation-only coordinates for the exact 32 logical spaces.
     positions = {
-        sf::Vector2f{800.f,135.f},
-        {700.f,150.f}, {900.f,150.f},
-        {620.f,205.f}, {735.f,210.f}, {865.f,210.f}, {980.f,205.f},
-        {555.f,285.f}, {670.f,270.f}, {800.f,260.f}, {930.f,270.f}, {1045.f,285.f},
-        {545.f,375.f}, {660.f,360.f}, {735.f,365.f}, {865.f,365.f}, {940.f,360.f}, {1055.f,375.f},
-        {555.f,470.f}, {670.f,455.f}, {800.f,465.f}, {930.f,455.f}, {1045.f,470.f},
-        {620.f,535.f}, {735.f,520.f}, {865.f,520.f}, {980.f,535.f},
-        {700.f,575.f}, {800.f,555.f}, {900.f,575.f},
-        {750.f,115.f}, {850.f,115.f}
+        sf::Vector2f{517.f,175.f},
+        /*1*/{600.f,170.f}, {503.f,268.f},
+        /*3*/{580.f,275.f}, {658.f,237.f}, {678.f,318.f}, {728.f,174.f},/*6*/
+        /*7*/{801.f,227.f}, {853.f,174.f}, {934.f,230.f}, {930.f,270.f}, {1045.f,285.f},/*11*/
+        /*12*/{545.f,375.f}, {660.f,360.f}, {735.f,365.f}, {865.f,365.f}, {940.f,360.f},/*16*/
+        /*17*/{1055.f,375.f}, {555.f,470.f}, {670.f,455.f}, {800.f,465.f}, {930.f,455.f},/*21*/
+        /*22*/{1045.f,470.f}, {620.f,535.f}, {735.f,520.f}, {865.f,520.f}, {980.f,535.f},/*26*/
+        /*27*/{700.f,575.f}, {800.f,555.f}, {900.f,575.f},
+        /*30*/{750.f,115.f}, {850.f,115.f}
     };
 }
 
@@ -54,9 +53,6 @@ int BoardView::primaryZone(const Bord& board, int space) const
 
 void BoardView::drawZones(sf::RenderTarget& target, const Bord& board) const
 {
-    // Each logical space is tinted using its actual zone membership. Shared
-    // spaces receive a neutral gold tint so the multiple-zone nature remains
-    // visible without inventing a second zone system.
     for (int i = 0; i < 32; ++i)
     {
         const std::vector<int> zones = board.getposZone(i);
@@ -94,7 +90,6 @@ void BoardView::drawConnections(sf::RenderTarget& target, const Bord& board) con
             line[1].position = positions[j];
             line[1].color = sf::Color(154, 130, 88, 135);
 
-            //target.draw(line, sf::PrimitiveType::Lines);
             target.draw(line, 2, sf::PrimitiveType::Lines);
         }
     }
@@ -135,16 +130,21 @@ void BoardView::draw(sf::RenderTarget& target, const Bord& board,
         target.draw(inner);
     }
 
-    sf::CircleShape lake(105.f);
-    lake.setOrigin({105.f,105.f});
-    lake.setPosition({800.f,365.f});
-    lake.setFillColor(sf::Color(7, 34, 43, 170));
-    lake.setOutlineColor(sf::Color(47, 79, 82, 155));
-    lake.setOutlineThickness(2.f);
-    target.draw(lake);
+    const bool hasBoardArt = textures && textures->get("board") != nullptr;
 
-    drawZones(target, board);
-    drawConnections(target, board);
+    if (!hasBoardArt)
+    {
+        sf::CircleShape lake(105.f);
+        lake.setOrigin({105.f,105.f});
+        lake.setPosition({800.f,365.f});
+        lake.setFillColor(sf::Color(7, 34, 43, 170));
+        lake.setOutlineColor(sf::Color(47, 79, 82, 155));
+        lake.setOutlineThickness(2.f);
+        target.draw(lake);
+
+        drawZones(target, board);
+        drawConnections(target, board);
+    }
 
     for (int i = 0; i < 32; ++i)
     {
@@ -163,6 +163,8 @@ void BoardView::draw(sf::RenderTarget& target, const Bord& board,
             space.setFillColor(sf::Color(205, 156, 58, 245));
         else if (highlighted)
             space.setFillColor(sf::Color(70, 130, 82, 245));
+        else if (hasBoardArt)
+            space.setFillColor(sf::Color(0, 0, 0, 0));
         else if (zones.size() > 1)
             space.setFillColor(sf::Color(119, 93, 48, 235));
         else
@@ -171,7 +173,9 @@ void BoardView::draw(sf::RenderTarget& target, const Bord& board,
             space.setFillColor(sf::Color(c.r, c.g, c.b, 205));
         }
 
-        space.setOutlineColor(sf::Color(221, 198, 149, 205));
+        space.setOutlineColor(hasBoardArt && i != selectedSpace && !highlighted
+                                   ? sf::Color(221, 198, 149, 90)
+                                   : sf::Color(221, 198, 149, 205));
         space.setOutlineThickness(1.6f);
         target.draw(space);
 

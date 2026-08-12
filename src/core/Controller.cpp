@@ -1240,6 +1240,7 @@ bool Controller::beginGuiSetup(Player players[2])
     guiPositionPlayerIndex = -1;
     guiSidekickPlayerIndex = -1;
     guiSidekickIndex = 1;
+    guiSidekicksDonePlayers = 0;
     guiSetupStage = GuiSetupStage::PlayerInfo;
     return true;
 }
@@ -1425,6 +1426,7 @@ bool Controller::guiChooseHeroPosition(int side)
     // Start sidekick placement with the player who chooses first.
     guiSidekickPlayerIndex = (current == &guiPlayers[0]) ? 0 : 1;
     guiSidekickIndex = 1;
+    guiSidekicksDonePlayers = 0;
 
     Player& firstPlayer = guiPlayers[guiSidekickPlayerIndex];
 
@@ -1533,6 +1535,8 @@ bool Controller::guiPlaceSidekick(int space)
 
     if (guiSidekickIndex >= player.getfighterCount())
     {
+        ++guiSidekicksDonePlayers;
+
         const int other = guiSidekickPlayerIndex == 0 ? 1 : 0;
         Player& otherPlayer = guiPlayers[other];
 
@@ -1552,6 +1556,13 @@ bool Controller::guiPlaceSidekick(int space)
                         im->setMistToken(token++, pos);
                 }
             }
+            guiSetupStage = GuiSetupStage::Ready;
+            return true;
+        }
+
+    
+        if (guiSidekicksDonePlayers >= 2)
+        {
             guiSetupStage = GuiSetupStage::Ready;
             return true;
         }

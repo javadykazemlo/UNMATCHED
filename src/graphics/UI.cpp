@@ -45,7 +45,7 @@ void UI::drawButton(sf::RenderTarget& target, sf::FloatRect rect,
     auto bounds = text.getLocalBounds();
     text.setOrigin({bounds.position.x + bounds.size.x / 2.f,
                     bounds.position.y + bounds.size.y / 2.f});
-    text.setPosition({rect.position.x + rect.size.x / 2.f,
+    text.setPosition({rect.position.x + rect.size.x / 2.f, 
                       rect.position.y + rect.size.y / 2.f});
     text.setFillColor(active ? sf::Color(240, 225, 190) : sf::Color(175, 168, 158));
     target.draw(text);

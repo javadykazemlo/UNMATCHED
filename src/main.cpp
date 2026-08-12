@@ -2,12 +2,7 @@
 
 int main()
 {
-    GameWindow gw;
-    while (gw.isOpen())
-    {
-        gw.pollAndHandleEvents();
-        gw.clear();
-        gw.display();
-    }
+    GameWindow game;
+    game.run();
     return 0;
 }

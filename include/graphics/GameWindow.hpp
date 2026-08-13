@@ -1,9 +1,9 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-#include <array>
-#include <optional>
 #include <memory>
+#include <string>
 #include "core/Controller.hpp"
+#include "graphics/TextureManager.hpp"
 
 class BoardView;
 class CharacterView;
@@ -23,6 +23,7 @@ private:
 
     sf::RenderWindow window;
     sf::Font font;
+    TextureManager textures;
     Controller controller;
     Player players[2];
 
@@ -40,22 +41,38 @@ private:
     int selectedCard = -1;
     int selectedEnemy = -1;
     bool player2AI = true;
+    std::string player1Name = "PLAYER 1";
+    std::string player2Name = "PLAYER 2";
+    std::string player1Age;
+    std::string player2Age;
+    int activeInputField = 0; // 0=name1, 1=age1, 2=name2, 3=age2
+    bool setupStarted = false;
     bool attackMode = false;
-    int messageTimer = 0;
+    bool moveMode = false;
+    bool boostMode = false;
     std::string message;
+    int messageTimer = 0;
 
     void processEvents();
     void update();
     void render();
-
     void drawMainMenu();
     void drawSetup();
     void drawGame();
-
     void handleMainMenuClick(sf::Vector2f p);
     void handleSetupClick(sf::Vector2f p);
     void handleGameClick(sf::Vector2f p);
-
     void startGame();
-    Character* characterAtScreen(sf::Vector2f p);
+    void showMessage(const std::string& text);
+    void loadAssets();
+    void loadCharacterAssets();
+    void loadCardAssets();
+    void drawFullscreenTexture(const std::string& id);
+    void drawSetupPlayerInfo();
+    void drawSetupCharacters();
+    void drawSetupPosition();
+    void drawSetupSidekicks();
+    void drawSetupReady();
+    void resetSelections();
+    Character* selectedCurrentCharacter() const;
 };

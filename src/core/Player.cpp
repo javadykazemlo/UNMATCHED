@@ -17,6 +17,22 @@ Player::Player()
     fighterCount = 0;
 }
 
+
+void Player::reset()
+{
+    for (Character* fighter : fighters)
+        delete fighter;
+    fighters.clear();
+
+    delete deck;
+    deck = nullptr;
+
+    name.clear();
+    Age = 0;
+    fighterCount = 0;
+    AIcontrolled = false;
+}
+
 void Player::chooseCharacter(int choose , int owner)
 {
     switch (choose)
@@ -97,6 +113,9 @@ vector<Character*>& Player::getCharacters()
 
 Character* Player::getHero() const
 {
+    if (fighters.empty())
+        return nullptr;
+
     return fighters[0];
 }
 
@@ -126,7 +145,5 @@ int Player::getfighterCount() const
 
 Player::~Player()
 {
-    for (Character* fighter : fighters)
-        delete fighter;
-    delete deck;
+    reset();
 }

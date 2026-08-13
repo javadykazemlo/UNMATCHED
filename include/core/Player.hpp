@@ -21,6 +21,7 @@ private:
 public:
     Player();
     void chooseCharacter(int , int owner);
+    void reset();
 
     void setName(const std::string& n);
     void setAge(const int& a);

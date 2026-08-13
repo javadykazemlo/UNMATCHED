@@ -3,16 +3,14 @@
 bool TextureManager::load(const std::string& id, const std::string& path)
 {
     sf::Texture texture;
-    if (!texture.loadFromFile(path))
-        return false;
-
+    if (!texture.loadFromFile(path)) return false;
     textures.insert_or_assign(id, std::move(texture));
     return true;
 }
 
 const sf::Texture* TextureManager::get(const std::string& id) const
 {
-    auto it = textures.find(id);
+    const auto it = textures.find(id);
     return it == textures.end() ? nullptr : &it->second;
 }
 

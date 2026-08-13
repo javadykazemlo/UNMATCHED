@@ -113,7 +113,7 @@ void GameWindow::drawFullscreenTexture(const std::string& id)
             return;
         }
     }
-}
+
 
     sf::RectangleShape fallback({1600.f, 900.f});
     fallback.setFillColor(BG);

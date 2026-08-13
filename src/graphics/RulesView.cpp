@@ -37,7 +37,7 @@ bool RulesView::isOpen() const
 {
     return opened;
 }
-
+ 
 void RulesView::buildSections()
 {
     sections = {

@@ -10,6 +10,7 @@ class CharacterView;
 class CardView;
 class DeckView;
 class UI;
+class RulesView;
 
 class GameWindow
 {
@@ -32,6 +33,7 @@ private:
     std::unique_ptr<CardView> cardView;
     std::unique_ptr<DeckView> deckView;
     std::unique_ptr<UI> ui;
+    std::unique_ptr<RulesView> rulesView;
 
     Screen screen = Screen::MainMenu;
     int selectedHero1 = 1;

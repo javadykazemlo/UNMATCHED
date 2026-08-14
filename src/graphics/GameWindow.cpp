@@ -4,6 +4,7 @@
 #include "graphics/CardView.hpp"
 #include "graphics/DeckView.hpp"
 #include "graphics/UI.hpp"
+#include "graphics/RulesView.hpp"
 #include "entities/Character.hpp"
 #include "entities/invisible_man.hpp"
 #include "cards/Deck.hpp"
@@ -42,6 +43,7 @@ GameWindow::GameWindow()
     cardView = std::make_unique<CardView>(font, &textures);
     deckView = std::make_unique<DeckView>(font, &textures);
     ui = std::make_unique<UI>(font);
+    rulesView = std::make_unique<RulesView>(font);
 }
 
 GameWindow::~GameWindow() = default;
@@ -113,7 +115,7 @@ void GameWindow::drawFullscreenTexture(const std::string& id)
             return;
         }
     }
-}
+
 
     sf::RectangleShape fallback({1600.f, 900.f});
     fallback.setFillColor(BG);
@@ -139,6 +141,17 @@ void GameWindow::processEvents()
         if (event->is<sf::Event::Closed>())
         {
             window.close();
+            continue;
+        }
+
+        if (screen == Screen::Game && rulesView && rulesView->isOpen())
+        {
+            sf::Vector2f p(0.f, 0.f);
+            if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>())
+                p = window.mapPixelToCoords(mouse->position);
+            else if (const auto* wheel = event->getIf<sf::Event::MouseWheelScrolled>())
+                p = window.mapPixelToCoords(sf::Vector2i(static_cast<int>(wheel->position.x), static_cast<int>(wheel->position.y)));
+            rulesView->handleEvent(*event, p);
             continue;
         }
 
@@ -202,7 +215,12 @@ void GameWindow::render()
 {
     if (screen == Screen::MainMenu) drawMainMenu();
     else if (screen == Screen::Setup) drawSetup();
-    else drawGame();
+    else
+    {
+        drawGame();
+        if (rulesView && rulesView->isOpen())
+            rulesView->draw(window, {1600.f, 900.f});
+    }
 }
 
 void GameWindow::showMessage(const std::string& text)
@@ -429,7 +447,8 @@ void GameWindow::drawGame()
     ui->drawText(window, current ? current->getName() + "'S TURN" : "PLAYER TURN",
                  {635.f, 17.f}, 18, turnColor);
     ui->drawText(window, "HERO PHASE", {760.f, 43.f}, 10, sf::Color(150, 143, 132));
-    ui->drawButton(window, {{1375.f, 12.f}, {90.f, 42.f}}, "RULES", false, GOLD);
+    ui->drawButton(window, {{1375.f, 12.f}, {90.f, 42.f}}, "RULES",
+                   rulesView && rulesView->isOpen(), GOLD);
     ui->drawButton(window, {{1472.f, 12.f}, {105.f, 42.f}}, "EXIT", false, GOLD);
 
     // Slightly smaller side panels leave a little more room for the board.
@@ -729,6 +748,14 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 {
     Player* current = controller.getCurrentPlayer();
     Character* selected = selectedCurrentCharacter();
+
+    if (sf::FloatRect({1375.f, 12.f}, {90.f, 42.f}).contains(p))
+    {
+        if (rulesView)
+            rulesView->open();
+        return;
+    }
+
     if (sf::FloatRect({1472.f, 12.f}, {105.f, 42.f}).contains(p))
     {
         window.close();

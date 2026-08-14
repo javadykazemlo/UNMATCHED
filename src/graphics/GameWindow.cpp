@@ -4,6 +4,7 @@
 #include "graphics/CardView.hpp"
 #include "graphics/DeckView.hpp"
 #include "graphics/UI.hpp"
+#include "graphics/RulesView.hpp"
 #include "entities/Character.hpp"
 #include "entities/invisible_man.hpp"
 #include "cards/Deck.hpp"
@@ -42,6 +43,7 @@ GameWindow::GameWindow()
     cardView = std::make_unique<CardView>(font, &textures);
     deckView = std::make_unique<DeckView>(font, &textures);
     ui = std::make_unique<UI>(font);
+    rulesView = std::make_unique<RulesView>(font);
 }
 
 GameWindow::~GameWindow() = default;
@@ -113,7 +115,7 @@ void GameWindow::drawFullscreenTexture(const std::string& id)
             return;
         }
     }
-}
+
 
     sf::RectangleShape fallback({1600.f, 900.f});
     fallback.setFillColor(BG);
@@ -466,7 +468,8 @@ void GameWindow::drawGame()
     ui->drawText(window, current ? current->getName() + "'S TURN" : "PLAYER TURN",
                  {710.f, 17.f}, 18, turnColor);
     ui->drawText(window, "HERO PHASE", {760.f, 43.f}, 10, sf::Color(150, 143, 132));
-    ui->drawButton(window, {{1375.f, 12.f}, {90.f, 42.f}}, "RULES", false, GOLD);
+    ui->drawButton(window, {{1375.f, 12.f}, {90.f, 42.f}}, "RULES",
+                   rulesView && rulesView->isOpen(), GOLD);
     ui->drawButton(window, {{1472.f, 12.f}, {105.f, 42.f}}, "EXIT", false, GOLD);
 
     auto drawPlayerPanel = [&](Player* player, sf::FloatRect rect, sf::Color accent)
@@ -841,6 +844,13 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     Player* current = controller.getCurrentPlayer();
     Player* enemy = controller.getEnemyPlayer();
     Character* selected = selectedCurrentCharacter();
+
+    if (sf::FloatRect({1375.f, 12.f}, {90.f, 42.f}).contains(p))
+    {
+        if (rulesView)
+            rulesView->open();
+        return;
+    }
 
     if (sf::FloatRect({1472.f, 12.f}, {105.f, 42.f}).contains(p))
     {

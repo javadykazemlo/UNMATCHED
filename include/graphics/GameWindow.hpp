@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <memory>
+#include <vector>
 #include <string>
 #include "core/Controller.hpp"
 #include "graphics/TextureManager.hpp"
@@ -20,7 +21,7 @@ public:
     void run();
 
 private:
-    enum class Screen { MainMenu, Setup, Game };
+    enum class Screen { MainMenu, Setup, Game, GameOver };
 
     sf::RenderWindow window;
     sf::Font font;
@@ -52,8 +53,23 @@ private:
     bool attackMode = false;
     bool moveMode = false;
     bool boostMode = false;
+    bool schemeMode = false;
+    bool defenseSelectionMode = false;
+    bool awaitingMoveBoost = false;
+    bool moveBoostPrompt = false;
+    bool effectPanelActive = false;
+    std::string effectCardName;
+    std::string effectCardText;
+    std::string effectPrompt;
+    std::vector<int> effectChoices;
+    bool effectYesNo = false;
+    bool effectInteger = false;
+    std::string effectInputBuffer;
+    int moveBoost = 0;
     std::string message;
     int messageTimer = 0;
+    std::vector<std::string> combatLog;
+    std::string winnerName;
 
     void processEvents();
     void update();
@@ -61,6 +77,7 @@ private:
     void drawMainMenu();
     void drawSetup();
     void drawGame();
+    void drawGameOver();
     void handleMainMenuClick(sf::Vector2f p);
     void handleSetupClick(sf::Vector2f p);
     void handleGameClick(sf::Vector2f p);
@@ -77,4 +94,9 @@ private:
     void drawSetupReady();
     void resetSelections();
     Character* selectedCurrentCharacter() const;
+    void checkGameOver();
+    void refreshCombatLog();
+    void updateEffectPanel();
+    void drawEffectPanel();
+    void handleEffectInput(sf::Vector2f p);
 };

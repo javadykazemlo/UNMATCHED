@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <string>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
 #include "entities/Character.hpp"
@@ -35,6 +36,8 @@ private:
     
     int gamerand = 0;
     bool GuessElementary = false;
+    bool guiMode = false;
+    std::vector<std::string> guiCombatLog;
 
     Player* activeDecider = nullptr;
 
@@ -78,7 +81,6 @@ private:
     bool aiYesNo(Player* decider);
     int aiInt(Player* decider);
     void aiThink(Player* decider);
-
 
     Controller() = default;
     
@@ -134,6 +136,23 @@ private:
     bool guiMove(Character* selected, int movement, int destination);
     bool guiAttack(Character* attacker, Character* defender,
                    int attackCardIndex, int defenseCardIndex);
+    bool guiUseBoostCard(int index, int& boostValue);
+    std::vector<int> getGuiSchemeCards(Character* fighter) const;
+    bool guiScheme(Character* fighter, int cardIndex);
+
+    // Non-blocking GUI effect/input bridge. Card effects that need a choice
+    // are executed in a worker thread and request their input from GameWindow.
+    bool guiEffectBusy() const;
+    bool guiEffectFinished();
+    bool getGuiInputRequest(std::string& prompt, std::vector<int>& choices,
+                            bool& yesNo, bool& integerInput) const;
+    bool submitGuiInput(int value);
+    bool submitGuiYesNo(bool value);
+
+    bool guiSaveGame(const std::string& filename = "save.json");
+    std::vector<std::string> getGuiCombatLog() const;
+    void clearGuiCombatLog();
+    std::string getGuiWinnerName() const;
     std::vector<int> getGuiAttackCards(Character* attacker) const;
     std::vector<int> getGuiDefenseCards(Character* defender) const;
     bool guiDrawCard();

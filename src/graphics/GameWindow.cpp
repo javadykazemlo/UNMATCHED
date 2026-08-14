@@ -144,15 +144,25 @@ void GameWindow::processEvents()
             continue;
         }
 
-        if (screen == Screen::Game && rulesView && rulesView->isOpen())
+        if (screen == Screen::Game && effectPanelActive && effectInteger)
         {
-            sf::Vector2f p(0.f, 0.f);
-            if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>())
-                p = window.mapPixelToCoords(mouse->position);
-            else if (const auto* wheel = event->getIf<sf::Event::MouseWheelScrolled>())
-                p = window.mapPixelToCoords(sf::Vector2i(static_cast<int>(wheel->position.x), static_cast<int>(wheel->position.y)));
-            rulesView->handleEvent(*event, p);
-            continue;
+            if (const auto* text = event->getIf<sf::Event::TextEntered>())
+            {
+                if (text->unicode >= '0' && text->unicode <= '9' &&
+                    effectInputBuffer.size() < 3)
+                    effectInputBuffer.push_back(static_cast<char>(text->unicode));
+            }
+
+            if (const auto* key = event->getIf<sf::Event::KeyPressed>())
+            {
+                if (key->code == sf::Keyboard::Key::Backspace && !effectInputBuffer.empty())
+                    effectInputBuffer.pop_back();
+                else if (key->code == sf::Keyboard::Key::Enter && !effectInputBuffer.empty())
+                {
+                    if (controller.submitGuiInput(std::stoi(effectInputBuffer)))
+                        effectInputBuffer.clear();
+                }
+            }
         }
 
         if (screen == Screen::Setup)
@@ -201,7 +211,12 @@ void GameWindow::processEvents()
 
             if (screen == Screen::MainMenu) handleMainMenuClick(p);
             else if (screen == Screen::Setup) handleSetupClick(p);
-            else handleGameClick(p);
+            else if (screen == Screen::Game) handleGameClick(p);
+            else if (screen == Screen::GameOver)
+            {
+                if (sf::FloatRect({610.f, 545.f}, {380.f, 50.f}).contains(p))
+                    screen = Screen::MainMenu;
+            }
         }
     }
 }
@@ -209,18 +224,21 @@ void GameWindow::processEvents()
 void GameWindow::update()
 {
     if (messageTimer > 0) --messageTimer;
+
+    if (screen == Screen::Game)
+    {
+        updateEffectPanel();
+        if (!controller.guiEffectBusy())
+            checkGameOver();
+    }
 }
 
 void GameWindow::render()
 {
     if (screen == Screen::MainMenu) drawMainMenu();
     else if (screen == Screen::Setup) drawSetup();
-    else
-    {
-        drawGame();
-        if (rulesView && rulesView->isOpen())
-            rulesView->draw(window, {1600.f, 900.f});
-    }
+    else if (screen == Screen::GameOver) drawGameOver();
+    else drawGame();
 }
 
 void GameWindow::showMessage(const std::string& text)
@@ -244,6 +262,9 @@ void GameWindow::drawMainMenu()
     ui->drawButton(window, {{575.f, 425.f}, {450.f, 60.f}}, "START GAME", true, RED);
     ui->drawButton(window, {{575.f, 505.f}, {450.f, 60.f}}, "LOAD GAME", false, GOLD);
     ui->drawButton(window, {{575.f, 585.f}, {450.f, 60.f}}, "EXIT", false, GOLD);
+
+    ui->drawText(window, "created & Developed by", {700.f, 700.f}, 14, sf::Color(170, 162, 150));
+    ui->drawText(window, "Mahdi Dehnavi & Mohammd Javad Kazemlo", {640.f, 722.f}, 14, sf::Color(170, 162, 150));
 }
 
 void GameWindow::drawSetup()
@@ -445,13 +466,12 @@ void GameWindow::drawGame()
     Player* enemy = controller.getEnemyPlayer();
     const sf::Color turnColor = current && current->getHero()->getowner() == 1 ? RED : BLUE;
     ui->drawText(window, current ? current->getName() + "'S TURN" : "PLAYER TURN",
-                 {635.f, 17.f}, 18, turnColor);
+                 {710.f, 17.f}, 18, turnColor);
     ui->drawText(window, "HERO PHASE", {760.f, 43.f}, 10, sf::Color(150, 143, 132));
     ui->drawButton(window, {{1375.f, 12.f}, {90.f, 42.f}}, "RULES",
                    rulesView && rulesView->isOpen(), GOLD);
     ui->drawButton(window, {{1472.f, 12.f}, {105.f, 42.f}}, "EXIT", false, GOLD);
 
-    // Slightly smaller side panels leave a little more room for the board.
     auto drawPlayerPanel = [&](Player* player, sf::FloatRect rect, sf::Color accent)
     {
         ui->drawPanel(window, rect, accent);
@@ -477,8 +497,6 @@ void GameWindow::drawGame()
                          {rect.position.x + 220.f, rect.position.y + 112.f}, 10, PARCHMENT);
         }
 
-        // Hero portrait. If the real PNG is absent, the character token/initial
-        // still provides a valid fallback.
         std::string id;
         if (hero->getName() == "Dracula") id = "dracula";
         else if (hero->getName() == "sherlock") id = "sherlock";
@@ -515,13 +533,12 @@ void GameWindow::drawGame()
 
     std::vector<int> highlights;
     Character* selected = selectedCurrentCharacter();
-    if (moveMode && selected)
-        highlights = controller.getValidMoveSpaces(selected, selected->getMove());
+    if (moveMode && selected && !awaitingMoveBoost)
+        highlights = controller.getValidMoveSpaces(selected, selected->getMove() + moveBoost);
 
     controller.getBord();
     boardView->draw(window, controller.getBord(), selectedSpace, highlights);
 
-    // Exact logical space numbers and zone labels are rendered from Bord.
     for (int i = 0; i < 32; ++i)
     {
         const sf::Vector2f pos = boardView->getPosition(i);
@@ -536,7 +553,6 @@ void GameWindow::drawGame()
         }
     }
 
-    // Fog tokens are stored in Invisible Man's actual Character state.
     auto drawFog = [&](Player* player)
     {
         if (!player || !player->getHero()) return;
@@ -567,28 +583,71 @@ void GameWindow::drawGame()
         characterView->draw(window, c, boardView->getPosition(i), isSelected);
     }
 
-    // Bottom action panel.
     ui->drawPanel(window, {{18.f, 650.f}, {385.f, 232.f}}, RED);
     ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, RED);
+    const bool canAct = controller.getActionCount() < 2;
     ui->drawButton(window, {{35.f, 700.f}, {105.f, 43.f}}, "MOVE", moveMode, GREEN);
     ui->drawButton(window, {{150.f, 700.f}, {105.f, 43.f}}, "ATTACK", attackMode, RED);
-    ui->drawButton(window, {{265.f, 700.f}, {105.f, 43.f}}, "SCHEME", false, PURPLE);
-    ui->drawButton(window, {{35.f, 754.f}, {105.f, 43.f}}, "BOOST", boostMode, GOLD);
-    ui->drawButton(window, {{150.f, 754.f}, {105.f, 43.f}}, "DRAW CARD", false, GREEN);
-    ui->drawButton(window, {{265.f, 754.f}, {105.f, 43.f}}, "PLAY CARD", selectedCard >= 0, PURPLE);
-    ui->drawButton(window, {{35.f, 808.f}, {335.f, 48.f}}, "END ACTION", false, GOLD);
+    ui->drawButton(window, {{265.f, 700.f}, {105.f, 43.f}}, "SCHEME", schemeMode, PURPLE);
+
+    ui->drawButton(window, {{35.f, 754.f}, {160.f, 43.f}}, "SAVE GAME", false, GOLD);
+    ui->drawButton(window, {{210.f, 754.f}, {160.f, 43.f}}, "END ACTION", false, GOLD);
+
+    if (moveBoostPrompt)
+    {
+        ui->drawText(window, "USE BOOST?", {35.f, 831.f}, 11, GOLD);
+        ui->drawButton(window, {{125.f, 820.f}, {90.f, 36.f}}, "YES", true, GREEN);
+        ui->drawButton(window, {{225.f, 820.f}, {90.f, 36.f}}, "NO", false, GOLD);
+    }
+    else
+    {
+        ui->drawText(window, std::to_string(controller.getActionCount()) + " / 2 ACTIONS",
+                     {105.f, 812.f}, 12, PARCHMENT);
+    }
+
+    // Message / combat report panel below the board.
+    ui->drawPanel(window, {{420.f, 606.f}, {757.f, 66.f}}, combatLog.empty() ? GOLD : RED);
+    if (!combatLog.empty())
+    {
+        const int first = std::max(0, static_cast<int>(combatLog.size()) - 3);
+        float y = 612.f;
+        for (int i = first; i < static_cast<int>(combatLog.size()); ++i)
+        {
+            std::string line = combatLog[i];
+            if (line.size() > 105) line = line.substr(0, 102) + "...";
+            ui->drawText(window, line, {435.f, y}, 11, PARCHMENT);
+            y += 18.f;
+        }
+    }
+    else if (messageTimer > 0)
+    {
+        ui->drawText(window, message, {435.f, 621.f}, 16, GOLD);
+    }
 
     // Hand / card information.
-    ui->drawPanel(window, {{420.f, 650.f}, {757.f, 232.f}}, GOLD);
-    ui->drawText(window, "YOUR HAND", {440.f, 665.f}, 17, GOLD);
-    if (current && current->getDeck())
+    ui->drawPanel(window, {{420.f, 680.f}, {757.f, 215.f}}, defenseSelectionMode ? BLUE : GOLD);
+    if (defenseSelectionMode && enemy && enemy->getDeck())
     {
-        cardView->drawHand(window, current->getDeck()->gethand(), selectedCard);
-        if (selectedCard >= 0 && selectedCard < current->getDeck()->gethandSize())
+        ui->drawText(window, enemy->getName() + " - CHOOSE DEFENSE", {440.f, 688.f}, 17, BLUE);
+        cardView->drawHand(window, enemy->getDeck()->gethand(), selectedCard);
+        ui->drawText(window, "Select a defense / versatile card for the defending fighter.",
+                     {440.f, 863.f}, 9, PARCHMENT);
+    }
+    else
+    {
+        ui->drawText(window, "YOUR HAND", {440.f, 688.f}, 17, GOLD);
+        if (current && current->getDeck())
         {
-            const Card& card = current->getDeck()->gethand()[selectedCard];
-            ui->drawText(window, card.getName(), {450.f, 688.f}, 9, PARCHMENT);
+            cardView->drawHand(window, current->getDeck()->gethand(), selectedCard);
+            if (selectedCard >= 0 && selectedCard < current->getDeck()->gethandSize())
+            {
+                const Card& card = current->getDeck()->gethand()[selectedCard];
+                ui->drawText(window, card.getName(), {450.f, 710.f}, 9, PARCHMENT);
+            }
         }
+        if (awaitingMoveBoost)
+            ui->drawText(window, "Optional BOOST: choose a card, or select a fighter to skip it.",
+                         {440.f, 863.f}, 9, GOLD);
     }
 
     // Right player/deck/turn panel.
@@ -615,8 +674,44 @@ void GameWindow::drawGame()
     }
     ui->drawButton(window, {{1385.f, 815.f}, {175.f, 42.f}}, "END TURN", true, BLUE);
 
-    if (messageTimer > 0)
-        ui->drawText(window, message, {430.f, 625.f}, 11, sf::Color(221, 184, 98));
+    if (effectPanelActive)
+        drawEffectPanel();
+
+}
+
+void GameWindow::drawGameOver()
+{
+    drawFullscreenTexture("game");
+    sf::RectangleShape overlay({1600.f, 900.f});
+    overlay.setFillColor(sf::Color(3, 4, 8, 220));
+    window.draw(overlay);
+
+    ui->drawText(window, "THE BATTLE IS OVER", {570.f, 170.f}, 38, GOLD);
+    ui->drawPanel(window, {{390.f, 280.f}, {820.f, 350.f}}, GOLD);
+    ui->drawText(window, "CONGRATULATIONS", {630.f, 330.f}, 26, PARCHMENT);
+    ui->drawText(window, winnerName + "", {700.f, 385.f}, 28, GOLD);
+    ui->drawText(window, "has won the battle.", {675.f, 430.f}, 16, PARCHMENT);
+    ui->drawText(window, "Thank you for playing UNMATCHED.", {637.f, 475.f}, 14, sf::Color(170, 162, 150));
+    ui->drawText(window, "Farewell, and until the next battle...", {637.f, 505.f}, 14, sf::Color(170, 162, 150));
+    ui->drawButton(window, {{610.f, 545.f}, {380.f, 50.f}}, "RETURN TO MAIN MENU", true, GOLD);
+
+    ui->drawText(window, "created & Developed by", {700.f, 700.f}, 14, sf::Color(170, 162, 150));
+    ui->drawText(window, "Mahdi Dehnavi & Mohammd Javad Kazemlo", {640.f, 722.f}, 14, sf::Color(170, 162, 150));
+
+}
+
+void GameWindow::checkGameOver()
+{
+    if (!controller.isGameOver()) return;
+    winnerName = controller.getGuiWinnerName();
+    combatLog = controller.getGuiCombatLog();
+    resetSelections();
+    screen = Screen::GameOver;
+}
+
+void GameWindow::refreshCombatLog()
+{
+    combatLog = controller.getGuiCombatLog();
 }
 
 void GameWindow::handleMainMenuClick(sf::Vector2f p)
@@ -747,6 +842,7 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 void GameWindow::handleGameClick(sf::Vector2f p)
 {
     Player* current = controller.getCurrentPlayer();
+    Player* enemy = controller.getEnemyPlayer();
     Character* selected = selectedCurrentCharacter();
 
     if (sf::FloatRect({1375.f, 12.f}, {90.f, 42.f}).contains(p))
@@ -762,89 +858,215 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
+    // While a card effect/combat is waiting for an input, no other game action
+    // may mutate the Controller.
+    if (controller.guiEffectBusy())
+    {
+        handleEffectInput(p);
+        return;
+    }
+
+    // End Turn keeps its original position.
     if (sf::FloatRect({1385.f, 815.f}, {175.f, 42.f}).contains(p))
     {
         controller.guiEndTurn();
         resetSelections();
+        combatLog.clear();
         showMessage("Turn changed.");
         return;
     }
 
+    // SAVE GAME
+    if (sf::FloatRect({35.f, 754.f}, {160.f, 43.f}).contains(p))
+    {
+        if (controller.guiSaveGame("save.json"))
+        {
+            combatLog.clear();
+            showMessage("Game saved successfully.");
+        }
+        else showMessage("Could not save the game.");
+        return;
+    }
+
+    // END ACTION: immediately cancels the currently selected action/mode.
+    if (sf::FloatRect({210.f, 754.f}, {160.f, 43.f}).contains(p))
+    {
+        resetSelections();
+        combatLog.clear();
+        showMessage("Current action ended.");
+        return;
+    }
+
+    if (moveBoostPrompt)
+    {
+        if (sf::FloatRect({125.f, 820.f}, {90.f, 36.f}).contains(p))
+        {
+            moveBoostPrompt = false;
+            awaitingMoveBoost = false;
+            boostMode = true;
+            showMessage("Boost confirmed: choose a boost card from your hand.");
+            return;
+        }
+
+        if (sf::FloatRect({225.f, 820.f}, {90.f, 36.f}).contains(p))
+        {
+            moveBoostPrompt = false;
+            awaitingMoveBoost = false;
+            boostMode = false;
+            moveBoost = 0;
+            showMessage("No boost used. Choose a fighter to move.");
+            return;
+        }
+
+        return;
+    }
+
+    const bool canAct = controller.getActionCount() < 2;
+
+    // Each real action is counted immediately when its button is pressed.
     if (sf::FloatRect({35.f, 700.f}, {105.f, 43.f}).contains(p))
     {
+        if (!canAct) { showMessage("You have already used both actions."); return; }
+        controller.guiEndAction();
         moveMode = true;
         attackMode = false;
-        boostMode = false;
-        showMessage("Select one of your fighters, then a highlighted destination.");
+        schemeMode = false;
+        defenseSelectionMode = false;
+        selectedCharacter = -1;
+        selectedCard = -1;
+        selectedEnemy = -1;
+        moveBoost = 0;
+        awaitingMoveBoost = true;
+        moveBoostPrompt = true;
+        combatLog.clear();
+
+        if (controller.guiDrawCard())
+            showMessage("Maneuver: card drawn. Use a boost or skip it.");
+        else
+            showMessage("Maneuver started. The deck is empty; fatigue was applied.");
         return;
     }
 
     if (sf::FloatRect({150.f, 700.f}, {105.f, 43.f}).contains(p))
     {
-        attackMode = true;
+        if (!canAct) { showMessage("You have already used both actions."); return; }
+        controller.guiEndAction();
         moveMode = false;
-        boostMode = false;
-        showMessage("Select an attack/versatile card, then an enemy target.");
+        attackMode = true;
+        schemeMode = false;
+        defenseSelectionMode = false;
+        awaitingMoveBoost = false;
+        selectedCharacter = -1;
+        selectedCard = -1;
+        selectedEnemy = -1;
+        combatLog.clear();
+        controller.clearGuiCombatLog();
+        showMessage("Attack: select a fighter, then an attack card and an enemy target.");
         return;
     }
 
     if (sf::FloatRect({265.f, 700.f}, {105.f, 43.f}).contains(p))
     {
-        moveMode = false;
-        attackMode = false;
-        boostMode = false;
-        showMessage("Scheme cards are selected from your hand.");
-        return;
-    }
-
-    if (sf::FloatRect({35.f, 754.f}, {105.f, 43.f}).contains(p))
-    {
-        boostMode = true;
-        moveMode = false;
-        attackMode = false;
-        showMessage("Select a card with the required boost value.");
-        return;
-    }
-
-    if (sf::FloatRect({150.f, 754.f}, {105.f, 43.f}).contains(p))
-    {
-        if (controller.guiDrawCard())
-        {
-            controller.guiEndAction();
-            showMessage("1 card drawn from the real deck.");
-        }
-        else showMessage("The deck is empty; the existing rule was applied.");
-        return;
-    }
-
-    if (sf::FloatRect({265.f, 754.f}, {105.f, 43.f}).contains(p))
-    {
-        if (selectedCard >= 0 && controller.guiPlayCard(selectedCard))
-        {
-            controller.guiEndAction();
-            selectedCard = -1;
-            showMessage("Card removed through the real Deck::playCard().");
-        }
-        else showMessage("Select a card first.");
-        return;
-    }
-
-    if (sf::FloatRect({35.f, 808.f}, {335.f, 48.f}).contains(p))
-    {
+        if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
-        resetSelections();
-        showMessage("Action ended.");
+        moveMode = false;
+        attackMode = false;
+        schemeMode = true;
+        defenseSelectionMode = false;
+        awaitingMoveBoost = false;
+        selectedCharacter = -1;
+        selectedCard = -1;
+        selectedEnemy = -1;
+        combatLog.clear();
+        showMessage("Scheme: select a fighter, then a Scheme card.");
         return;
     }
 
+    // During attack resolution the opponent chooses from their own hand.
+    if (defenseSelectionMode && enemy)
+    {
+        if (!enemy->getDeck()) return;
+        const int defenseCard = cardView->getCardAt(p, enemy->getDeck()->gethandSize());
+        if (defenseCard < 0) return;
+        Character* defender = controller.getCharacterAt(selectedEnemy);
+        const std::vector<int> validDefense = controller.getGuiDefenseCards(defender);
+        if (std::find(validDefense.begin(), validDefense.end(), defenseCard) == validDefense.end())
+        {
+            showMessage("Choose a defense or versatile card allowed for this fighter.");
+            return;
+        }
+
+        Character* attacker = selectedCurrentCharacter();
+        if (controller.guiAttack(attacker, defender, selectedCard, defenseCard))
+        {
+            refreshCombatLog();
+            defenseSelectionMode = false;
+            attackMode = false;
+            selectedCard = -1;
+            selectedEnemy = -1;
+            selectedCharacter = -1;
+            showMessage("Attack resolved.");
+            checkGameOver();
+        }
+        else showMessage("That defense card is not legal for this defender.");
+        return;
+    }
+
+    // Card click belongs to the current player's hand.
     if (current && current->getDeck())
     {
         const int card = cardView->getCardAt(p, current->getDeck()->gethandSize());
         if (card >= 0)
         {
-            selectedCard = card;
-            if (boostMode) showMessage("Boost " + std::to_string(current->getDeck()->getHandcard(card).getBoost()) + " selected.");
-            return;
+            if (moveMode && boostMode)
+            {
+                int boost = 0;
+                if (controller.guiUseBoostCard(card, boost))
+                {
+                    moveBoost = boost;
+                    boostMode = false;
+                    selectedCard = -1;
+                    showMessage("Boost used: +" + std::to_string(boost) + " movement. Now choose a fighter.");
+                }
+                return;
+            }
+
+            if (attackMode && selected)
+            {
+                const std::vector<int> valid = controller.getGuiAttackCards(selected);
+                if (std::find(valid.begin(), valid.end(), card) != valid.end())
+                {
+                    selectedCard = card;
+                    showMessage("Attack card selected. Now choose an enemy target.");
+                }
+                else showMessage("That card cannot be used as this fighter's attack card.");
+                return;
+            }
+
+            if (schemeMode && selected)
+            {
+                const std::vector<int> valid = controller.getGuiSchemeCards(selected);
+                if (std::find(valid.begin(), valid.end(), card) != valid.end())
+                {
+                    if (controller.guiScheme(selected, card))
+                    {
+                        effectPanelActive = true;
+                        // effectCardName = card.getName();
+                        // effectCardText = card.geteffect();
+                        effectPrompt = "Resolving effect...";
+                        effectChoices.clear();
+                        effectYesNo = false;
+                        effectInteger = false;
+                        schemeMode = false;
+                        selectedCharacter = -1;
+                        selectedCard = -1;
+                        showMessage("Scheme effect is being resolved in the graphic panel.");
+                    }
+                    else showMessage("That Scheme card cannot be used by this fighter.");
+                }
+                else showMessage("That card is not a legal Scheme card for this fighter.");
+                return;
+            }
         }
     }
 
@@ -858,45 +1080,255 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         selectedEnemy = -1;
         for (int i = 0; current && i < current->getfighterCount(); ++i)
             if (current->getFighter(i) == occupant) selectedCharacter = i;
-        showMessage(occupant->getName() + " selected.");
+
+        if (moveMode && awaitingMoveBoost)
+        {
+            showMessage("Choose YES or NO for the boost first.");
+        }
+        else
+        {
+            showMessage(occupant->getName() + " selected.");
+        }
         return;
     }
 
     if (occupant && !controller.isCurrentPlayer(occupant))
     {
         selectedEnemy = space;
-        if (attackMode && selected && selectedCard >= 0 && current->getDeck())
+        if (attackMode && selected && selectedCard >= 0)
         {
-            Player* enemy = controller.getEnemyPlayer();
-            int defense = -1;
-            if (enemy && enemy->getDeck())
+            const std::vector<int> targets = [&]()
             {
-                for (int i = 0; i < enemy->getDeck()->gethandSize(); ++i)
+                std::vector<int> result;
+                for (Character* target : controller.getBord().getAttackCharacters(
+                         selected->getAttacktype(), selected->getSpace()))
                 {
-                    Card c = enemy->getDeck()->getHandcard(i);
-                    if (c.isDefense() || c.isVersatile()) { defense = i; break; }
+                    if (target == occupant) result.push_back(space);
+                }
+                return result;
+            }();
+
+            if (targets.empty())
+            {
+                showMessage("This enemy is not in attack range.");
+                return;
+            }
+
+            Player* enemyPlayer = controller.getEnemyPlayer();
+            if (enemyPlayer && enemyPlayer->isAI())
+            {
+                const std::vector<int> valid = controller.getGuiDefenseCards(occupant);
+                if (valid.empty())
+                {
+                    showMessage("The defending fighter has no valid defense card.");
+                    return;
+                }
+                if (controller.guiAttack(selected, occupant, selectedCard, valid.front()))
+                {
+                    effectPanelActive = true;
+                    effectCardName = "COMBAT";
+                    effectCardText = "The attack and defense cards are being resolved.";
+                    effectPrompt = "Resolving combat...";
+                    effectChoices.clear();
+                    effectYesNo = false;
+                    effectInteger = false;
+                    attackMode = false;
+                    selectedCard = -1;
+                    selectedEnemy = -1;
+                    selectedCharacter = -1;
+                    showMessage("Combat is resolving in the graphic panel.");
                 }
             }
-            if (defense >= 0 && controller.guiAttack(selected, occupant, selectedCard, defense))
+            else
             {
-                resetSelections();
-                controller.guiEndAction();
-                showMessage("Combat resolved through the existing Controller rules.");
+                defenseSelectionMode = true;
+                showMessage(enemyPlayer ? enemyPlayer->getName() + ": choose a defense card." : "Choose a defense card.");
             }
-            else showMessage("That target/card combination is not legal.");
         }
         return;
     }
 
     if (moveMode && selected)
     {
-        if (controller.guiMove(selected, selected->getMove(), space))
+        const int movement = selected->getMove() + moveBoost;
+        const std::vector<int> valid = controller.getValidMoveSpaces(selected, movement);
+        if (std::find(valid.begin(), valid.end(), space) == valid.end())
         {
-            controller.guiEndAction();
-            selectedSpace = space;
-            showMessage("Character moved using the real Bord adjacency.");
+            showMessage("That destination is not legal for this movement.");
+            return;
         }
-        else showMessage("That destination is not legal for this character.");
+
+        if (controller.guiMove(selected, movement, space))
+        {
+            selectedSpace = space;
+            moveMode = false;
+            selectedCharacter = -1;
+            moveBoost = 0;
+            showMessage("Movement completed.");
+            checkGameOver();
+        }
+    }
+}
+
+
+void GameWindow::updateEffectPanel()
+{
+    std::string prompt;
+    std::vector<int> choices;
+    bool yesNo = false;
+    bool integerInput = false;
+
+    if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput))
+    {
+        effectPrompt = prompt;
+        effectChoices = choices;
+        effectYesNo = yesNo;
+        effectInteger = integerInput;
+    }
+
+    if (effectPanelActive && controller.guiEffectFinished())
+    {
+        effectPanelActive = false;
+        effectPrompt.clear();
+        effectChoices.clear();
+        effectYesNo = false;
+        effectInteger = false;
+        effectInputBuffer.clear();
+
+        if (effectCardName == "COMBAT")
+        {
+            refreshCombatLog();
+            attackMode = false;
+            defenseSelectionMode = false;
+            selectedCard = -1;
+            selectedEnemy = -1;
+            selectedCharacter = -1;
+            showMessage("Combat resolved.");
+        }
+        else
+        {
+            schemeMode = false;
+            selectedCard = -1;
+            selectedCharacter = -1;
+            showMessage("Card effect resolved.");
+        }
+
+        checkGameOver();
+    }
+}
+
+void GameWindow::drawEffectPanel()
+{
+    sf::RectangleShape overlay({1600.f, 900.f});
+    overlay.setFillColor(sf::Color(2, 3, 7, 155));
+    window.draw(overlay);
+
+    const sf::FloatRect panel({390.f, 145.f}, {820.f, 610.f});
+    ui->drawPanel(window, panel, GOLD);
+
+    ui->drawText(window, effectCardName.empty() ? "CARD EFFECT" : effectCardName,
+                 {445.f, 180.f}, 24, GOLD);
+
+    // Effect text is deliberately larger than the old terminal output.
+    std::string text = effectCardText.empty() ? "Resolving card effect..." : effectCardText;
+    float y = 235.f;
+    std::string line;
+    int lines = 0;
+
+    auto flushLine = [&]()
+    {
+        if (line.empty()) return;
+        if (lines < 8)
+            ui->drawText(window, line, {445.f, y}, 13, PARCHMENT);
+        y += 24.f;
+        ++lines;
+        line.clear();
+    };
+
+    for (char c : text)
+    {
+        if (c == '\n') flushLine();
+        else line += c;
+
+        if (line.size() > 75) flushLine();
+    }
+    flushLine();
+
+    if (!effectPrompt.empty())
+        ui->drawText(window, effectPrompt, {445.f, 455.f}, 16, GOLD);
+
+    if (effectYesNo)
+    {
+        ui->drawButton(window, {{500.f, 525.f}, {220.f, 55.f}}, "YES", true, GREEN);
+        ui->drawButton(window, {{780.f, 525.f}, {220.f, 55.f}}, "NO", false, RED);
+    }
+    else if (!effectChoices.empty())
+    {
+        // Choices can be board spaces (0..31), so use a compact grid rather
+        // than a single row that would hide half of the legal options.
+        const float startX = 455.f;
+        const float startY = 515.f;
+        const float bw = 75.f;
+        const float bh = 36.f;
+        const float gap = 7.f;
+
+        for (std::size_t i = 0; i < effectChoices.size() && i < 32; ++i)
+        {
+            const int col = static_cast<int>(i % 8);
+            const int row = static_cast<int>(i / 8);
+            ui->drawButton(window,
+                           {{startX + col * (bw + gap),
+                             startY + row * (bh + gap)},
+                            {bw, bh}},
+                           std::to_string(effectChoices[i]), true, GOLD);
+        }
+    }
+    else if (effectInteger)
+    {
+        ui->drawPanel(window, {{500.f, 525.f}, {500.f, 55.f}}, GOLD);
+        ui->drawText(window, effectInputBuffer.empty() ? "_" : effectInputBuffer,
+                     {520.f, 540.f}, 18, PARCHMENT);
+        ui->drawText(window, "Type the number, then press ENTER.",
+                     {500.f, 595.f}, 12, sf::Color(180, 171, 156));
+    }
+
+    ui->drawText(window, "The game is waiting for this effect to finish.",
+                 {445.f, 680.f}, 11, sf::Color(160, 153, 142));
+}
+
+void GameWindow::handleEffectInput(sf::Vector2f p)
+{
+    if (effectYesNo)
+    {
+        if (sf::FloatRect({500.f, 525.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(true);
+        else if (sf::FloatRect({780.f, 525.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(false);
+        return;
+    }
+
+    if (!effectChoices.empty())
+    {
+        const float startX = 455.f;
+        const float startY = 515.f;
+        const float bw = 75.f;
+        const float bh = 36.f;
+        const float gap = 7.f;
+
+        for (std::size_t i = 0; i < effectChoices.size() && i < 32; ++i)
+        {
+            const int col = static_cast<int>(i % 8);
+            const int row = static_cast<int>(i / 8);
+            sf::FloatRect button(
+                {startX + col * (bw + gap), startY + row * (bh + gap)},
+                {bw, bh});
+
+            if (button.contains(p))
+            {
+                controller.submitGuiInput(effectChoices[i]);
+                return;
+            }
+        }
     }
 }
 
@@ -926,6 +1358,19 @@ void GameWindow::resetSelections()
     attackMode = false;
     moveMode = false;
     boostMode = false;
+    schemeMode = false;
+    defenseSelectionMode = false;
+    awaitingMoveBoost = false;
+    moveBoostPrompt = false;
+    moveBoost = 0;
+    effectPanelActive = false;
+    effectCardName.clear();
+    effectCardText.clear();
+    effectPrompt.clear();
+    effectChoices.clear();
+    effectYesNo = false;
+    effectInteger = false;
+    effectInputBuffer.clear();
 }
 
 Character* GameWindow::selectedCurrentCharacter() const

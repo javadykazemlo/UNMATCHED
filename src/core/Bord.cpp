@@ -106,7 +106,7 @@ bool Bord::checkzone(int zo)
 }
 
 
-bool Bord::canAttack(int attacktype , int pos)
+bool Bord::canAttack(int attacktype , int pos) const 
 {
     if(attacktype == 0) //Melee
     {
@@ -135,7 +135,7 @@ bool Bord::canAttack(int attacktype , int pos)
     return false;
 }
 
-vector<Character*> Bord::getAttackCharacters(int attacktype , int pos)
+vector<Character*> Bord::getAttackCharacters(int attacktype , int pos) const
 {
     vector<Character*> result;
 

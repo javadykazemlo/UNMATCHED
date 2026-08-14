@@ -21,11 +21,11 @@ public:
     void addCharacter(int, Character* character);
     void deletCharacter(int);
     bool isEmpty(int pos);
-    bool canAttack(int attacktype , int pos);
+    bool canAttack(int attacktype , int pos) const;
     
     bool checkzone(int z);
 
-    std::vector<Character*> getAttackCharacters(int attacktype , int pos);
+    std::vector<Character*> getAttackCharacters(int attacktype , int pos) const;
     
     std::vector<int> getEmptyAdjacent(Character* character) const;
     std::vector<int> getEmptyZone(std::vector<int> zon) const;

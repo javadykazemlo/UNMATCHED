@@ -7,11 +7,36 @@
 #include <random>
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <sstream>
 #include "core/Controller.hpp"
 #include "entities/invisible_man.hpp"
 #include "Save/SaveManager.hpp"
 
 using namespace std;
+
+namespace
+{
+    struct GuiEffectBridge
+    {
+        std::mutex mutex;
+        std::condition_variable cv;
+
+        bool busy = false;
+        bool finished = false;
+
+        enum class RequestType { None, Integer, Choice, YesNo };
+        RequestType requestType = RequestType::None;
+        std::string prompt;
+        std::vector<int> choices;
+        int value = 0;
+        bool boolValue = false;
+        bool ready = false;
+    };
+
+    GuiEffectBridge gGuiEffect;
+}
 
 void Controller::startMenu(Player player[2])
 {
@@ -772,14 +797,21 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
 {
     if(defenseCard.getName() == "Elementary")
     {
-        activeDecider = enemy;
-        cout << enemy->getName() << ", guess the attack value of your opponent's card.\n";
-        int number = getInt();
-        if(number == attackCard.getAttack())
+        if (!guiMode)
         {
-            GuessElementary = true;
+            activeDecider = enemy;
+            cout << enemy->getName() << ", guess the attack value of your opponent's card.\n";
+            int number = getInt();
+            if(number == attackCard.getAttack())
+                GuessElementary = true;
+            activeDecider = current;
         }
-        activeDecider = current;
+        else
+        {
+            // GUI has no terminal input. The card is still played and its
+            // normal effect path is preserved, with no successful guess.
+            GuessElementary = false;
+        }
     }
     
     int attackValue = attackCard.getAttack();
@@ -853,12 +885,31 @@ int Controller::getInt()
     if(decider && decider->isAI())
         return aiInt(decider);
 
-    int x;
+    if (guiMode)
+    {
+        std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::Integer;
+        gGuiEffect.prompt = "Enter a number";
+        gGuiEffect.choices.clear();
+        gGuiEffect.ready = false;
+        gGuiEffect.cv.notify_all();
 
+        gGuiEffect.cv.wait(lock, []
+        {
+            return gGuiEffect.ready;
+        });
+
+        const int value = gGuiEffect.value;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.ready = false;
+        return value;
+    }
+
+    int x;
     while (true)
     {
         cin >> x;
-
         if (!cin.fail())
         {
             cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -866,7 +917,6 @@ int Controller::getInt()
         }
 
         cout << "Invalid input. Enter a number: ";
-
         cin.clear();
         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
@@ -877,6 +927,28 @@ int Controller::getChoice(std::vector<int> valid)
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
         return aiChoose(valid, decider);
+
+    if (guiMode)
+    {
+        std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::Choice;
+        gGuiEffect.prompt = "Choose one of the available options";
+        gGuiEffect.choices = std::move(valid);
+        gGuiEffect.ready = false;
+        gGuiEffect.cv.notify_all();
+
+        gGuiEffect.cv.wait(lock, []
+        {
+            return gGuiEffect.ready;
+        });
+
+        const int value = gGuiEffect.value;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.choices.clear();
+        gGuiEffect.ready = false;
+        return value;
+    }
 
     while(true)
     {
@@ -892,6 +964,27 @@ bool Controller::getYesNo()
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
         return aiYesNo(decider);
+
+    if (guiMode)
+    {
+        std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::YesNo;
+        gGuiEffect.prompt = "Do you want to use this effect?";
+        gGuiEffect.choices.clear();
+        gGuiEffect.ready = false;
+        gGuiEffect.cv.notify_all();
+
+        gGuiEffect.cv.wait(lock, []
+        {
+            return gGuiEffect.ready;
+        });
+
+        const bool value = gGuiEffect.boolValue;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.ready = false;
+        return value;
+    }
 
     char choice;
     cin >> choice;
@@ -1234,6 +1327,8 @@ bool Controller::beginGuiSetup(Player players[2])
     current = nullptr;
     enemy = nullptr;
     activeDecider = nullptr;
+    guiMode = false;
+    guiCombatLog.clear();
 
     gamerand = 0;
     guiCharacterPlayerIndex = -1;
@@ -1601,6 +1696,8 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
     enemy = &players[1];
     activeDecider = current;
     gamerand = 0;
+    guiMode = true;
+    guiCombatLog.clear();
 
     // Same opening hero spaces as the original console setup.
     bord.addCharacter(4, current->getHero());
@@ -1783,12 +1880,221 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
     if (!(attackCard.isAttack() || attackCard.isVersatile())) return false;
     if (!(defenseCard.isDefense() || defenseCard.isVersatile())) return false;
 
-    Card selectedAttack;
-    Card selectedDefense;
-    selectedAttack = attackDeck->playCard(attackCardIndex, selectedAttack);
-    selectedDefense = defenseDeck->playCard(defenseCardIndex, selectedDefense);
-    resolveCombat(selectedAttack, selectedDefense, attacker, defender);
+    {
+        std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        if (gGuiEffect.busy) return false;
+        gGuiEffect.busy = true;
+        gGuiEffect.finished = false;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+        gGuiEffect.ready = false;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.choices.clear();
+    }
+
+    // Remove both cards before starting the effect thread. This also prevents
+    // the GUI from displaying stale hand indices while the combat is resolving.
+    Card selectedAttack = attackDeck->playCard(attackCardIndex, attackCard);
+    Card selectedDefense = defenseDeck->playCard(defenseCardIndex, defenseCard);
+
+    guiCombatLog.clear();
+
+    std::thread([this, attacker, defender,
+                 selectedAttack, selectedDefense]() mutable
+    {
+        std::ostringstream captured;
+        std::streambuf* old = std::cout.rdbuf(captured.rdbuf());
+
+        GuessElementary = false;
+        resolveCombat(selectedAttack, selectedDefense, attacker, defender);
+
+        std::cout.rdbuf(old);
+
+        std::vector<std::string> logs;
+        std::istringstream lines(captured.str());
+        std::string line;
+        while (std::getline(lines, line))
+        {
+            while (!line.empty() && (line.front() == ' ' || line.front() == '\t'))
+                line.erase(line.begin());
+            while (!line.empty() && (line.back() == ' ' || line.back() == '\t' || line.back() == '\r'))
+                line.pop_back();
+            if (line.empty()) continue;
+
+            bool separators = true;
+            for (char c : line)
+                if (c != '=' && c != '-' && c != ' ') { separators = false; break; }
+            if (!separators) logs.push_back(line);
+        }
+        logs.push_back("Combat resolved.");
+
+        guiCombatLog = std::move(logs);
+
+        {
+            std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+            gGuiEffect.busy = false;
+            gGuiEffect.finished = true;
+        }
+        gGuiEffect.cv.notify_all();
+    }).detach();
+
     return true;
+}
+
+bool Controller::guiUseBoostCard(int index, int& boostValue)
+{
+    boostValue = 0;
+    if (!current || !current->getDeck()) return false;
+    if (index < 0 || index >= current->getDeck()->gethandSize()) return false;
+
+    Card selected;
+    selected = current->getDeck()->playCard(index, selected);
+    boostValue = selected.getBoost();
+    return true;
+}
+
+std::vector<int> Controller::getGuiSchemeCards(Character* fighter) const
+{
+    std::vector<int> result;
+    if (!fighter || !current || !current->getDeck() || !isCurrentPlayer(fighter)) return result;
+    const auto& hand = current->getDeck()->gethand();
+    for (int i = 0; i < static_cast<int>(hand.size()); ++i)
+    {
+        const Card& card = hand[i];
+        const bool ownerOK = fighter->isHero()
+            ? (card.isHero() || card.isAnyowner())
+            : (card.issideKick() || card.isAnyowner());
+        if (ownerOK && card.isScheme()) result.push_back(i);
+    }
+    return result;
+}
+
+bool Controller::guiScheme(Character* fighter, int cardIndex)
+{
+    if (!fighter || !current || !enemy || !current->getDeck()) return false;
+    if (!isCurrentPlayer(fighter)) return false;
+    if (cardIndex < 0 || cardIndex >= current->getDeck()->gethandSize()) return false;
+
+    Card card = current->getDeck()->getHandcard(cardIndex);
+    const bool ownerOK = fighter->isHero()
+        ? (card.isHero() || card.isAnyowner())
+        : (card.issideKick() || card.isAnyowner());
+    if (!ownerOK || !card.isScheme()) return false;
+
+    {
+        std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        if (gGuiEffect.busy) return false;
+        gGuiEffect.busy = true;
+        gGuiEffect.finished = false;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+        gGuiEffect.ready = false;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.choices.clear();
+    }
+
+    Card selected;
+    selected = current->getDeck()->playCard(cardIndex, selected);
+
+    std::thread([this, selected, fighter]() mutable
+    {
+        applyEffectScheme(selected, current, enemy, fighter);
+
+        {
+            std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+            gGuiEffect.busy = false;
+            gGuiEffect.finished = true;
+        }
+        gGuiEffect.cv.notify_all();
+    }).detach();
+
+    return true;
+}
+
+bool Controller::guiEffectBusy() const
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    return gGuiEffect.busy;
+}
+
+bool Controller::guiEffectFinished()
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    if (!gGuiEffect.finished) return false;
+    gGuiEffect.finished = false;
+    return true;
+}
+
+bool Controller::getGuiInputRequest(std::string& prompt, std::vector<int>& choices,
+                                    bool& yesNo, bool& integerInput) const
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    if (gGuiEffect.requestType == GuiEffectBridge::RequestType::None)
+        return false;
+
+    prompt = gGuiEffect.prompt;
+    choices = gGuiEffect.choices;
+    yesNo = gGuiEffect.requestType == GuiEffectBridge::RequestType::YesNo;
+    integerInput = gGuiEffect.requestType == GuiEffectBridge::RequestType::Integer ||
+                   gGuiEffect.requestType == GuiEffectBridge::RequestType::Choice;
+    return true;
+}
+
+bool Controller::submitGuiInput(int value)
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    if (gGuiEffect.requestType == GuiEffectBridge::RequestType::None ||
+        gGuiEffect.requestType == GuiEffectBridge::RequestType::YesNo ||
+        gGuiEffect.ready)
+        return false;
+
+    if (gGuiEffect.requestType == GuiEffectBridge::RequestType::Choice)
+    {
+        if (std::find(gGuiEffect.choices.begin(), gGuiEffect.choices.end(), value)
+            == gGuiEffect.choices.end())
+            return false;
+    }
+
+    gGuiEffect.value = value;
+    gGuiEffect.ready = true;
+    gGuiEffect.cv.notify_all();
+    return true;
+}
+
+bool Controller::submitGuiYesNo(bool value)
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    if (gGuiEffect.requestType != GuiEffectBridge::RequestType::YesNo ||
+        gGuiEffect.ready)
+        return false;
+
+    gGuiEffect.boolValue = value;
+    gGuiEffect.ready = true;
+    gGuiEffect.cv.notify_all();
+    return true;
+}
+
+bool Controller::guiSaveGame(const std::string& filename)
+{
+    return SaveManager::saveGame(current, enemy, gamerand,
+                                 cancelEffectDR, cancelEffectSH, cancelEffectIM,
+                                 GuessElementary, filename);
+}
+
+std::vector<std::string> Controller::getGuiCombatLog() const
+{
+    return guiCombatLog;
+}
+
+void Controller::clearGuiCombatLog()
+{
+    guiCombatLog.clear();
+}
+
+std::string Controller::getGuiWinnerName() const
+{
+    if (!current || !enemy) return {};
+    if (!current->getHero()->checkalive()) return enemy->getName();
+    if (!enemy->getHero()->checkalive()) return current->getName();
+    return {};
 }
 
 bool Controller::guiDrawCard()
@@ -1831,20 +2137,25 @@ bool Controller::isCurrentPlayer(const Character* character) const
 
 bool Controller::end_game() const
 {
+    if (!current || !enemy || !current->getHero() || !enemy->getHero())
+        return false;
+
     Character* hero1 = current->getHero();
     Character* hero2 = enemy->getHero();
 
     if (!hero1->checkalive() || !hero2->checkalive())
     {
-        cout << "\n══════════════════════════════════════════════════════════════════════════\n";
-        cout << "                                GAME OVER\n";
-        cout << "══════════════════════════════════════════════════════════════════════════\n";
-        if (!hero1->checkalive())
-            cout << "           🏆 " << hero2->getName() << " wins! 🏆\n";
-        else
-            cout << "           🏆 " << hero1->getName() << " wins! 🏆\n";
-  
-        cout << "══════════════════════════════════════════════════════════════════════════\n";
+        if (!guiMode)
+        {
+            cout << "\n══════════════════════════════════════════════════════════════════════════\n";
+            cout << "                                GAME OVER\n";
+            cout << "══════════════════════════════════════════════════════════════════════════\n";
+            if (!hero1->checkalive())
+                cout << "           🏆 " << hero2->getName() << " wins! 🏆\n";
+            else
+                cout << "           🏆 " << hero1->getName() << " wins! 🏆\n";
+            cout << "══════════════════════════════════════════════════════════════════════════\n";
+        }
         return true;
     }
     return false;

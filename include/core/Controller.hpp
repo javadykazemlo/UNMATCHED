@@ -137,11 +137,10 @@ private:
     bool guiAttack(Character* attacker, Character* defender,
                    int attackCardIndex, int defenseCardIndex);
     bool guiUseBoostCard(int index, int& boostValue);
+    bool guiDiscardCard(int index);
     std::vector<int> getGuiSchemeCards(Character* fighter) const;
     bool guiScheme(Character* fighter, int cardIndex);
 
-    // Non-blocking GUI effect/input bridge. Card effects that need a choice
-    // are executed in a worker thread and request their input from GameWindow.
     bool guiEffectBusy() const;
     bool guiEffectFinished();
     bool getGuiInputRequest(std::string& prompt, std::vector<int>& choices,

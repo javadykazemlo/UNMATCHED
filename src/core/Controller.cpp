@@ -333,7 +333,7 @@ void Controller::playTurn()
                     aiDecisionKind = AIDecision::FighterSelect;
                     aiCharacterOptions = choices;
 
-                    choose = getChoice({valid});
+                    choose = getChoice(valid);
 
                     aiDecisionKind = AIDecision::Generic;
                     Character* selected = choices[choose - 1];
@@ -579,7 +579,7 @@ void Controller::Scheme()
         cout << "Choose a character: ";
         aiDecisionKind = AIDecision::FighterSelect;
         aiCharacterOptions = choices;
-        choose = getChoice({valid});
+        choose = getChoice(valid);
         aiDecisionKind = AIDecision::Generic;
         selected = choices[choose - 1];
 
@@ -654,7 +654,7 @@ void Controller::startCombat()
     cout << "Choose a character to attack with: ";
     aiDecisionKind = AIDecision::FighterSelect;
     aiCharacterOptions = choices;
-    choose = getChoice({valid});
+    choose = getChoice(valid);
     aiDecisionKind = AIDecision::Generic;
     Character* attacker = choices[choose - 1];
 
@@ -679,7 +679,7 @@ void Controller::startCombat()
         cout << "Choose a character to attack: ";
         aiDecisionKind = AIDecision::AttackTarget;
         aiCharacterOptions = choices;
-        choose = getChoice({valid});
+        choose = getChoice(valid);
         aiDecisionKind = AIDecision::Generic;
         Character* defender = choices[choose - 1];
 
@@ -808,22 +808,16 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
         }
         else
         {
-            // GUI has no terminal input. The card is still played and its
-            // normal effect path is preserved, with no successful guess.
-            GuessElementary = false;
+            // In GUI mode the same guess is requested through the graphical
+            // effect panel instead of silently failing the effect.
+            activeDecider = enemy;
+            cout << enemy->getName() << ", guess the attack value of your opponent's card.\n";
+            const int number = getInt();
+            GuessElementary = (number == attackCard.getAttack());
+            activeDecider = current;
         }
     }
     
-    int attackValue = attackCard.getAttack();
-    int defenseValue = defenseCard.getAttack();
-
-    invisible_man* imDefender = dynamic_cast<invisible_man*>(defender);
-    if(imDefender != nullptr && imDefender->isMistPosition(imDefender->getSpace()) && !defenseCard.getName().empty())
-    {
-        defenseValue += 1;
-        cout << "\n🌫️ Invisible Man is on a fog token: defense +1 (cannot be cancelled).\n";
-    }
-
     cout << "\n═══════════════════════════════════════════════════════════════════\n";
     cout << "                 ⚔️ RESOLVING COMBAT ⚔️\n";
     cout << "═════════════════════════════════════════════════════════════════════\n";
@@ -833,15 +827,29 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     if(attackCard.isBeforeCombat())
         applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , false);
 
-    cout << "\n📊 COMBAT RESULT:\n";
-    cout << "  ⚔️ Attack  : " << attackValue << "\n";
-    cout << "  🛡️ Defense : " << defenseValue << "\n";
-    
     if(defenseCard.isDuringCombat())
         applyEffect(defenseCard , attackCard , enemy , current , attacker , defender , false);
     if(attackCard.isDuringCombat())
         applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , false);
-    
+
+    // Card effects can modify attack/defense values, so calculate the final
+    // combat values only after Before/During effects have finished.
+    int attackValue = attackCard.getAttack();
+    int defenseValue = defenseCard.getAttack();
+
+    invisible_man* imDefender = dynamic_cast<invisible_man*>(defender);
+    if(imDefender != nullptr &&
+       imDefender->isMistPosition(imDefender->getSpace()) &&
+       !defenseCard.getName().empty())
+    {
+        defenseValue += 1;
+        cout << "\n🌫️ Invisible Man is on a fog token: defense +1 (cannot be cancelled).\n";
+    }
+
+    cout << "\n📊 COMBAT RESULT:\n";
+    cout << "  ⚔️ Attack  : " << attackValue << "\n";
+    cout << "  🛡️ Defense : " << defenseValue << "\n";
+
     bool attackerWon = false;
     bool defenderWon = false;
 
@@ -1697,6 +1705,16 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
     activeDecider = current;
     gamerand = 0;
     guiMode = true;
+
+    {
+        std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        gGuiEffect.busy = false;
+        gGuiEffect.finished = false;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.choices.clear();
+        gGuiEffect.ready = false;
+    }
     guiCombatLog.clear();
 
     // Same opening hero spaces as the original console setup.
@@ -1940,6 +1958,17 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
     return true;
 }
 
+bool Controller::guiDiscardCard(int index)
+{
+    if (!current || !current->getDeck()) return false;
+    if (current->getDeck()->gethandSize() <= 7) return false;
+    if (index < 0 || index >= current->getDeck()->gethandSize()) return false;
+
+    Card discarded;
+    discarded = current->getDeck()->playCard(index, discarded);
+    return true;
+}
+
 bool Controller::guiUseBoostCard(int index, int& boostValue)
 {
     boostValue = 0;
@@ -2126,6 +2155,12 @@ int Controller::getActionCount() const { return gamerand; }
 void Controller::guiEndAction() { if (gamerand < 2) ++gamerand; }
 void Controller::guiEndTurn()
 {
+    // The GUI resolves the 7-card hand limit before calling this method.
+    // Keep the guard here as a second line of defense so the controller can
+    // never pass a turn while the current hand is above the official limit.
+    if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
+        return;
+
     gamerand = 0;
     std::swap(current, enemy);
 }

@@ -64,6 +64,8 @@ private:
     std::vector<int> effectChoices;
     bool effectYesNo = false;
     bool effectInteger = false;
+    int effectFinishTimer = 0;
+    bool handLimitMode = false;
     std::string effectInputBuffer;
     int moveBoost = 0;
     std::string message;
@@ -99,4 +101,5 @@ private:
     void updateEffectPanel();
     void drawEffectPanel();
     void handleEffectInput(sf::Vector2f p);
+    void finishTurnAfterHandLimit();
 };

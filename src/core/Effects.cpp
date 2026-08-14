@@ -106,7 +106,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 {
                     cout << "choice a card: ";
                     choice = getInt();
-                    if(choice > 0 && choice < handSize)
+                    if(choice > 0 && choice <= handSize)
                     {
                         break;
                     }
@@ -1055,7 +1055,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
         }
         cout << "Choose a character to move: ";
-        choose = getChoice({valid});
+        choose = getChoice(valid);
         Character* selected = choices[choose - 1];
 
         move(2 , selected);
@@ -1174,7 +1174,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
         }
         cout << "Choose an opponent: ";
-        choose = getChoice({valid});
+        choose = getChoice(valid);
         Character* Rival = choices[choose - 1];
 
         cout << "Choose a number: ";
@@ -1273,7 +1273,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
         }
         cout << "Choose a character to swap positions with: ";
-        choose = getChoice({valid});
+        choose = getChoice(valid);
         Character* Rival = choices[choose - 1];
 
         int holmespos = holmes->getSpace();

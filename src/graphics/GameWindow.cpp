@@ -144,6 +144,18 @@ void GameWindow::processEvents()
             continue;
         }
 
+        if (screen == Screen::Game && rulesView && rulesView->isOpen())
+        {
+            sf::Vector2f mousePosition{0.f, 0.f};
+            if (const auto* mouse = event->getIf<sf::Event::MouseMoved>())
+                mousePosition = window.mapPixelToCoords(mouse->position);
+            else if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>())
+                mousePosition = window.mapPixelToCoords(mouse->position);
+
+            rulesView->handleEvent(*event, mousePosition);
+            continue;
+        }
+
         if (screen == Screen::Game && effectPanelActive && effectInteger)
         {
             if (const auto* text = event->getIf<sf::Event::TextEntered>())
@@ -209,6 +221,12 @@ void GameWindow::processEvents()
             if (mouse->button != sf::Mouse::Button::Left) continue;
             const sf::Vector2f p = window.mapPixelToCoords(mouse->position);
 
+            if (screen == Screen::Game && rulesView && rulesView->isOpen())
+            {
+                rulesView->handleEvent(*event, p);
+                continue;
+            }
+
             if (screen == Screen::MainMenu) handleMainMenuClick(p);
             else if (screen == Screen::Setup) handleSetupClick(p);
             else if (screen == Screen::Game) handleGameClick(p);
@@ -228,7 +246,7 @@ void GameWindow::update()
     if (screen == Screen::Game)
     {
         updateEffectPanel();
-        if (!controller.guiEffectBusy())
+        if (!controller.guiEffectBusy() && !effectPanelActive)
             checkGameOver();
     }
 }
@@ -239,6 +257,9 @@ void GameWindow::render()
     else if (screen == Screen::Setup) drawSetup();
     else if (screen == Screen::GameOver) drawGameOver();
     else drawGame();
+
+    if (screen == Screen::Game && rulesView && rulesView->isOpen())
+        rulesView->draw(window, {1600.f, 900.f});
 }
 
 void GameWindow::showMessage(const std::string& text)
@@ -635,17 +656,21 @@ void GameWindow::drawGame()
     }
     else
     {
-        ui->drawText(window, "YOUR HAND", {440.f, 688.f}, 17, GOLD);
+        ui->drawText(window, handLimitMode ? "DISCARD DOWN TO 7" : "YOUR HAND",
+                     {440.f, 688.f}, 17, handLimitMode ? RED : GOLD);
         if (current && current->getDeck())
         {
             cardView->drawHand(window, current->getDeck()->gethand(), selectedCard);
             if (selectedCard >= 0 && selectedCard < current->getDeck()->gethandSize())
             {
-                const Card& card = current->getDeck()->gethand()[selectedCard];
+                const Card& card = current->getDeck()->getHandcard(selectedCard);
                 ui->drawText(window, card.getName(), {450.f, 710.f}, 9, PARCHMENT);
             }
         }
-        if (awaitingMoveBoost)
+        if (handLimitMode)
+            ui->drawText(window, "Choose a card to discard. Your turn will continue when the hand reaches 7.",
+                         {440.f, 863.f}, 9, RED);
+        else if (awaitingMoveBoost)
             ui->drawText(window, "Optional BOOST: choose a card, or select a fighter to skip it.",
                          {440.f, 863.f}, 9, GOLD);
     }
@@ -845,6 +870,17 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     Player* enemy = controller.getEnemyPlayer();
     Character* selected = selectedCurrentCharacter();
 
+    // Keep the game locked while a card effect is resolving or while the
+    // resolved-effect result is still being displayed.
+    if (effectPanelActive)
+    {
+        if (controller.guiEffectBusy())
+        {
+            handleEffectInput(p);
+        }
+        return;
+    }
+
     if (sf::FloatRect({1375.f, 12.f}, {90.f, 42.f}).contains(p))
     {
         if (rulesView)
@@ -866,9 +902,35 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // End Turn keeps its original position.
+    // Hand limit: exactly the same rule as Controller::playTurn.
+    // If the hand is above 7, the player must choose cards to discard first.
+    if (handLimitMode)
+    {
+        if (current && current->getDeck())
+        {
+            const int card = cardView->getCardAt(p, current->getDeck()->gethandSize());
+            if (card >= 0 && controller.guiDiscardCard(card))
+            {
+                if (current->getDeck()->gethandSize() <= 7)
+                    finishTurnAfterHandLimit();
+                else
+                    showMessage("Discard another card. Hand must be 7 or fewer.");
+            }
+        }
+        return;
+    }
+
+    // End Turn keeps its original position, but the hand limit is resolved
+    // before the turn is actually passed to the opponent.
     if (sf::FloatRect({1385.f, 815.f}, {175.f, 42.f}).contains(p))
     {
+        if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
+        {
+            handLimitMode = true;
+            showMessage("You have more than 7 cards. Select cards to discard.");
+            return;
+        }
+
         controller.guiEndTurn();
         resetSelections();
         combatLog.clear();
@@ -999,6 +1061,17 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         Character* attacker = selectedCurrentCharacter();
         if (controller.guiAttack(attacker, defender, selectedCard, defenseCard))
         {
+            const Card attackCard = current->getDeck()->getHandcard(selectedCard);
+            const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
+            effectPanelActive = true;
+            effectFinishTimer = 0;
+            effectCardName = "COMBAT";
+            effectCardText = attackCard.getName() + "  VS  " + defensePlayedCard.getName() +
+                             "\n\nResolving attack, defense and combat effects...";
+            effectPrompt = "Resolving combat...";
+            effectChoices.clear();
+            effectYesNo = false;
+            effectInteger = false;
             refreshCombatLog();
             defenseSelectionMode = false;
             attackMode = false;
@@ -1048,11 +1121,14 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                 const std::vector<int> valid = controller.getGuiSchemeCards(selected);
                 if (std::find(valid.begin(), valid.end(), card) != valid.end())
                 {
+                    const Card chosenCard = current->getDeck()->gethand()[card];
                     if (controller.guiScheme(selected, card))
                     {
+                        controller.clearGuiCombatLog();
                         effectPanelActive = true;
-                        // effectCardName = card.getName();
-                        // effectCardText = card.geteffect();
+                        effectFinishTimer = 0;
+                        effectCardName = chosenCard.getName();
+                        effectCardText = chosenCard.geteffect();
                         effectPrompt = "Resolving effect...";
                         effectChoices.clear();
                         effectYesNo = false;
@@ -1125,9 +1201,13 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                 }
                 if (controller.guiAttack(selected, occupant, selectedCard, valid.front()))
                 {
+                    const Card attackCard = current->getDeck()->getHandcard(selectedCard);
+                    const Card defenseCard = enemyPlayer->getDeck()->gethand()[valid.front()];
                     effectPanelActive = true;
+                    effectFinishTimer = 0;
                     effectCardName = "COMBAT";
-                    effectCardText = "The attack and defense cards are being resolved.";
+                    effectCardText = attackCard.getName() + "  VS  " + defenseCard.getName() +
+                                     "\n\nResolving attack, defense and combat effects...";
                     effectPrompt = "Resolving combat...";
                     effectChoices.clear();
                     effectYesNo = false;
@@ -1173,6 +1253,23 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
 void GameWindow::updateEffectPanel()
 {
+    // Every new GUI turn is initialized here. This is deliberately done from
+    // the render/update loop so Dracula's ability can pause the game through
+    // the same effect panel used by card effects.
+    if (!effectPanelActive && !controller.guiEffectBusy())
+        controller.guiBeginTurn();
+
+    std::string contextTitle;
+    std::string contextDescription;
+    if (controller.getGuiEffectContext(contextTitle, contextDescription))
+    {
+        effectPanelActive = true;
+        if (!contextTitle.empty())
+            effectCardName = contextTitle;
+        if (!contextDescription.empty())
+            effectCardText = contextDescription;
+    }
+
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -1188,8 +1285,10 @@ void GameWindow::updateEffectPanel()
 
     if (effectPanelActive && controller.guiEffectFinished())
     {
-        effectPanelActive = false;
-        effectPrompt.clear();
+        // Keep the panel visible briefly after immediate effects so the
+        // player can actually see that the card was resolved.
+        effectFinishTimer = 45;
+        effectPrompt = "Effect resolved.";
         effectChoices.clear();
         effectYesNo = false;
         effectInteger = false;
@@ -1203,17 +1302,28 @@ void GameWindow::updateEffectPanel()
             selectedCard = -1;
             selectedEnemy = -1;
             selectedCharacter = -1;
-            showMessage("Combat resolved.");
         }
         else
         {
             schemeMode = false;
             selectedCard = -1;
             selectedCharacter = -1;
-            showMessage("Card effect resolved.");
         }
+    }
 
-        checkGameOver();
+    if (effectPanelActive && effectFinishTimer > 0 && !controller.guiEffectBusy())
+    {
+        --effectFinishTimer;
+        if (effectFinishTimer == 0)
+        {
+            effectPanelActive = false;
+            effectPrompt.clear();
+            effectChoices.clear();
+            effectYesNo = false;
+            effectInteger = false;
+            effectInputBuffer.clear();
+            checkGameOver();
+        }
     }
 }
 
@@ -1229,7 +1339,8 @@ void GameWindow::drawEffectPanel()
     ui->drawText(window, effectCardName.empty() ? "CARD EFFECT" : effectCardName,
                  {445.f, 180.f}, 24, GOLD);
 
-    // Effect text is deliberately larger than the old terminal output.
+    // The card description remains at the top; all messages that the old
+    // Effects.cpp printed to the terminal are shown live below it.
     std::string text = effectCardText.empty() ? "Resolving card effect..." : effectCardText;
     float y = 235.f;
     std::string line;
@@ -1238,9 +1349,9 @@ void GameWindow::drawEffectPanel()
     auto flushLine = [&]()
     {
         if (line.empty()) return;
-        if (lines < 8)
+        if (lines < 5)
             ui->drawText(window, line, {445.f, y}, 13, PARCHMENT);
-        y += 24.f;
+        y += 22.f;
         ++lines;
         line.clear();
     };
@@ -1250,24 +1361,37 @@ void GameWindow::drawEffectPanel()
         if (c == '\n') flushLine();
         else line += c;
 
-        if (line.size() > 75) flushLine();
+        if (line.size() > 78) flushLine();
     }
     flushLine();
 
+    const std::vector<std::string> logs = controller.getGuiCombatLog();
+    int shownLogs = 0;
+    for (auto it = logs.rbegin(); it != logs.rend() && shownLogs < 5; ++it, ++shownLogs)
+    {
+        std::string logLine = *it;
+        if (logLine.size() > 90)
+            logLine = logLine.substr(0, 87) + "...";
+
+        ui->drawText(window, logLine,
+                     {445.f, 350.f + static_cast<float>(shownLogs) * 20.f},
+                     12, PARCHMENT);
+    }
+
     if (!effectPrompt.empty())
-        ui->drawText(window, effectPrompt, {445.f, 455.f}, 16, GOLD);
+        ui->drawText(window, effectPrompt, {445.f, 465.f}, 16, GOLD);
 
     if (effectYesNo)
     {
-        ui->drawButton(window, {{500.f, 525.f}, {220.f, 55.f}}, "YES", true, GREEN);
-        ui->drawButton(window, {{780.f, 525.f}, {220.f, 55.f}}, "NO", false, RED);
+        ui->drawButton(window, {{500.f, 535.f}, {220.f, 55.f}}, "YES", true, GREEN);
+        ui->drawButton(window, {{780.f, 535.f}, {220.f, 55.f}}, "NO", false, RED);
     }
     else if (!effectChoices.empty())
     {
         // Choices can be board spaces (0..31), so use a compact grid rather
         // than a single row that would hide half of the legal options.
         const float startX = 455.f;
-        const float startY = 515.f;
+        const float startY = 525.f;
         const float bw = 75.f;
         const float bh = 36.f;
         const float gap = 7.f;
@@ -1285,11 +1409,11 @@ void GameWindow::drawEffectPanel()
     }
     else if (effectInteger)
     {
-        ui->drawPanel(window, {{500.f, 525.f}, {500.f, 55.f}}, GOLD);
+        ui->drawPanel(window, {{500.f, 535.f}, {500.f, 55.f}}, GOLD);
         ui->drawText(window, effectInputBuffer.empty() ? "_" : effectInputBuffer,
-                     {520.f, 540.f}, 18, PARCHMENT);
+                     {520.f, 550.f}, 18, PARCHMENT);
         ui->drawText(window, "Type the number, then press ENTER.",
-                     {500.f, 595.f}, 12, sf::Color(180, 171, 156));
+                     {500.f, 605.f}, 12, sf::Color(180, 171, 156));
     }
 
     ui->drawText(window, "The game is waiting for this effect to finish.",
@@ -1300,9 +1424,9 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
 {
     if (effectYesNo)
     {
-        if (sf::FloatRect({500.f, 525.f}, {220.f, 55.f}).contains(p))
+        if (sf::FloatRect({500.f, 535.f}, {220.f, 55.f}).contains(p))
             controller.submitGuiYesNo(true);
-        else if (sf::FloatRect({780.f, 525.f}, {220.f, 55.f}).contains(p))
+        else if (sf::FloatRect({780.f, 535.f}, {220.f, 55.f}).contains(p))
             controller.submitGuiYesNo(false);
         return;
     }
@@ -1310,7 +1434,7 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
     if (!effectChoices.empty())
     {
         const float startX = 455.f;
-        const float startY = 515.f;
+        const float startY = 525.f;
         const float bw = 75.f;
         const float bh = 36.f;
         const float gap = 7.f;
@@ -1330,6 +1454,15 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
             }
         }
     }
+}
+
+void GameWindow::finishTurnAfterHandLimit()
+{
+    handLimitMode = false;
+    controller.guiEndTurn();
+    resetSelections();
+    combatLog.clear();
+    showMessage("Turn changed.");
 }
 
 void GameWindow::startGame()
@@ -1371,6 +1504,8 @@ void GameWindow::resetSelections()
     effectYesNo = false;
     effectInteger = false;
     effectInputBuffer.clear();
+    effectFinishTimer = 0;
+    handLimitMode = false;
 }
 
 Character* GameWindow::selectedCurrentCharacter() const

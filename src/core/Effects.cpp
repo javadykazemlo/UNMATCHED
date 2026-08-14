@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include "core/Controller.hpp"
+#include "core/GuiEffectLogger.hpp"
 #include "entities/invisible_man.hpp"
 
 using namespace std;
@@ -12,6 +13,7 @@ using namespace std;
 
 void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player* opponent , Character* attacker , Character* defender , bool woncombat)
 {
+    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     activeDecider = self;
 
 //<<<<<<<<<<<<<<<<< Dracula
@@ -20,11 +22,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR)
         {
-            cout << "Feeding Frenzy effect was canceled.\n";
+            effectLog << "Feeding Frenzy effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         vector<int> defendZones = bord.getCharacterZone(defender);
 
@@ -46,7 +48,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 }
             }
         }
-        cout << "Card " << card.getName() << "'s attack increased by " << amount << ".\n";
+        effectLog << "Card " << card.getName() << "'s attack increased by " << amount << ".\n";
         card.setAttack(card.getAttack() + amount);
 
         return;
@@ -57,11 +59,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR)
         {
-            cout << "Ambush effect was canceled.\n";
+            effectLog << "Ambush effect was canceled.\n";
             return;
         } 
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         int random = 0;
         if(opponent->getDeck()->gethandSize() != 0)
@@ -72,13 +74,13 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         Card boostCard;
         boostCard = opponent->getDeck()->playCard(random , boostCard);
 
-        cout << "Card " << boostCard.getName() << " was removed from " << opponent->getName() << "'s hand.\n";
+        effectLog << "Card " << boostCard.getName() << " was removed from " << opponent->getName() << "'s hand.\n";
 
         int boost = boostCard.getBoost();
         
         card.setAttack(boost + card.getAttack());
 
-        cout << boostCard.getBoost() << " boost was added to " << card.getName() << "'s attack.\n";
+        effectLog << boostCard.getBoost() << " boost was added to " << card.getName() << "'s attack.\n";
 
         return;
 
@@ -88,15 +90,15 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR)
         {
-            cout << "BeastForm effect was canceled.\n";
+            effectLog << "BeastForm effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         while(true)
         {
-            cout << "Do you want to remove a card?(y/n): ";
+            effectLog << "Do you want to remove a card?(y/n): ";
             if(getYesNo())
             {
                 int handSize = self->getDeck()->gethandSize();
@@ -104,20 +106,20 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 int choice;
                 while (true)
                 {
-                    cout << "choice a card: ";
+                    effectLog << "choice a card: ";
                     choice = getInt();
-                    if(choice > 0 && choice < handSize)
+                    if(choice > 0 && choice <= handSize)
                     {
                         break;
                     }
-                    cout << "Invalid input.";
+                    effectLog << "Invalid input.";
                 }
 
                 Card selected;
                 selected = self->getDeck()->playCard(choice - 1 , selected);
     
                 card.setAttack(card.getAttack() + 1);
-                cout << "Card " << card.getName() << " gained +1 attack.\n";
+                effectLog << "Card " << card.getName() << " gained +1 attack.\n";
             }
             else
             {
@@ -133,11 +135,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR)
         {
-            cout << "Dash effect was canceled.\n";
+            effectLog << "Dash effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         move(3 , attacker);
 
@@ -149,22 +151,22 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR)
         {
-            cout << "Exploit effect was canceled.\n";
+            effectLog << "Exploit effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         try
         {
             self->getDeck()->draw();
-            cout << "added to " << self->getName() << " hand\n\n";
+            effectLog << "added to " << self->getName() << " hand\n\n";
         }
         catch(const runtime_error& e)
         {
-            cout << e.what() << endl;
+            effectLog << e.what() << endl;
             damageAllFighters(self, 2);
-            cout << "All character on team took 2 damage";
+            effectLog << "All character on team took 2 damage";
         }
 
         return;
@@ -175,17 +177,17 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR) 
         {
-            cout << "Look Into My Eyes effect was canceled.\n";
+            effectLog << "Look Into My Eyes effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         int enemyboost = enemycard.getBoost();
 
         card.setAttack(card.getAttack() + enemyboost);
 
-        cout << "This card gained " << enemyboost << " defense.\n";
+        effectLog << "This card gained " << enemyboost << " defense.\n";
 
         return;
         
@@ -195,11 +197,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR)
         {
-            cout << "Thirst for Sustenance effect was canceled.\n";
+            effectLog << "Thirst for Sustenance effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         if(woncombat)
         {
@@ -207,13 +209,13 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
             vector<int> validSpaces = bord.getEmptyAdjacent(defender);
 
-            cout << "\nAvailable spaces:   ";
+            effectLog << "\nAvailable spaces:   ";
 
             for(int pos : validSpaces)
             {
-                cout << pos << "   ";
+                effectLog << pos << "   ";
             }
-            cout << "\nSelect a destination: ";
+            effectLog << "\nSelect a destination: ";
 
             int destination = getChoice(validSpaces);
 
@@ -229,11 +231,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectDR)
         {
-            cout << "Feint effect was canceled.\n";
+            effectLog << "Feint effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
 
         string oppName = opponent->getHero()->getName();
         if (oppName == "sherlock") cancelEffectSH = true;
@@ -247,7 +249,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Counterpunch")
     { 
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
 
         Character* holmes = self->getHero();
         Character* enemyHero = opponent->getHero();
@@ -269,7 +271,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                     if(!target->checkalive())
                     bord.deletCharacter(target->getSpace());
 
-                    cout << "2 damage dealt to " << target->getName() << "!\n";
+                    effectLog << "2 damage dealt to " << target->getName() << "!\n";
                     damaged = true;
                     break;  
                 }
@@ -278,7 +280,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         
         if (!damaged)
         {
-            cout << "No adjacent enemy fighter!\n";
+            effectLog << "No adjacent enemy fighter!\n";
         }
         
         return;
@@ -287,12 +289,12 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Deduce Strategy")
     {
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
 
         int enemyboost = enemycard.getBoost();
         enemycard.setAttack(enemyboost);
 
-        cout << "The opponent's card " << enemycard.getTypeString() << " was changed to " << enemyboost << ".\n";
+        effectLog << "The opponent's card " << enemycard.getTypeString() << " was changed to " << enemyboost << ".\n";
 
         return;
 
@@ -302,40 +304,40 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectSH)
         {
-            cout << "Education Never Ends effect was canceled.\n";
+            effectLog << "Education Never Ends effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
         
         if (woncombat)
         {
-            cout << self->getName() << " won! " << opponent->getName() << " draws 1 card.\n";
+            effectLog << self->getName() << " won! " << opponent->getName() << " draws 1 card.\n";
             try
             {
                 opponent->getDeck()->draw();
-                cout << "added to " << opponent->getName() << " hand\n\n";
+                effectLog << "added to " << opponent->getName() << " hand\n\n";
             }
             catch(const runtime_error& e)
             {
-                cout << e.what() << endl;
+                effectLog << e.what() << endl;
                 damageAllFighters(opponent, 2);
-                cout << "All character on team took 2 damage";
+                effectLog << "All character on team took 2 damage";
             }
         }
         else
         {
-            cout << opponent->getName() << " won! " << self->getName() << " draws 2 card.\n";
+            effectLog << opponent->getName() << " won! " << self->getName() << " draws 2 card.\n";
             try
             {
                 self->getDeck()->draw(2);
-                cout << "added to " << self->getName() << " hand\n\n";
+                effectLog << "added to " << self->getName() << " hand\n\n";
             }
             catch(const runtime_error& e)
             {
-                cout << e.what() << endl;
+                effectLog << e.what() << endl;
                 damageAllFighters(self, 2);
-                cout << "All character on team took 2 damage";
+                effectLog << "All character on team took 2 damage";
             }
         }
 
@@ -345,20 +347,20 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Elementary")
     {
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
         
         if (GuessElementary)
         {
-            cout << self->getName() << " guessed -> succeessful";
+            effectLog << self->getName() << " guessed -> succeessful";
 
             enemycard.setAttack(0);
             cancelEffectDR = true;
 
-            cout << "All effects on the " << opponent->getName() << " card were removed, and its attack value was ignored.\n";
+            effectLog << "All effects on the " << opponent->getName() << " card were removed, and its attack value was ignored.\n";
         }
         else
         {
-            cout << self->getName() << " guessed -> failed";
+            effectLog << self->getName() << " guessed -> failed";
         }
 
         GuessElementary = false;
@@ -371,11 +373,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectSH)
         {
-            cout << "Feint effect was canceled.\n";
+            effectLog << "Feint effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
 
         string oppName = opponent->getHero()->getName();
         if (oppName == "Dracula") cancelEffectDR = true;
@@ -387,7 +389,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Fixed Point in a Changing Age")
     {
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
 
         Character* holmes = self->getHero();
         Character* watson = self->getsidekick(1);
@@ -403,7 +405,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 holmes->heal(1);
                 watson->heal(1);
 
-                cout << "Holmes and Watson each heal 1 HP.\n";
+                effectLog << "Holmes and Watson each heal 1 HP.\n";
                 found = true;
                 break;
             }
@@ -411,7 +413,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         if (!found)
         {
-            cout << "Watson is not adjacent to Holmes.\n";
+            effectLog << "Watson is not adjacent to Holmes.\n";
         }
 
         return;
@@ -420,7 +422,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "The Game is Afoot")
     {
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
 
         Character* holmes = self->getHero();
         move(3 , holmes);
@@ -432,7 +434,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     else if (card.getName() == "Service Revolver")
     {
 
-        cout << "no effect (-_-)";
+        effectLog << "no effect (-_-)";
 
         return;
 
@@ -442,20 +444,20 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectSH)
         {
-            cout << "Study Methods effect was canceled.\n";
+            effectLog << "Study Methods effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl; 
+        effectLog << card.geteffect() << endl; 
 
         if (woncombat)
         {
-            cout << "Sherlock won the combat.\n";
-            cout << "Opponent's hand:\n";
+            effectLog << "Sherlock won the combat.\n";
+            effectLog << "Opponent's hand:\n";
         }
         else
         {
-            cout << "Card effect not activated.\n";
+            effectLog << "Card effect not activated.\n";
         }
         
         return;
@@ -468,40 +470,40 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Coded Notes effect was canceled.\n";
+            effectLog << "Coded Notes effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         try
         {
             self->getDeck()->draw(3);
-            cout << "3 cards added to " << self->getName() << "'s hand.\n";
+            effectLog << "3 cards added to " << self->getName() << "'s hand.\n";
         }
         catch(const runtime_error& e)
         {
-            cout << e.what() << endl;
+            effectLog << e.what() << endl;
             damageAllFighters(self, 2);
-            cout << "All character on team took 2 damage";
+            effectLog << "All character on team took 2 damage";
         }
 
         int handSize = self->getDeck()->gethandSize();
-        cout << "Choose the first card to put on top of your deck: ";
+        effectLog << "Choose the first card to put on top of your deck: ";
         int first = getInt();
         while(first <= 0 || first > handSize)
         {
-            cout << "Invalid card number. Try again: ";
+            effectLog << "Invalid card number. Try again: ";
             first = getInt();
         }
         Card firstCard = self->getDeck()->removeFromHand(first - 1);
 
         handSize = self->getDeck()->gethandSize();
-        cout << "Choose the second card to put on top of your deck: ";
+        effectLog << "Choose the second card to put on top of your deck: ";
         int second = getInt();
         while(second <= 0 || second > handSize)
         {
-            cout << "Invalid card number. Try again: ";
+            effectLog << "Invalid card number. Try again: ";
             second = getInt();
         }
         Card secondCard = self->getDeck()->removeFromHand(second - 1);
@@ -509,7 +511,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         self->getDeck()->putOnTop(secondCard);
         self->getDeck()->putOnTop(firstCard);
 
-        cout << firstCard.getName() << " and " << secondCard.getName() << " were placed on top of your deck.\n";
+        effectLog << firstCard.getName() << " and " << secondCard.getName() << " were placed on top of your deck.\n";
 
         return;
 
@@ -519,13 +521,13 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Confound effect was canceled.\n";
+            effectLog << "Confound effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
-        cout << opponent->getName() << ", do you want to discard 1 card? (y/n): ";
+        effectLog << opponent->getName() << ", do you want to discard 1 card? (y/n): ";
         activeDecider = opponent;
         bool willDiscard = getYesNo();
 
@@ -533,17 +535,17 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         {
             int handSize = opponent->getDeck()->gethandSize();
 
-            cout << "Choose a card to discard: ";
+            effectLog << "Choose a card to discard: ";
             int idx = getInt();
             while(idx <= 0 || idx > handSize)
             {
-                cout << "Invalid card number. Try again: ";
+                effectLog << "Invalid card number. Try again: ";
                 idx = getInt();
             }
 
             Card discarded;
             discarded = opponent->getDeck()->playCard(idx - 1 , discarded);
-            cout << discarded.getName() << " was discarded.\n";
+            effectLog << discarded.getName() << " was discarded.\n";
             activeDecider = self;
         }
         else
@@ -552,7 +554,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             invisible_man* im = dynamic_cast<invisible_man*>(self->getHero());
             if (im != nullptr)
             {
-                cout << "You may move each fog token to any other space.\n";
+                effectLog << "You may move each fog token to any other space.\n";
                 for (int i = 0; i < 3; i++)
                 {
                     int tokenPos = im->getMistToken(i);
@@ -564,8 +566,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                             options.push_back(j);
                     options.push_back(tokenPos);
 
-                    cout << "\nMove fog token at " << tokenPos << " to (or keep at " << tokenPos << "): ";
-                    for (int s : options) cout << "   " << s;
+                    effectLog << "\nMove fog token at " << tokenPos << " to (or keep at " << tokenPos << "): ";
+                    for (int s : options) effectLog << "   " << s;
                     int dest = getChoice(options);
                     im->setMistToken(i , dest);
                 }
@@ -580,22 +582,22 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Covert Preparation effect was canceled.\n";
+            effectLog << "Covert Preparation effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         try
         {
             self->getDeck()->draw();
-            cout << "1 card added to " << self->getName() << "'s hand.\n";
+            effectLog << "1 card added to " << self->getName() << "'s hand.\n";
         }
         catch(const runtime_error& e)
         {
-            cout << e.what() << endl;
+            effectLog << e.what() << endl;
             damageAllFighters(self, 2);
-            cout << "All character on team took 2 damage";
+            effectLog << "All character on team took 2 damage";
         }
 
         invisible_man* im = dynamic_cast<invisible_man*>(self->getHero());
@@ -606,8 +608,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         if (tokens.size() >= 1)
         {
-            cout << "Choose a fog token to move: ";
-            for (int t : tokens) cout << "   " << t;
+            effectLog << "Choose a fog token to move: ";
+            for (int t : tokens) effectLog << "   " << t;
             int tokenPos = getChoice(tokens);
 
             vector<int> emptySpaces;
@@ -615,8 +617,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 if (bord.isEmpty(i) && !im->isMistPosition(i))
                     emptySpaces.push_back(i);
 
-            cout << "\nMove it to: ";
-            for (int s : emptySpaces) cout << "   " << s;
+            effectLog << "\nMove it to: ";
+            for (int s : emptySpaces) effectLog << "   " << s;
             int dest = getChoice(emptySpaces);
 
             for (int i = 0; i < 3; i++)
@@ -627,8 +629,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         {
             activeDecider = opponent;
 
-            cout << "\n" << opponent->getName() << ", choose a different fog token to move: ";
-            for (int t : tokens) cout << "   " << t;
+            effectLog << "\n" << opponent->getName() << ", choose a different fog token to move: ";
+            for (int t : tokens) effectLog << "   " << t;
             int tokenPos2 = getChoice(tokens);
 
             vector<int> emptySpaces2;
@@ -636,8 +638,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 if (bord.isEmpty(i) && !im->isMistPosition(i))
                     emptySpaces2.push_back(i);
 
-            cout << "\nMove it to: ";
-            for (int s : emptySpaces2) cout << "   " << s;
+            effectLog << "\nMove it to: ";
+            for (int s : emptySpaces2) effectLog << "   " << s;
             int dest2 = getChoice(emptySpaces2);
 
             for (int i = 0; i < 3; i++)
@@ -654,16 +656,16 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Dreaming of Revenge effect was canceled.\n";
+            effectLog << "Dreaming of Revenge effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         invisible_man* im = dynamic_cast<invisible_man*>(self->getHero());
         if (im == nullptr || !im->isMistPosition(im->getSpace()))
         {
-            cout << "Invisible Man is not on a fog token.\n";
+            effectLog << "Invisible Man is not on a fog token.\n";
             return;
         }
 
@@ -673,7 +675,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             if (ch->checkalive() && im->isMistPosition(ch->getSpace()))
             {
                 ch->takeDamage(1);
-                cout << ch->getName() << " took 1 damage.\n";
+                effectLog << ch->getName() << " took 1 damage.\n";
 
                 if (!ch->checkalive() && ch->getSpace() != -1)
                 {
@@ -685,7 +687,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         }
 
         if (amount == 0)
-            cout << "No opposing fighters are on fog tokens.\n";
+            effectLog << "No opposing fighters are on fog tokens.\n";
 
         return;
 
@@ -695,17 +697,17 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Emerge from Mist effect was canceled.\n";
+            effectLog << "Emerge from Mist effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         invisible_man* im = dynamic_cast<invisible_man*>(attacker);
         if (im != nullptr && im->isMistPosition(im->getSpace()))
         {
             card.setAttack(5);
-            cout << "This card's value becomes 5.\n";
+            effectLog << "This card's value becomes 5.\n";
         }
 
         return;
@@ -714,7 +716,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
     else if (card.getName() == "Impossible to See")
     {
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         enemycard.setAttack(0);
 
@@ -724,7 +726,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         else if (oppName == "sherlock") cancelEffectSH = true;
         else if (oppName == "invisible man") cancelEffectIM = true;
 
-        cout << "The opponent's card value is now 0 and cannot be changed by card effects.\n";
+        effectLog << "The opponent's card value is now 0 and cannot be changed by card effects.\n";
 
         return;
 
@@ -734,11 +736,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Into Thin Air effect was canceled.\n";
+            effectLog << "Into Thin Air effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         invisible_man* im = dynamic_cast<invisible_man*>(defender);
         if (im == nullptr) return;
@@ -752,8 +754,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         {
             activeDecider = opponent;
 
-            cout << "\n" << opponent->getName() << ", choose a fog token to move: ";
-            for (int t : tokens) cout << "   " << t;
+            effectLog << "\n" << opponent->getName() << ", choose a fog token to move: ";
+            for (int t : tokens) effectLog << "   " << t;
             int tokenPos = getChoice(tokens);
 
             vector<int> emptySpaces;
@@ -763,8 +765,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                     emptySpaces.push_back(i);
             }
 
-            cout << "\nMove it to: ";
-            for (int s : emptySpaces) cout << "   " << s;
+            effectLog << "\nMove it to: ";
+            for (int s : emptySpaces) effectLog << "   " << s;
 
             int dest = getChoice(emptySpaces);
 
@@ -784,28 +786,28 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Lurking effect was canceled.\n";
+            effectLog << "Lurking effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         try
         {
             self->getDeck()->draw();
-            cout << "1 card added to " << self->getName() << "'s hand.\n";
+            effectLog << "1 card added to " << self->getName() << "'s hand.\n";
         }
         catch(const runtime_error& e)
         {
-            cout << e.what() << endl;
+            effectLog << e.what() << endl;
             damageAllFighters(self, 2);
-            cout << "All character on team took 2 damage";
+            effectLog << "All character on team took 2 damage";
         }
 
         invisible_man* im = dynamic_cast<invisible_man*>(defender);
         if (im == nullptr) return;
 
-        cout << "\nChoose an effect:\n 1. Move Invisible Man to a fog token space\n 2. Move 1 fog token up to 3 spaces\nChoice: ";
+        effectLog << "\nChoose an effect:\n 1. Move Invisible Man to a fog token space\n 2. Move 1 fog token up to 3 spaces\nChoice: ";
         int choice = getChoice({1,2});
 
         if (choice == 1)
@@ -815,8 +817,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
             if (!spaces.empty())
             {
-                cout << "Choose a fog token space: ";
-                for (int t : spaces) cout << "   " << t;
+                effectLog << "Choose a fog token space: ";
+                for (int t : spaces) effectLog << "   " << t;
                 int dest = getChoice(spaces);
 
                 bord.deletCharacter(im->getSpace());
@@ -830,8 +832,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
             if (!tokens.empty())
             {
-                cout << "Choose a fog token to move: ";
-                for (int t : tokens) cout << "   " << t;
+                effectLog << "Choose a fog token to move: ";
+                for (int t : tokens) effectLog << "   " << t;
                 int tokenPos = getChoice(tokens);
 
                 vector<int> emptySpaces;
@@ -839,8 +841,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                     if (bord.isEmpty(i) && !im->isMistPosition(i))
                         emptySpaces.push_back(i);
 
-                cout << "\nMove it to: ";
-                for (int s : emptySpaces) cout << "   " << s;
+                effectLog << "\nMove it to: ";
+                for (int s : emptySpaces) effectLog << "   " << s;
                 int dest = getChoice(emptySpaces);
 
                 for (int i = 0; i < 3; i++)
@@ -856,11 +858,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         if (cancelEffectIM)
         {
-            cout << "Slip Away effect was canceled.\n";
+            effectLog << "Slip Away effect was canceled.\n";
             return;
         }
 
-        cout << card.geteffect() << endl;
+        effectLog << card.geteffect() << endl;
 
         invisible_man* im = dynamic_cast<invisible_man*>(attacker);
         if (im == nullptr) return;
@@ -870,12 +872,12 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         if (tokens.empty())
         {
-            cout << "No fog tokens on the board.\n";
+            effectLog << "No fog tokens on the board.\n";
             return;
         }
 
-        cout << "Choose a fog token to move: ";
-        for (int t : tokens) cout << "   " << t;
+        effectLog << "Choose a fog token to move: ";
+        for (int t : tokens) effectLog << "   " << t;
         int tokenPos = getChoice(tokens);
 
         vector<int> emptySpaces;
@@ -885,8 +887,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
                 emptySpaces.push_back(i);
         }
 
-        cout << "\nChoose an empty space for the fog token: ";
-        for (int s : emptySpaces) cout << "   " << s;
+        effectLog << "\nChoose an empty space for the fog token: ";
+        for (int s : emptySpaces) effectLog << "   " << s;
         int dest = getChoice(emptySpaces);
 
         for (int i = 0; i < 3; i++)
@@ -897,7 +899,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         bord.deletCharacter(im->getSpace());
         bord.addCharacter(dest , im);
 
-        cout << "The fog token moved to " << dest << " and Invisible Man moved there with it.\n";
+        effectLog << "The fog token moved to " << dest << " and Invisible Man moved there with it.\n";
 
         return;
 
@@ -908,6 +910,7 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
 void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , Character* attacker )
 {
+    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     activeDecider = self;
 
 //<<<<<<<<<<<<<<<<< Dracula 
@@ -916,16 +919,16 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectDR)
         {
-            cout << "MistForm effect was canceled.\n";
+            effectLog << "MistForm effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         int pos;
         while(true)
         {
-            cout << "Choose a space for Dracula: ";
+            effectLog << "Choose a space for Dracula: ";
             pos = getInt();
             if(pos >= 0 && pos <= 31 && bord.isEmpty(pos))
             {
@@ -933,10 +936,10 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
                 bord.addCharacter(pos , self->getHero());
                 break;
             }
-            cout << "Invaliad input. Plase try again." << endl;
+            effectLog << "Invaliad input. Plase try again." << endl;
         }
-        cout << "Dracula was placed\n" ;
-        cout << "You have gained an extra action.\n";
+        effectLog << "Dracula was placed\n" ;
+        effectLog << "You have gained an extra action.\n";
 
         gamerand--;
 
@@ -948,14 +951,14 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectDR)
         {
-            cout << "Baptism of Blood effect was canceled.\n";
+            effectLog << "Baptism of Blood effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         self->getHero()->heal(2);
-        cout << "Dracula recovered 2 health.\n";
+        effectLog << "Dracula recovered 2 health.\n";
 
         vector<int> heroZones = bord.getCharacterZone(self->getHero());
 
@@ -968,20 +971,20 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             vector<int> spaces = bord.getEmptyZone(heroZones);
             if(spaces.empty())
             {
-                cout << "\nNo available space to place " << sister->getName() << ".\n";
+                effectLog << "\nNo available space to place " << sister->getName() << ".\n";
                 continue;
             }
 
-            cout << "\nAvailable spaces for " << sister->getName() << ":  ";
+            effectLog << "\nAvailable spaces for " << sister->getName() << ":  ";
             for(int s : spaces)
             {
-                cout << s << "   ";
+                effectLog << s << "   ";
             }
             int pos = getChoice(spaces);
             sister->setSpace(pos);
             sister->heal(1);
             bord.addCharacter(pos , sister);
-            cout << sister->getName() << " placed on " << pos << ".\n";
+            effectLog << sister->getName() << " placed on " << pos << ".\n";
         }
 
         return;
@@ -992,11 +995,11 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectDR)
         {
-            cout << "Prey Upon effect was canceled.\n";
+            effectLog << "Prey Upon effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         int amount = 0;
         vector<int> draculaAdjence = bord.getCharacterAdjacent(attacker);
@@ -1007,13 +1010,13 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
                 if(bord.getCharacter(adjen)->getowner() != attacker->getowner())
                 {
                     bord.getCharacter(adjen)->takeDamage(1);
-                    cout << bord.getCharacter(adjen)->getName() << "took 1 damage\n";
+                    effectLog << bord.getCharacter(adjen)->getName() << "took 1 damage\n";
                     amount++;
                 }
             }
         }
         attacker->heal(amount);
-        cout << attacker->getName() << " gained " << amount << " health.\n";
+        effectLog << attacker->getName() << " gained " << amount << " health.\n";
         
         return;
 
@@ -1023,11 +1026,11 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectDR)
         {
-            cout << "Ravening Seduction effect was canceled.\n";
+            effectLog << "Ravening Seduction effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         int choose = 0;
         vector<Character*> choices;
@@ -1038,7 +1041,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             if(ch->checkalive())
             {
-                cout << number << "." << ch->getName() << endl;
+                effectLog << number << "." << ch->getName() << endl;
                 choices.push_back(ch);
                 valid.push_back(number);
                 number++;
@@ -1048,14 +1051,14 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             if(ch->checkalive())
             {
-                cout << number << "." << ch->getName() << endl;
+                effectLog << number << "." << ch->getName() << endl;
                 choices.push_back(ch);
                 valid.push_back(number);
                 number++;
             }
         }
-        cout << "Choose a character to move: ";
-        choose = getChoice({valid});
+        effectLog << "Choose a character to move: ";
+        choose = getChoice(valid);
         Character* selected = choices[choose - 1];
 
         move(2 , selected);
@@ -1081,11 +1084,11 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         selected->takeDamage(number);
         if(number > 0)
         {
-            cout << selected->getName() << "took " << number << " damage." << endl;
+            effectLog << selected->getName() << "took " << number << " damage." << endl;
         }
         else
         {
-            cout << selected->getName() << "took no damage." << endl;
+            effectLog << selected->getName() << "took no damage." << endl;
         }
 
         return;
@@ -1097,7 +1100,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     else if (card.getName() == "Administer Aid")
     {
         
-        cout << "\nEffect >> " << card.geteffect() << endl; 
+        effectLog << "\nEffect >> " << card.geteffect() << endl; 
 
         Character* holmes = self->getHero();
         Character* watson = self->getFighter(1);
@@ -1123,31 +1126,31 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
                 }
 
                 bord.addCharacter(emptyAdjacent[0] , watson);
-                cout << "Watson placed adjacent to Holmes.\n";
+                effectLog << "Watson placed adjacent to Holmes.\n";
             }
             else
             {
-                cout << "No empty space adjacent to Holmes for Watson.\n";
+                effectLog << "No empty space adjacent to Holmes for Watson.\n";
             }
         }
         else
         {
-            cout << "Watson is not available.\n";
+            effectLog << "Watson is not available.\n";
         }
 
         holmes->heal(1);
-        cout << "Holmes healed 1 HP \n";
+        effectLog << "Holmes healed 1 HP \n";
         
         try
         {
             self->getDeck()->draw();
-            cout << "added to " << self->getName() << " hand\n\n";
+            effectLog << "added to " << self->getName() << " hand\n\n";
         }
         catch(const runtime_error& e)
         {
-            cout << e.what() << endl;
+            effectLog << e.what() << endl;
             damageAllFighters(self, 2);
-            cout << "All character on team took 2 damage";
+            effectLog << "All character on team took 2 damage";
         }
         
         return;
@@ -1156,7 +1159,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     
     else if (card.getName() == "Confirm Suspicion")
     {
-        cout << "\nEffect >> " << card.geteffect() << endl; 
+        effectLog << "\nEffect >> " << card.geteffect() << endl; 
         
         int choose = 0;
         vector<Character*> choices;
@@ -1167,17 +1170,17 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             if(ch->checkalive())
             {
-                cout << k << "." << ch->getName() << endl;
+                effectLog << k << "." << ch->getName() << endl;
                 choices.push_back(ch);
                 valid.push_back(k);
                 k++;
             }
         }
-        cout << "Choose an opponent: ";
-        choose = getChoice({valid});
+        effectLog << "Choose an opponent: ";
+        choose = getChoice(valid);
         Character* Rival = choices[choose - 1];
 
-        cout << "Choose a number: ";
+        effectLog << "Choose a number: ";
         int number = getInt();
 
         bool isExist = false;
@@ -1192,7 +1195,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
         if(!isExist)
         {
-            cout << "The opponent has no card with an attack or defense value of " << number << ".\n";
+            effectLog << "The opponent has no card with an attack or defense value of " << number << ".\n";
 
             return;
         }
@@ -1201,7 +1204,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         activeDecider = opponent;
         while (true)
         {
-            cout << opponent->getName() << ", choose a card with " << number << "attack or defense: ";
+            effectLog << opponent->getName() << ", choose a card with " << number << "attack or defense: ";
             int select = getInt();
             if(select > 0 && select < (opponent->getDeck()->gethandSize() + 1))
             {
@@ -1211,7 +1214,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
                     break;
                 }
             }
-            cout << "Invalid input.\n";
+            effectLog << "Invalid input.\n";
         }
         activeDecider = self;
         
@@ -1220,7 +1223,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
         Rival->takeDamage(burnBoost);
 
-        cout << Rival->getName() << " took " << burnBoost << " damamge" << endl;
+        effectLog << Rival->getName() << " took " << burnBoost << " damamge" << endl;
 
         return;
 
@@ -1228,24 +1231,24 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
     else if (card.getName() == "Eliminate the Impossible")
     {
-        cout << "\nEffect >> " << card.geteffect() << endl; 
+        effectLog << "\nEffect >> " << card.geteffect() << endl; 
 
         int index;
         while (true)
         {
-            cout << "Choose a card to burn: ";
+            effectLog << "Choose a card to burn: ";
             index = getInt();
             if(index > 0 && index < (opponent->getDeck()->gethandSize() + 1))
             {
                 break;
             }
-            cout << "invalid input.";
+            effectLog << "invalid input.";
         }
         
 
         Card burned;
         burned = opponent->getDeck()->playCard(index - 1 , burned);
-        cout << burned.getName() <<  " was butn" << endl;
+        effectLog << burned.getName() <<  " was butn" << endl;
 
         return;
 
@@ -1253,7 +1256,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
     else if (card.getName() == "Master of Disguise")
     {
-        cout << "\nEffect >> " << card.geteffect() << endl; 
+        effectLog << "\nEffect >> " << card.geteffect() << endl; 
 
         Character* holmes = self->getHero();
 
@@ -1266,14 +1269,14 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             if(ch->checkalive())
             {
-                cout << number << "." << ch->getName() << endl;
+                effectLog << number << "." << ch->getName() << endl;
                 choices.push_back(ch);
                 valid.push_back(number);
                 number++;
             }
         }
-        cout << "Choose a character to swap positions with: ";
-        choose = getChoice({valid});
+        effectLog << "Choose a character to swap positions with: ";
+        choose = getChoice(valid);
         Character* Rival = choices[choose - 1];
 
         int holmespos = holmes->getSpace();
@@ -1286,7 +1289,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         bord.addCharacter(holmespos , Rival);
 
         Rival->takeDamage(1);
-        cout << Rival->getName() << " took a damage." << endl;
+        effectLog << Rival->getName() << " took a damage." << endl;
         return;
         
     }
@@ -1297,16 +1300,16 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectIM)
         {
-            cout << "Reign of Terror effect was canceled.\n";
+            effectLog << "Reign of Terror effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         invisible_man* im = dynamic_cast<invisible_man*>(attacker);
         if (im == nullptr || !im->isMistPosition(im->getSpace()))
         {
-            cout << "Invisible Man is not on a fog token.\n";
+            effectLog << "Invisible Man is not on a fog token.\n";
             return;
         }
 
@@ -1319,7 +1322,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         {
             if (ch->checkalive())
             {
-                cout << number << "." << ch->getName() << endl;
+                effectLog << number << "." << ch->getName() << endl;
                 choices.push_back(ch);
                 valid.push_back(number);
                 number++;
@@ -1328,16 +1331,16 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
         if (choices.empty())
         {
-            cout << "No opposing fighters.\n";
+            effectLog << "No opposing fighters.\n";
             return;
         }
 
-        cout << "Choose a target: ";
+        effectLog << "Choose a target: ";
         choose = getChoice(valid);
         Character* target = choices[choose - 1];
 
         target->takeDamage(2);
-        cout << target->getName() << " took 2 damage.\n";
+        effectLog << target->getName() << " took 2 damage.\n";
 
         if (!target->checkalive() && target->getSpace() != -1)
         {
@@ -1353,11 +1356,11 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectIM)
         {
-            cout << "Rolling Fog effect was canceled.\n";
+            effectLog << "Rolling Fog effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         invisible_man* im = dynamic_cast<invisible_man*>(attacker);
         if (im == nullptr) return;
@@ -1367,8 +1370,8 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
         if (!tokens.empty())
         {
-            cout << "Choose a fog token to move: ";
-            for (int t : tokens) cout << "   " << t;
+            effectLog << "Choose a fog token to move: ";
+            for (int t : tokens) effectLog << "   " << t;
             int tokenPos = getChoice(tokens);
 
             vector<int> emptySpaces;
@@ -1376,15 +1379,15 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
                 if (bord.isEmpty(i) && !im->isMistPosition(i))
                     emptySpaces.push_back(i);
 
-            cout << "\nMove it to: ";
-            for (int s : emptySpaces) cout << "   " << s;
+            effectLog << "\nMove it to: ";
+            for (int s : emptySpaces) effectLog << "   " << s;
             int dest = getChoice(emptySpaces);
 
             for (int i = 0; i < 3; i++)
                 if (im->getMistToken(i) == tokenPos) { im->setMistToken(i , dest); break; }
         }
 
-        cout << "You gained an extra action.\n";
+        effectLog << "You gained an extra action.\n";
         gamerand--;
 
         return;
@@ -1395,11 +1398,11 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectIM)
         {
-            cout << "Step Lightly effect was canceled.\n";
+            effectLog << "Step Lightly effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         invisible_man* im = dynamic_cast<invisible_man*>(attacker);
 
@@ -1417,13 +1420,13 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
         if (target == nullptr)
         {
-            cout << "No adjacent fighter to hit.\n";
+            effectLog << "No adjacent fighter to hit.\n";
             return;
         }
 
         int damage = (im != nullptr && im->isMistPosition(im->getSpace())) ? 3 : 1;
         target->takeDamage(damage);
-        cout << target->getName() << " took " << damage << " damage.\n";
+        effectLog << target->getName() << " took " << damage << " damage.\n";
 
         if (!target->checkalive() && target->getSpace() != -1)
         {
@@ -1440,8 +1443,8 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             {
                 activeDecider = opponent;
 
-                cout << opponent->getName() << ", choose a fog token to move: ";
-                for (int t : tokens) cout << "   " << t;
+                effectLog << opponent->getName() << ", choose a fog token to move: ";
+                for (int t : tokens) effectLog << "   " << t;
                 int tokenPos = getChoice(tokens);
 
                 vector<int> emptySpaces;
@@ -1449,8 +1452,8 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
                     if (bord.isEmpty(i) && !im->isMistPosition(i))
                         emptySpaces.push_back(i);
 
-                cout << "\nMove it to: ";
-                for (int s : emptySpaces) cout << "   " << s;
+                effectLog << "\nMove it to: ";
+                for (int s : emptySpaces) effectLog << "   " << s;
                 int dest = getChoice(emptySpaces);
 
                 for (int i = 0; i < 3; i++)
@@ -1468,32 +1471,32 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         if (cancelEffectIM)
         {
-            cout << "Vanish effect was canceled.\n";
+            effectLog << "Vanish effect was canceled.\n";
             return;
         }
 
-        cout << "\nEffect >> " << card.geteffect() << endl;
+        effectLog << "\nEffect >> " << card.geteffect() << endl;
 
         attacker->heal(1);
-        cout << attacker->getName() << " recovered 1 health.\n";
+        effectLog << attacker->getName() << " recovered 1 health.\n";
 
         bord.deletCharacter(attacker->getSpace());
         attacker->setSpace(-1);
 
-        cout << "Invisible Man vanishes from the board.\n";
+        effectLog << "Invisible Man vanishes from the board.\n";
 
         int pos;
         while(true)
         {
-            cout << "Choose a space for Invisible Man to reappear: ";
+            effectLog << "Choose a space for Invisible Man to reappear: ";
             pos = getInt();
             if (pos >= 0 && pos < 32 && bord.isEmpty(pos))
                 break;
-            cout << "Invalid space. Try again.\n";
+            effectLog << "Invalid space. Try again.\n";
         }
 
         bord.addCharacter(pos , attacker);
-        cout << "Invisible Man reappeared at " << pos << ".\n";
+        effectLog << "Invisible Man reappeared at " << pos << ".\n";
 
         return;
 

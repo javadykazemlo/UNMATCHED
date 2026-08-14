@@ -257,6 +257,9 @@ void GameWindow::render()
     else if (screen == Screen::Setup) drawSetup();
     else if (screen == Screen::GameOver) drawGameOver();
     else drawGame();
+
+    if (screen == Screen::Game && rulesView && rulesView->isOpen())
+        rulesView->draw(window, {1600.f, 900.f});
 }
 
 void GameWindow::showMessage(const std::string& text)
@@ -1121,6 +1124,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     const Card chosenCard = current->getDeck()->gethand()[card];
                     if (controller.guiScheme(selected, card))
                     {
+                        controller.clearGuiCombatLog();
                         effectPanelActive = true;
                         effectFinishTimer = 0;
                         effectCardName = chosenCard.getName();
@@ -1249,6 +1253,23 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
 void GameWindow::updateEffectPanel()
 {
+    // Every new GUI turn is initialized here. This is deliberately done from
+    // the render/update loop so Dracula's ability can pause the game through
+    // the same effect panel used by card effects.
+    if (!effectPanelActive && !controller.guiEffectBusy())
+        controller.guiBeginTurn();
+
+    std::string contextTitle;
+    std::string contextDescription;
+    if (controller.getGuiEffectContext(contextTitle, contextDescription))
+    {
+        effectPanelActive = true;
+        if (!contextTitle.empty())
+            effectCardName = contextTitle;
+        if (!contextDescription.empty())
+            effectCardText = contextDescription;
+    }
+
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -1318,7 +1339,8 @@ void GameWindow::drawEffectPanel()
     ui->drawText(window, effectCardName.empty() ? "CARD EFFECT" : effectCardName,
                  {445.f, 180.f}, 24, GOLD);
 
-    // Effect text is deliberately larger than the old terminal output.
+    // The card description remains at the top; all messages that the old
+    // Effects.cpp printed to the terminal are shown live below it.
     std::string text = effectCardText.empty() ? "Resolving card effect..." : effectCardText;
     float y = 235.f;
     std::string line;
@@ -1327,9 +1349,9 @@ void GameWindow::drawEffectPanel()
     auto flushLine = [&]()
     {
         if (line.empty()) return;
-        if (lines < 8)
+        if (lines < 5)
             ui->drawText(window, line, {445.f, y}, 13, PARCHMENT);
-        y += 24.f;
+        y += 22.f;
         ++lines;
         line.clear();
     };
@@ -1339,24 +1361,37 @@ void GameWindow::drawEffectPanel()
         if (c == '\n') flushLine();
         else line += c;
 
-        if (line.size() > 75) flushLine();
+        if (line.size() > 78) flushLine();
     }
     flushLine();
 
+    const std::vector<std::string> logs = controller.getGuiCombatLog();
+    int shownLogs = 0;
+    for (auto it = logs.rbegin(); it != logs.rend() && shownLogs < 5; ++it, ++shownLogs)
+    {
+        std::string logLine = *it;
+        if (logLine.size() > 90)
+            logLine = logLine.substr(0, 87) + "...";
+
+        ui->drawText(window, logLine,
+                     {445.f, 350.f + static_cast<float>(shownLogs) * 20.f},
+                     12, PARCHMENT);
+    }
+
     if (!effectPrompt.empty())
-        ui->drawText(window, effectPrompt, {445.f, 455.f}, 16, GOLD);
+        ui->drawText(window, effectPrompt, {445.f, 465.f}, 16, GOLD);
 
     if (effectYesNo)
     {
-        ui->drawButton(window, {{500.f, 525.f}, {220.f, 55.f}}, "YES", true, GREEN);
-        ui->drawButton(window, {{780.f, 525.f}, {220.f, 55.f}}, "NO", false, RED);
+        ui->drawButton(window, {{500.f, 535.f}, {220.f, 55.f}}, "YES", true, GREEN);
+        ui->drawButton(window, {{780.f, 535.f}, {220.f, 55.f}}, "NO", false, RED);
     }
     else if (!effectChoices.empty())
     {
         // Choices can be board spaces (0..31), so use a compact grid rather
         // than a single row that would hide half of the legal options.
         const float startX = 455.f;
-        const float startY = 515.f;
+        const float startY = 525.f;
         const float bw = 75.f;
         const float bh = 36.f;
         const float gap = 7.f;
@@ -1374,11 +1409,11 @@ void GameWindow::drawEffectPanel()
     }
     else if (effectInteger)
     {
-        ui->drawPanel(window, {{500.f, 525.f}, {500.f, 55.f}}, GOLD);
+        ui->drawPanel(window, {{500.f, 535.f}, {500.f, 55.f}}, GOLD);
         ui->drawText(window, effectInputBuffer.empty() ? "_" : effectInputBuffer,
-                     {520.f, 540.f}, 18, PARCHMENT);
+                     {520.f, 550.f}, 18, PARCHMENT);
         ui->drawText(window, "Type the number, then press ENTER.",
-                     {500.f, 595.f}, 12, sf::Color(180, 171, 156));
+                     {500.f, 605.f}, 12, sf::Color(180, 171, 156));
     }
 
     ui->drawText(window, "The game is waiting for this effect to finish.",
@@ -1389,9 +1424,9 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
 {
     if (effectYesNo)
     {
-        if (sf::FloatRect({500.f, 525.f}, {220.f, 55.f}).contains(p))
+        if (sf::FloatRect({500.f, 535.f}, {220.f, 55.f}).contains(p))
             controller.submitGuiYesNo(true);
-        else if (sf::FloatRect({780.f, 525.f}, {220.f, 55.f}).contains(p))
+        else if (sf::FloatRect({780.f, 535.f}, {220.f, 55.f}).contains(p))
             controller.submitGuiYesNo(false);
         return;
     }
@@ -1399,7 +1434,7 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
     if (!effectChoices.empty())
     {
         const float startX = 455.f;
-        const float startY = 515.f;
+        const float startY = 525.f;
         const float bw = 75.f;
         const float bh = 36.f;
         const float gap = 7.f;

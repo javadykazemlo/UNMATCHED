@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <string>
+#include <mutex>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
 #include "entities/Character.hpp"
@@ -38,6 +39,7 @@ private:
     bool GuessElementary = false;
     bool guiMode = false;
     std::vector<std::string> guiCombatLog;
+    int guiTurnOwner = -1;
 
     Player* activeDecider = nullptr;
 
@@ -145,8 +147,16 @@ private:
     bool guiEffectFinished();
     bool getGuiInputRequest(std::string& prompt, std::vector<int>& choices,
                             bool& yesNo, bool& integerInput) const;
+    bool getGuiEffectContext(std::string& title, std::string& description) const;
     bool submitGuiInput(int value);
     bool submitGuiYesNo(bool value);
+
+    // Routes effect/combat messages to the GUI in graphical mode.
+    void guiLog(const std::string& message);
+
+    // Starts the current GUI turn once. Dracula's optional ability is resolved
+    // before the player can choose one of the normal actions.
+    void guiBeginTurn();
 
     bool guiSaveGame(const std::string& filename = "save.json");
     std::vector<std::string> getGuiCombatLog() const;

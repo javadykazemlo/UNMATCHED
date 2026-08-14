@@ -66,6 +66,7 @@ private:
     bool effectInteger = false;
     int effectFinishTimer = 0;
     bool handLimitMode = false;
+    bool draculaAbilityPrompt = false;
     std::string effectInputBuffer;
     int moveBoost = 0;
     std::string message;
@@ -102,4 +103,6 @@ private:
     void drawEffectPanel();
     void handleEffectInput(sf::Vector2f p);
     void finishTurnAfterHandLimit();
+    void drawDraculaPrompt();
+    void handleDraculaAbilityClick(sf::Vector2f p);
 };

@@ -1,6 +1,13 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <filesystem>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <algorithm>
+#include <system_error>
 
 #include "Save/SaveManager.hpp"
 #include "entities/invisible_man.hpp"
@@ -8,6 +15,163 @@
 using json = nlohmann::json;
 using namespace std;
 
+namespace
+{
+    string formatDate(time_t tt)
+    {
+        std::tm tm{};
+#ifdef _WIN32
+        localtime_s(&tm, &tt);
+#else
+        localtime_r(&tt, &tm);
+#endif
+        ostringstream out;
+        out << put_time(&tm, "%Y-%m-%d");
+        return out.str();
+    }
+
+    string formatTime(time_t tt)
+    {
+        std::tm tm{};
+#ifdef _WIN32
+        localtime_s(&tm, &tt);
+#else
+        localtime_r(&tt, &tm);
+#endif
+        ostringstream out;
+        out << put_time(&tm, "%H:%M:%S");
+        return out.str();
+    }
+
+    string createUniquePath(const string& directory)
+    {
+        namespace fs = std::filesystem;
+        fs::create_directories(directory);
+
+        const auto now = chrono::system_clock::now();
+        const time_t tt = chrono::system_clock::to_time_t(now);
+        const auto millis = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+
+        string base = directory + "/save_" + formatDate(tt) + "_" + formatTime(tt);
+        ostringstream suffix;
+        suffix << '_' << setw(3) << setfill('0') << millis;
+
+        fs::path candidate = base + suffix.str() + ".json";
+        int counter = 1;
+        while (fs::exists(candidate))
+            candidate = base + suffix.str() + "_" + to_string(counter++) + ".json";
+
+        return candidate.string();
+    }
+
+    bool isLegacyOrSaveFile(const std::filesystem::directory_entry& entry)
+    {
+        return entry.is_regular_file() && entry.path().extension() == ".json";
+    }
+}
+
+std::string SaveManager::createSavePath(const std::string& directory)
+{
+    try
+    {
+        return createUniquePath(directory);
+    }
+    catch (...)
+    {
+        return {};
+    }
+}
+
+std::vector<SaveManager::SaveInfo> SaveManager::listSaves(const std::string& directory)
+{
+    namespace fs = std::filesystem;
+    vector<SaveInfo> result;
+
+    try
+    {
+        if (!fs::exists(directory))
+            return result;
+
+        for (const auto& entry : fs::directory_iterator(directory))
+        {
+            if (!isLegacyOrSaveFile(entry))
+                continue;
+
+            try
+            {
+                ifstream file(entry.path());
+                if (!file.is_open())
+                    continue;
+
+                json root;
+                file >> root;
+                if (!root.contains("players") || !root["players"].is_array() || root["players"].size() < 2)
+                    continue;
+
+                SaveInfo info;
+                info.filepath = entry.path().string();
+
+                if (root.contains("saveMetadata") && root["saveMetadata"].is_object())
+                {
+                    const json& meta = root["saveMetadata"];
+                    info.date = meta.value("date", string{});
+                    info.time = meta.value("time", string{});
+                    info.timestamp = meta.value("timestamp", static_cast<int64_t>(0));
+                }
+
+                if (info.timestamp == 0)
+                {
+                    const auto ft = fs::last_write_time(entry.path());
+                    const auto adjusted = chrono::time_point_cast<chrono::system_clock::duration>(
+                        ft - fs::file_time_type::clock::now() + chrono::system_clock::now());
+                    const auto tt = chrono::system_clock::to_time_t(adjusted);
+                    info.timestamp = static_cast<int64_t>(tt);
+                    info.date = formatDate(tt);
+                    info.time = formatTime(tt);
+                }
+
+                if (info.date.empty() || info.time.empty())
+                {
+                    const time_t tt = static_cast<time_t>(info.timestamp);
+                    info.date = formatDate(tt);
+                    info.time = formatTime(tt);
+                }
+
+                const string p0 = root["players"][0].value("name", string{"Player 1"});
+                const string p1 = root["players"][1].value("name", string{"Player 2"});
+                string h0;
+                string h1;
+                if (root["players"][0].contains("characters") && !root["players"][0]["characters"].empty())
+                    h0 = root["players"][0]["characters"][0].value("name", string{});
+                if (root["players"][1].contains("characters") && !root["players"][1]["characters"].empty())
+                    h1 = root["players"][1]["characters"][0].value("name", string{});
+
+                info.players = p0 + " vs " + p1;
+                if (!h0.empty() && !h1.empty())
+                    info.players += "  |  " + h0 + " vs " + h1;
+
+                result.push_back(std::move(info));
+            }
+            catch (...)
+            {
+                // Ignore only this broken save; keep the rest of the list usable.
+            }
+        }
+
+        sort(result.begin(), result.end(), [](const SaveInfo& a, const SaveInfo& b)
+        {
+            if (a.timestamp != b.timestamp)
+                return a.timestamp > b.timestamp;
+            return a.filepath > b.filepath;
+        });
+    }
+    catch (...)
+    {
+        result.clear();
+    }
+
+    return result;
+}
 
 json SaveManager::cardToJson(const Card& card)
 {
@@ -98,6 +262,7 @@ json SaveManager::playerToJson(Player& player)
     j["name"]         = player.getName();
     j["age"]           = player.getAge();
     j["fighterCount"]  = player.getfighterCount();
+    j["ai"]            = player.isAI();
 
     Character* hero = player.getHero();
     j["heroChoice"] = heroChoiceFromName(hero->getName());
@@ -118,6 +283,7 @@ void SaveManager::playerFromJson(Player& player, const json& j)
 {
     player.setName(j.at("name").get<string>());
     player.setAge(j.at("age").get<int>());
+    player.setAI(j.value("ai", false));
 
     int choice    = j.at("heroChoice").get<int>();
     int ownerNum  = j.at("owner").get<int>();
@@ -185,7 +351,25 @@ bool SaveManager::saveGame(Player* current, Player* enemy,
         players.push_back(playerToJson(*enemy));
         root["players"] = players;
 
-        ofstream file(filepath);
+        const auto now = chrono::system_clock::now();
+        const time_t tt = chrono::system_clock::to_time_t(now);
+        const string actualPath = (filepath.empty() || filepath == "save.json")
+            ? createUniquePath("saves")
+            : filepath;
+        if (actualPath.empty())
+            return false;
+
+        root["saveMetadata"] = {
+            {"id", filesystem::path(actualPath).stem().string()},
+            {"date", formatDate(tt)},
+            {"time", formatTime(tt)},
+            {"timestamp", static_cast<int64_t>(tt)}
+        };
+
+        if (const filesystem::path parent = filesystem::path(actualPath).parent_path(); !parent.empty())
+            filesystem::create_directories(parent);
+
+        ofstream file(actualPath);
         if (!file.is_open())
             return false;
 
@@ -219,6 +403,14 @@ bool SaveManager::loadGame(Bord& bord, Player players[2],
         if (!root.contains("players") || root["players"].size() < 2)
             return false;
 
+        for (int i = 0; i < 32; ++i)
+        {
+            if (!bord.isEmpty(i))
+                bord.deletCharacter(i);
+        }
+        players[0].reset();
+        players[1].reset();
+
         playerFromJson(players[0], root["players"][0]);
         playerFromJson(players[1], root["players"][1]);
 
@@ -245,7 +437,7 @@ bool SaveManager::loadGame(Bord& bord, Player players[2],
         {
             for (Character* ch : players[p].getCharacters())
             {
-                if (ch->checkalive() && ch->getSpace() != -1)
+                if (ch->checkalive() && ch->getSpace() >= 0 && ch->getSpace() < 32)
                     bord.addCharacter(ch->getSpace(), ch);
             }
         }

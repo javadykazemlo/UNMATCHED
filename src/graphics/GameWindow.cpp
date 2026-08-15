@@ -903,9 +903,12 @@ void GameWindow::drawGame()
     ui->drawPanel(window, {{18.f, 650.f}, {385.f, 232.f}}, RED);
     ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, RED);
     const bool canAct = controller.getActionCount() < 2;
-    ui->drawButton(window, {{35.f, 700.f}, {105.f, 43.f}}, "MOVE", moveMode, GREEN);
-    ui->drawButton(window, {{150.f, 700.f}, {105.f, 43.f}}, "ATTACK", attackMode, RED);
-    ui->drawButton(window, {{265.f, 700.f}, {105.f, 43.f}}, "SCHEME", schemeMode, PURPLE);
+    ui->drawButton(window, {{35.f, 700.f}, {78.f, 43.f}}, "MOVE", moveMode, GREEN);
+    ui->drawButton(window, {{120.f, 700.f}, {78.f, 43.f}}, "ATTACK", attackMode, RED);
+    ui->drawButton(window, {{205.f, 700.f}, {78.f, 43.f}}, "SCHEME", schemeMode, PURPLE);
+    const bool abilityAvailable = controller.guiHeroAbilityAvailable();
+    ui->drawButton(window, {{290.f, 700.f}, {78.f, 43.f}}, "ABILITY", false,
+                   abilityAvailable ? GOLD : sf::Color(70, 65, 55));
 
     ui->drawButton(window, {{35.f, 754.f}, {160.f, 43.f}}, "SAVE GAME", false, GOLD);
     ui->drawButton(window, {{210.f, 754.f}, {160.f, 43.f}}, "END ACTION", false, GOLD);
@@ -1167,16 +1170,7 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
         {
             screen = Screen::Game;
             resetSelections();
-            if (controller.guiBeginTurn())
-            {
-                activeEffectPanel = EffectPanelKind::Dracula;
-                draculaResolved = false;
-                draculaPrompt.clear();
-                draculaChoices.clear();
-                draculaYesNo = false;
-                draculaInteger = false;
-                draculaInputBuffer.clear();
-            }
+            controller.guiBeginTurn();
             showMessage("The game has started.");
         }
     }
@@ -1193,15 +1187,17 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     // clicks through its own independent handler.
     if (activeEffectPanel != EffectPanelKind::None)
     {
-        if (controller.guiEffectBusy())
+        // The effect panel owns mouse input for its entire lifetime. The
+        // individual handler decides whether it is waiting for an answer or
+        // is ready for RETURN TO GAME. Do not gate this on busy: busy becomes
+        // false as soon as the worker finishes, while the result panel stays
+        // visible until the player closes it.
+        switch (activeEffectPanel)
         {
-            switch (activeEffectPanel)
-            {
-                case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
-                case EffectPanelKind::Scheme:  handleSchemeEffectInput(p);  break;
-                case EffectPanelKind::Dracula: handleDraculaEffectInput(p); break;
-                case EffectPanelKind::None:    break;
-            }
+            case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
+            case EffectPanelKind::Scheme:  handleSchemeEffectInput(p);  break;
+            case EffectPanelKind::Dracula: handleDraculaEffectInput(p); break;
+            case EffectPanelKind::None:    break;
         }
         return;
     }
@@ -1255,17 +1251,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         controller.guiEndTurn();
         resetSelections();
         combatLog.clear();
-        if (controller.guiBeginTurn())
-        {
-            activeEffectPanel = EffectPanelKind::Dracula;
-            draculaResolved = false;
-            draculaPrompt.clear();
-            draculaChoices.clear();
-            draculaYesNo = false;
-            draculaInteger = false;
-            draculaInputBuffer.clear();
-        }
-        showMessage("Turn changed.");
+        controller.guiBeginTurn();
+        showMessage("Turn changed. Choose MOVE, ATTACK, SCHEME, or ABILITY.");
         return;
     }
 
@@ -1349,8 +1336,34 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
     const bool canAct = controller.getActionCount() < 2;
 
+    // HERO ABILITY: an explicit optional action button. It is only active
+    // for a hero that actually has a player-invoked ability.
+    if (sf::FloatRect({290.f, 700.f}, {78.f, 43.f}).contains(p))
+    {
+        if (!controller.guiHeroAbilityAvailable())
+        {
+            showMessage("This hero has no available active ability right now.");
+            return;
+        }
+
+        resetSelections();
+        combatLog.clear();
+        if (controller.guiUseHeroAbility())
+        {
+            activeEffectPanel = EffectPanelKind::Dracula;
+            draculaResolved = false;
+            draculaPrompt = "Use Dracula's ability?";
+            draculaChoices.clear();
+            draculaYesNo = true;
+            draculaInteger = false;
+            draculaInputBuffer.clear();
+            showMessage("Hero ability opened. Choose an option in the panel.");
+        }
+        return;
+    }
+
     // Each real action is counted immediately when its button is pressed.
-    if (sf::FloatRect({35.f, 700.f}, {105.f, 43.f}).contains(p))
+    if (sf::FloatRect({35.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1373,7 +1386,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    if (sf::FloatRect({150.f, 700.f}, {105.f, 43.f}).contains(p))
+    if (sf::FloatRect({120.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1391,7 +1404,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    if (sf::FloatRect({265.f, 700.f}, {105.f, 43.f}).contains(p))
+    if (sf::FloatRect({205.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1637,6 +1650,11 @@ void GameWindow::updateAttackEffectPanel()
         attackYesNo = yesNo;
         attackInteger = integerInput;
     }
+    else if (controller.guiEffectBusy() && !attackResolved &&
+             attackChoices.empty() && !attackInteger && !attackYesNo)
+    {
+        attackPrompt = "Resolving combat effect...";
+    }
 
     if (controller.guiEffectFinished())
     {
@@ -1711,7 +1729,7 @@ void GameWindow::drawAttackEffectPanel()
         if (attackYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
         }
         else if (!attackChoices.empty())
         {
@@ -1825,6 +1843,11 @@ void GameWindow::updateSchemeEffectPanel()
         schemeYesNo = yesNo;
         schemeInteger = integerInput;
     }
+    else if (controller.guiEffectBusy() && !schemeResolved &&
+             schemeChoices.empty() && !schemeInteger && !schemeYesNo)
+    {
+        schemePrompt = "Resolving scheme effect...";
+    }
 
     if (controller.guiEffectFinished())
     {
@@ -1896,7 +1919,7 @@ void GameWindow::drawSchemeEffectPanel()
         if (schemeYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
         }
         else if (!schemeChoices.empty())
         {
@@ -2000,6 +2023,23 @@ void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
 
 void GameWindow::updateDraculaEffectPanel()
 {
+    if (controller.guiEffectFinished())
+    {
+        draculaResolved = true;
+        draculaPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        draculaChoices.clear();
+        draculaYesNo = false;
+        draculaInteger = false;
+        draculaInputBuffer.clear();
+        return;
+    }
+
+    if (draculaResolved)
+        return;
+
+    // Always mirror the Controller's current request. There is deliberately
+    // no fake/fallback Yes/No request here: the buttons must be backed by an
+    // actual pending request so every click has a real consumer.
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -2011,16 +2051,6 @@ void GameWindow::updateDraculaEffectPanel()
         draculaChoices = choices;
         draculaYesNo = yesNo;
         draculaInteger = integerInput;
-    }
-
-    if (controller.guiEffectFinished())
-    {
-        draculaResolved = true;
-        draculaPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
-        draculaChoices.clear();
-        draculaYesNo = false;
-        draculaInteger = false;
-        draculaInputBuffer.clear();
     }
 }
 
@@ -2078,7 +2108,7 @@ void GameWindow::drawDraculaEffectPanel()
         if (draculaYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
         }
         else if (!draculaChoices.empty())
         {
@@ -2141,10 +2171,20 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 
     if (draculaYesNo)
     {
-        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
-            controller.submitGuiYesNo(true);
-        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
-            controller.submitGuiYesNo(false);
+        const bool clickedYes = sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p);
+        const bool clickedNo  = sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p);
+
+        if (clickedYes || clickedNo)
+        {
+            // Query the Controller at click time so the UI cannot submit a
+            // stale request from a previous frame.
+            std::string prompt;
+            std::vector<int> choices;
+            bool yesNo = false;
+            bool integerInput = false;
+            if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput) && yesNo)
+                controller.submitGuiYesNo(clickedYes);
+        }
         return;
     }
 
@@ -2179,16 +2219,7 @@ void GameWindow::finishTurnAfterHandLimit()
     controller.guiEndTurn();
     resetSelections();
     combatLog.clear();
-    if (controller.guiBeginTurn())
-    {
-        activeEffectPanel = EffectPanelKind::Dracula;
-        draculaResolved = false;
-        draculaPrompt.clear();
-        draculaChoices.clear();
-        draculaYesNo = false;
-        draculaInteger = false;
-        draculaInputBuffer.clear();
-    }
+    controller.guiBeginTurn();
     showMessage("Turn changed.");
 }
 

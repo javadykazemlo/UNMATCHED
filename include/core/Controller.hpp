@@ -67,6 +67,7 @@ private:
     int guiPositionPlayerIndex = -1;
     int guiSidekickPlayerIndex = -1;
     int guiSidekickIndex = 1;
+    bool guiHeroAbilityUsed = false;
     int guiSidekicksDonePlayers = 0;
 
     int boardDistance(int from, int to);
@@ -143,6 +144,8 @@ private:
     std::vector<int> getGuiSchemeCards(Character* fighter) const;
     bool guiScheme(Character* fighter, int cardIndex);
     bool guiBeginTurn();
+    bool guiHeroAbilityAvailable() const;
+    bool guiUseHeroAbility();
 
     bool guiEffectBusy() const;
     bool guiEffectFinished();

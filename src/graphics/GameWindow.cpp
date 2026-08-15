@@ -859,6 +859,17 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
         {
             screen = Screen::Game;
             resetSelections();
+            if (controller.guiBeginTurn())
+            {
+                effectPanelActive = true;
+                effectResolved = false;
+                effectCardName = "DRACULA ABILITY";
+                effectCardText = "At the beginning of Dracula's turn, his special ability can be used.";
+                effectPrompt.clear();
+                effectChoices.clear();
+                effectYesNo = false;
+                effectInteger = false;
+            }
             showMessage("The game has started.");
         }
     }
@@ -934,6 +945,17 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         controller.guiEndTurn();
         resetSelections();
         combatLog.clear();
+        if (controller.guiBeginTurn())
+        {
+            effectPanelActive = true;
+            effectResolved = false;
+            effectCardName = "DRACULA ABILITY";
+            effectCardText = "At the beginning of Dracula's turn, his special ability can be used.";
+            effectPrompt.clear();
+            effectChoices.clear();
+            effectYesNo = false;
+            effectInteger = false;
+        }
         showMessage("Turn changed.");
         return;
     }
@@ -1064,7 +1086,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             const Card attackCard = current->getDeck()->getHandcard(selectedCard);
             const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
             effectPanelActive = true;
-            effectFinishTimer = 0;
+            effectResolved = false;
             effectCardName = "COMBAT";
             effectCardText = attackCard.getName() + "  VS  " + defensePlayedCard.getName() +
                              "\n\nResolving attack, defense and combat effects...";
@@ -1124,9 +1146,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     const Card chosenCard = current->getDeck()->gethand()[card];
                     if (controller.guiScheme(selected, card))
                     {
-                        controller.clearGuiCombatLog();
                         effectPanelActive = true;
-                        effectFinishTimer = 0;
+                        effectResolved = false;
                         effectCardName = chosenCard.getName();
                         effectCardText = chosenCard.geteffect();
                         effectPrompt = "Resolving effect...";
@@ -1204,7 +1225,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     const Card attackCard = current->getDeck()->getHandcard(selectedCard);
                     const Card defenseCard = enemyPlayer->getDeck()->gethand()[valid.front()];
                     effectPanelActive = true;
-                    effectFinishTimer = 0;
+                    effectResolved = false;
                     effectCardName = "COMBAT";
                     effectCardText = attackCard.getName() + "  VS  " + defenseCard.getName() +
                                      "\n\nResolving attack, defense and combat effects...";
@@ -1253,23 +1274,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
 void GameWindow::updateEffectPanel()
 {
-    // Every new GUI turn is initialized here. This is deliberately done from
-    // the render/update loop so Dracula's ability can pause the game through
-    // the same effect panel used by card effects.
-    if (!effectPanelActive && !controller.guiEffectBusy())
-        controller.guiBeginTurn();
-
-    std::string contextTitle;
-    std::string contextDescription;
-    if (controller.getGuiEffectContext(contextTitle, contextDescription))
-    {
-        effectPanelActive = true;
-        if (!contextTitle.empty())
-            effectCardName = contextTitle;
-        if (!contextDescription.empty())
-            effectCardText = contextDescription;
-    }
-
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -1285,10 +1289,8 @@ void GameWindow::updateEffectPanel()
 
     if (effectPanelActive && controller.guiEffectFinished())
     {
-        // Keep the panel visible briefly after immediate effects so the
-        // player can actually see that the card was resolved.
-        effectFinishTimer = 45;
-        effectPrompt = "Effect resolved.";
+        effectResolved = true;
+        effectPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
         effectChoices.clear();
         effectYesNo = false;
         effectInteger = false;
@@ -1310,136 +1312,158 @@ void GameWindow::updateEffectPanel()
             selectedCharacter = -1;
         }
     }
-
-    if (effectPanelActive && effectFinishTimer > 0 && !controller.guiEffectBusy())
-    {
-        --effectFinishTimer;
-        if (effectFinishTimer == 0)
-        {
-            effectPanelActive = false;
-            effectPrompt.clear();
-            effectChoices.clear();
-            effectYesNo = false;
-            effectInteger = false;
-            effectInputBuffer.clear();
-            checkGameOver();
-        }
-    }
 }
 
 void GameWindow::drawEffectPanel()
 {
     sf::RectangleShape overlay({1600.f, 900.f});
-    overlay.setFillColor(sf::Color(2, 3, 7, 155));
+    overlay.setFillColor(sf::Color(2, 3, 7, 175));
     window.draw(overlay);
 
-    const sf::FloatRect panel({390.f, 145.f}, {820.f, 610.f});
+    const sf::FloatRect panel({330.f, 70.f}, {940.f, 760.f});
     ui->drawPanel(window, panel, GOLD);
 
     ui->drawText(window, effectCardName.empty() ? "CARD EFFECT" : effectCardName,
-                 {445.f, 180.f}, 24, GOLD);
+                 {385.f, 100.f}, 24, GOLD);
 
-    // The card description remains at the top; all messages that the old
-    // Effects.cpp printed to the terminal are shown live below it.
-    std::string text = effectCardText.empty() ? "Resolving card effect..." : effectCardText;
-    float y = 235.f;
-    std::string line;
-    int lines = 0;
+    ui->drawText(window, effectCardText.empty() ? "Resolving card effect..." : effectCardText,
+                 {385.f, 145.f}, 14, PARCHMENT);
 
-    auto flushLine = [&]()
+    // Live effect log: every cout-like message generated by an effect is shown here.
+    const std::vector<std::string> logs = controller.getGuiEffectLog();
+    float y = 190.f;
+    int shown = 0;
+    for (auto it = logs.rbegin(); it != logs.rend() && shown < 11; ++it)
     {
-        if (line.empty()) return;
-        if (lines < 5)
-            ui->drawText(window, line, {445.f, y}, 13, PARCHMENT);
-        y += 22.f;
-        ++lines;
-        line.clear();
-    };
-
-    for (char c : text)
-    {
-        if (c == '\n') flushLine();
-        else line += c;
-
-        if (line.size() > 78) flushLine();
-    }
-    flushLine();
-
-    const std::vector<std::string> logs = controller.getGuiCombatLog();
-    int shownLogs = 0;
-    for (auto it = logs.rbegin(); it != logs.rend() && shownLogs < 5; ++it, ++shownLogs)
-    {
-        std::string logLine = *it;
-        if (logLine.size() > 90)
-            logLine = logLine.substr(0, 87) + "...";
-
-        ui->drawText(window, logLine,
-                     {445.f, 350.f + static_cast<float>(shownLogs) * 20.f},
-                     12, PARCHMENT);
+        if (it->empty()) continue;
+        std::string line = *it;
+        float lineY = y + static_cast<float>(shown) * 25.f;
+        std::string chunk;
+        int wrapped = 0;
+        for (char c : line)
+        {
+            chunk += c;
+            if (chunk.size() >= 82)
+            {
+                ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+                chunk.clear();
+                ++wrapped;
+                if (wrapped >= 2) break;
+            }
+        }
+        if (!chunk.empty() && wrapped < 2)
+            ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+        ++shown;
     }
 
     if (!effectPrompt.empty())
-        ui->drawText(window, effectPrompt, {445.f, 465.f}, 16, GOLD);
+        ui->drawText(window, effectPrompt, {385.f, 470.f}, 16, GOLD);
 
-    if (effectYesNo)
+    if (!effectResolved)
     {
-        ui->drawButton(window, {{500.f, 535.f}, {220.f, 55.f}}, "YES", true, GREEN);
-        ui->drawButton(window, {{780.f, 535.f}, {220.f, 55.f}}, "NO", false, RED);
-    }
-    else if (!effectChoices.empty())
-    {
-        // Choices can be board spaces (0..31), so use a compact grid rather
-        // than a single row that would hide half of the legal options.
-        const float startX = 455.f;
-        const float startY = 525.f;
-        const float bw = 75.f;
-        const float bh = 36.f;
-        const float gap = 7.f;
-
-        for (std::size_t i = 0; i < effectChoices.size() && i < 32; ++i)
+        if (effectYesNo)
         {
-            const int col = static_cast<int>(i % 8);
-            const int row = static_cast<int>(i / 8);
-            ui->drawButton(window,
-                           {{startX + col * (bw + gap),
-                             startY + row * (bh + gap)},
-                            {bw, bh}},
-                           std::to_string(effectChoices[i]), true, GOLD);
+            ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+        }
+        else if (!effectChoices.empty())
+        {
+            const float startX = 390.f;
+            const float startY = 520.f;
+            const float bw = 88.f;
+            const float bh = 36.f;
+            const float gap = 8.f;
+
+            for (std::size_t i = 0; i < effectChoices.size() && i < 40; ++i)
+            {
+                const int col = static_cast<int>(i % 8);
+                const int row = static_cast<int>(i / 8);
+                ui->drawButton(window,
+                               {{startX + col * (bw + gap),
+                                 startY + row * (bh + gap)},
+                                {bw, bh}},
+                               std::to_string(effectChoices[i]), true, GOLD);
+            }
+        }
+        else if (effectInteger)
+        {
+            ui->drawPanel(window, {{470.f, 520.f}, {500.f, 55.f}}, GOLD);
+            ui->drawText(window, effectInputBuffer.empty() ? "_" : effectInputBuffer,
+                         {490.f, 534.f}, 18, PARCHMENT);
+            ui->drawText(window, "Type the number, then press ENTER.",
+                         {470.f, 585.f}, 12, PARCHMENT);
         }
     }
-    else if (effectInteger)
+    // Dracula's special-ability panel keeps the return button visible from the
+    // moment the panel opens. It becomes clickable as soon as the controller
+    // says the effect may be closed.
+    if (effectCardName == "DRACULA ABILITY" || effectResolved)
     {
-        ui->drawPanel(window, {{500.f, 535.f}, {500.f, 55.f}}, GOLD);
-        ui->drawText(window, effectInputBuffer.empty() ? "_" : effectInputBuffer,
-                     {520.f, 550.f}, 18, PARCHMENT);
-        ui->drawText(window, "Type the number, then press ENTER.",
-                     {500.f, 605.f}, 12, sf::Color(180, 171, 156));
+        const bool canClose = effectResolved && controller.guiEffectCanClose();
+        ui->drawButton(window, {{565.f, 705.f}, {470.f, 58.f}},
+                       "RETURN TO GAME", canClose, GOLD);
     }
-
-    ui->drawText(window, "The game is waiting for this effect to finish.",
-                 {445.f, 680.f}, 11, sf::Color(160, 153, 142));
 }
 
 void GameWindow::handleEffectInput(sf::Vector2f p)
 {
+    if (effectCardName == "DRACULA ABILITY" &&
+        sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p))
+    {
+        if (controller.guiEffectCanClose())
+        {
+            effectPanelActive = false;
+            effectResolved = false;
+            effectCardName.clear();
+            effectCardText.clear();
+            effectPrompt.clear();
+            effectChoices.clear();
+            effectYesNo = false;
+            effectInteger = false;
+            effectInputBuffer.clear();
+            controller.clearGuiEffectLog();
+            checkGameOver();
+        }
+        return;
+    }
+
+    if (effectResolved)
+    {
+        if (sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p) && controller.guiEffectCanClose())
+        {
+            effectPanelActive = false;
+            effectResolved = false;
+            effectCardName.clear();
+            effectCardText.clear();
+            effectPrompt.clear();
+            effectChoices.clear();
+            effectYesNo = false;
+            effectInteger = false;
+            effectInputBuffer.clear();
+            controller.clearGuiEffectLog();
+            checkGameOver();
+        }
+        return;
+    }
+
     if (effectYesNo)
     {
-        if (sf::FloatRect({500.f, 535.f}, {220.f, 55.f}).contains(p))
+        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
             controller.submitGuiYesNo(true);
-        else if (sf::FloatRect({780.f, 535.f}, {220.f, 55.f}).contains(p))
+        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
             controller.submitGuiYesNo(false);
         return;
     }
 
     if (!effectChoices.empty())
     {
-        const float startX = 455.f;
-        const float startY = 525.f;
-        const float bw = 75.f;
+        const float startX = 390.f;
+        const float startY = 520.f;
+        const float bw = 88.f;
         const float bh = 36.f;
-        const float gap = 7.f;
+        const float gap = 8.f;
 
-        for (std::size_t i = 0; i < effectChoices.size() && i < 32; ++i)
+        for (std::size_t i = 0; i < effectChoices.size() && i < 40; ++i)
         {
             const int col = static_cast<int>(i % 8);
             const int row = static_cast<int>(i / 8);
@@ -1462,6 +1486,17 @@ void GameWindow::finishTurnAfterHandLimit()
     controller.guiEndTurn();
     resetSelections();
     combatLog.clear();
+    if (controller.guiBeginTurn())
+    {
+        effectPanelActive = true;
+        effectResolved = false;
+        effectCardName = "DRACULA ABILITY";
+        effectCardText = "At the beginning of Dracula's turn, his special ability can be used.";
+        effectPrompt.clear();
+        effectChoices.clear();
+        effectYesNo = false;
+        effectInteger = false;
+    }
     showMessage("Turn changed.");
 }
 
@@ -1504,7 +1539,7 @@ void GameWindow::resetSelections()
     effectYesNo = false;
     effectInteger = false;
     effectInputBuffer.clear();
-    effectFinishTimer = 0;
+    effectResolved = false;
     handLimitMode = false;
 }
 

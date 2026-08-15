@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 #include <string>
-#include <mutex>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
 #include "entities/Character.hpp"
@@ -39,7 +38,7 @@ private:
     bool GuessElementary = false;
     bool guiMode = false;
     std::vector<std::string> guiCombatLog;
-    int guiTurnOwner = -1;
+    std::vector<std::string> guiEffectLog;
 
     Player* activeDecider = nullptr;
 
@@ -92,6 +91,7 @@ private:
     void plaseSidekicks(Player& player);
 
     void playTurn();
+    void runDraculaAbility();
 
     void move(int mov, Character* selected);
     int boost();
@@ -142,22 +142,22 @@ private:
     bool guiDiscardCard(int index);
     std::vector<int> getGuiSchemeCards(Character* fighter) const;
     bool guiScheme(Character* fighter, int cardIndex);
+    bool guiBeginTurn();
 
     bool guiEffectBusy() const;
     bool guiEffectFinished();
     bool getGuiInputRequest(std::string& prompt, std::vector<int>& choices,
                             bool& yesNo, bool& integerInput) const;
-    bool getGuiEffectContext(std::string& title, std::string& description) const;
     bool submitGuiInput(int value);
     bool submitGuiYesNo(bool value);
 
-    // Routes effect/combat messages to the GUI in graphical mode.
-    void guiLog(const std::string& message);
+public:
+    void guiLogEffect(const std::string& text);
+    std::vector<std::string> getGuiEffectLog() const;
+    void clearGuiEffectLog();
+    bool guiEffectCanClose() const;
 
-    // Starts the current GUI turn once. Dracula's optional ability is resolved
-    // before the player can choose one of the normal actions.
-    void guiBeginTurn();
-
+private:
     bool guiSaveGame(const std::string& filename = "save.json");
     std::vector<std::string> getGuiCombatLog() const;
     void clearGuiCombatLog();

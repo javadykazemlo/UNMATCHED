@@ -11,7 +11,6 @@
 #include <condition_variable>
 #include <sstream>
 #include "core/Controller.hpp"
-#include "core/GuiEffectLogger.hpp"
 #include "entities/invisible_man.hpp"
 #include "Save/SaveManager.hpp"
 
@@ -30,8 +29,6 @@ namespace
         enum class RequestType { None, Integer, Choice, YesNo };
         RequestType requestType = RequestType::None;
         std::string prompt;
-        std::string title;
-        std::string description;
         std::vector<int> choices;
         int value = 0;
         bool boolValue = false;
@@ -515,8 +512,7 @@ void Controller::move(int mov ,Character* selected)
 
 int Controller::boost()
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
-    effectLog << "Do you want to use Boost? (y/n): ";
+    cout << "Do you want to use Boost? (y/n): ";
 
     aiDecisionKind = AIDecision::BoostChoice;
     bool useBoost = getYesNo();
@@ -524,7 +520,7 @@ int Controller::boost()
 
     if (!useBoost)
     {
-        effectLog << "🟥No boost used.\n\n";
+        cout << "🟥No boost used.\n\n";
         return 0;
     }
     int choos = current->getDeck()->gethandSize();
@@ -533,7 +529,7 @@ int Controller::boost()
     for(int i = 1 ; i <= choos ; i++)
         valid.push_back(i);
 
-    effectLog << "Selected card: ";
+    cout << "Selected card: ";
     aiDecisionKind = AIDecision::CardSelect;
     aiCardPurpose = AICardPurpose::Boost;
     int select = getChoice(valid);
@@ -542,22 +538,21 @@ int Controller::boost()
     Card selectedCard;
     selectedCard = current->getDeck()->playCard(select - 1, selectedCard);
 
-    effectLog << "\n🟦 Boost used for MOVEMENT!\n\n";
-    effectLog << "   +" << selectedCard.getBoost() << " steps added.\n";
+    cout << "\n🟦 Boost used for MOVEMENT!\n\n";
+    cout << "   +" << selectedCard.getBoost() << " steps added.\n";
 
     return selectedCard.getBoost();
 }
 
 void Controller::Scheme()
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
-    effectLog << "\n══════════════════════════════════════════════════════════════════════════" << endl;
-    effectLog << "                                Scheme\n"; 
+    cout << "\n══════════════════════════════════════════════════════════════════════════" << endl;
+    cout << "                                Scheme\n"; 
     
     vector<int> choos = current->getDeck()->getSchemeCardIndices();
     if(choos.empty())
     {
-        effectLog << "You don't have any Scheme cards.\n";
+        cout << "You don't have any Scheme cards.\n";
         return;
     }
 
@@ -570,25 +565,25 @@ void Controller::Scheme()
         vector<int> valid;
         int number = 1;
 
-        effectLog << "\nYour Characters:\n";
+        cout << "\nYour Characters:\n";
         for (Character* ch : current->getCharacters())
         {
             if(ch->checkalive())
             {
-                effectLog << number << "." << ch->getName() << endl;
+                cout << number << "." << ch->getName() << endl;
                 choices.push_back(ch);
                 valid.push_back(number);
                 number++;
             }
         }
-        effectLog << "Choose a character: ";
+        cout << "Choose a character: ";
         aiDecisionKind = AIDecision::FighterSelect;
         aiCharacterOptions = choices;
         choose = getChoice(valid);
         aiDecisionKind = AIDecision::Generic;
         selected = choices[choose - 1];
 
-        effectLog << "\nChoose a card: ";
+        cout << "\nChoose a card: ";
         aiDecisionKind = AIDecision::CardSelect;
         aiCardPurpose = AICardPurpose::Scheme;
         aiCardFighter = selected;
@@ -607,7 +602,7 @@ void Controller::Scheme()
     
         if(ownerOK)
             break;
-        effectLog << "This fighter can't use this card.\n";
+        cout << "This fighter can't use this card.\n";
     }
 
     Card Schemecard;
@@ -615,14 +610,13 @@ void Controller::Scheme()
 
     applyEffectScheme(Schemecard , current , enemy , selected);
 
-    effectLog << "\nScheme effect applied.\n";
+    cout << "\nScheme effect applied.\n";
 }
 
 
 
 void Controller::startCombat()
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     cancelEffectDR = false;
     cancelEffectSH = false;
     cancelEffectIM = false;
@@ -630,7 +624,7 @@ void Controller::startCombat()
 
     if(current->getDeck()->getAttackCardIndices().empty())
     {
-        effectLog << "You have no attack cards. Cannot attack this turn.\n";
+        cout << "You have no attack cards. Cannot attack this turn.\n";
         return;
     }
 
@@ -639,14 +633,14 @@ void Controller::startCombat()
     vector<int> valid;
     int number = 1;
 
-    effectLog << "\n══════════════════════════════════════════════════════════════════════════" << endl;
-    effectLog << "                                Attack\n"; 
+    cout << "\n══════════════════════════════════════════════════════════════════════════" << endl;
+    cout << "                                Attack\n"; 
 
     for (Character* ch : current->getCharacters())
     {
         if(ch->checkalive() && bord.canAttack(ch->getAttacktype() , ch->getSpace()))
         {
-            effectLog << number << "." << ch->getName() << endl;
+            cout << number << "." << ch->getName() << endl;
             choices.push_back(ch);
             valid.push_back(number);
             number++;
@@ -654,10 +648,10 @@ void Controller::startCombat()
     }
     if(number == 1)
     {
-        effectLog << "No targets are available to attack.\n";
+        cout << "No targets are available to attack.\n";
         return;
     }
-    effectLog << "Choose a character to attack with: ";
+    cout << "Choose a character to attack with: ";
     aiDecisionKind = AIDecision::FighterSelect;
     aiCharacterOptions = choices;
     choose = getChoice(valid);
@@ -669,12 +663,12 @@ void Controller::startCombat()
     number = 1;
     vector<Character*> ch = bord.getAttackCharacters(attacker->getAttacktype() , attacker->getSpace());
 
-    effectLog << "\nEnemy Characters:\n";
+    cout << "\nEnemy Characters:\n";
     for(int i = 0 ; i < ch.size() ; i++)
     {
         if(ch[i]->checkalive() && attacker->getowner() != ch[i]->getowner())
         {
-            effectLog << number << "." << ch[i]->getName() << endl;
+            cout << number << "." << ch[i]->getName() << endl;
             choices.push_back(ch[i]);
             valid.push_back(number);
             number++;
@@ -682,7 +676,7 @@ void Controller::startCombat()
     }
     if(number != 1)
     {
-        effectLog << "Choose a character to attack: ";
+        cout << "Choose a character to attack: ";
         aiDecisionKind = AIDecision::AttackTarget;
         aiCharacterOptions = choices;
         choose = getChoice(valid);
@@ -694,20 +688,19 @@ void Controller::startCombat()
     
         if(attackCard.getAttack() == 0) 
         {
-            effectLog << "You have no attack cards. Cannot attack this turn.\n";
+            cout << "You have no attack cards. Cannot attack this turn.\n";
             return;
         }
         resolveCombat(attackCard, defenseCard , attacker , defender);
     }
     else
     {
-        effectLog << "\nThere are no enemies you can attack.\n";
+        cout << "\nThere are no enemies you can attack.\n";
     }
 } 
 
 Card Controller::chooseCombatCard(Player* player , Character* fighter, bool attack)
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     activeDecider = player;
 
     vector<int> myhandcard;
@@ -723,7 +716,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
     
     if(myhandcard.empty())
     {
-        effectLog << player->getName() << " has no valid " 
+        cout << player->getName() << " has no valid " 
              << (attack ? "attack" : "defense") << " card. Using 0 value.\n";
 
         Card empty;
@@ -732,13 +725,13 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
 
     while (true)
     {
-        effectLog << "\nChoose a card: ";
+        cout << "\nChoose a card: ";
 
-        effectLog << "Available cards: ";
+        cout << "Available cards: ";
         for(int idx : myhandcard) 
-        effectLog << idx<< "  ";
+        cout << idx<< "  ";
 
-        effectLog << "\n> ";
+        cout << "\n> ";
 
         int choice;
         aiDecisionKind = AIDecision::CardSelect;
@@ -753,7 +746,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
 
         if(choice < 0 || choice >= hand.size())
         {
-            effectLog << "Invalid number.\n";
+            cout << "Invalid number.\n";
             continue;
         }
 
@@ -771,7 +764,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
             {
                 break;
             }
-            effectLog << "This fighter don't have any card to use.\n";
+            cout << "This fighter don't have any card to use.\n";
             Card empty;
             return empty;
         }
@@ -779,7 +772,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
         
         if(!ownerOK)
         {
-            effectLog << "This fighter can't use this card.\n";
+            cout << "This fighter can't use this card.\n";
             continue;
         }
 
@@ -791,7 +784,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
 
         if(!typeOK)
         {
-            effectLog << "Wrong card type.\n";
+            cout << "Wrong card type.\n";
             continue;
         }
 
@@ -802,13 +795,12 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
 
 void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender) 
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     if(defenseCard.getName() == "Elementary")
     {
         if (!guiMode)
         {
             activeDecider = enemy;
-            effectLog << enemy->getName() << ", guess the attack value of your opponent's card.\n";
+            cout << enemy->getName() << ", guess the attack value of your opponent's card.\n";
             int number = getInt();
             if(number == attackCard.getAttack())
                 GuessElementary = true;
@@ -819,16 +811,16 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
             // In GUI mode the same guess is requested through the graphical
             // effect panel instead of silently failing the effect.
             activeDecider = enemy;
-            effectLog << enemy->getName() << ", guess the attack value of your opponent's card.\n";
+            cout << enemy->getName() << ", guess the attack value of your opponent's card.\n";
             const int number = getInt();
             GuessElementary = (number == attackCard.getAttack());
             activeDecider = current;
         }
     }
     
-    effectLog << "\n═══════════════════════════════════════════════════════════════════\n";
-    effectLog << "                 ⚔️ RESOLVING COMBAT ⚔️\n";
-    effectLog << "═════════════════════════════════════════════════════════════════════\n";
+    cout << "\n═══════════════════════════════════════════════════════════════════\n";
+    cout << "                 ⚔️ RESOLVING COMBAT ⚔️\n";
+    cout << "═════════════════════════════════════════════════════════════════════\n";
     
     if(defenseCard.isBeforeCombat())
         applyEffect(defenseCard , attackCard , enemy , current , attacker , defender , false);
@@ -851,12 +843,12 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
        !defenseCard.getName().empty())
     {
         defenseValue += 1;
-        effectLog << "\n🌫️ Invisible Man is on a fog token: defense +1 (cannot be cancelled).\n";
+        cout << "\n🌫️ Invisible Man is on a fog token: defense +1 (cannot be cancelled).\n";
     }
 
-    effectLog << "\n📊 COMBAT RESULT:\n";
-    effectLog << "  ⚔️ Attack  : " << attackValue << "\n";
-    effectLog << "  🛡️ Defense : " << defenseValue << "\n";
+    cout << "\n📊 COMBAT RESULT:\n";
+    cout << "  ⚔️ Attack  : " << attackValue << "\n";
+    cout << "  🛡️ Defense : " << defenseValue << "\n";
 
     bool attackerWon = false;
     bool defenderWon = false;
@@ -864,7 +856,7 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     if (attackValue > defenseValue) 
     {
         int damage = attackValue - defenseValue;
-        effectLog << "\n💥 " << current->getName() << " deals " << damage << " damage to " << defender->getName() << "!\n";
+        cout << "\n💥 " << current->getName() << " deals " << damage << " damage to " << defender->getName() << "!\n";
         defender->takeDamage(damage);
 
         if(!defender->checkalive() && defender->getSpace() != -1)
@@ -873,13 +865,13 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
             defender->setSpace(-1);
         }
 
-        effectLog << "  " << defender->getName() << " HP: " << defender->getHp() 
+        cout << "  " << defender->getName() << " HP: " << defender->getHp() 
         << "/" << defender->getMaxhp() << "\n";
         attackerWon = true;
     }
     else 
     {
-        effectLog << "\n🛡️ " << enemy->getName() << " blocks the attack!\n";
+        cout << "\n🛡️ " << enemy->getName() << " blocks the attack!\n";
         defenderWon = true;
     }
 
@@ -905,7 +897,7 @@ int Controller::getInt()
     {
         std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
         gGuiEffect.requestType = GuiEffectBridge::RequestType::Integer;
-        gGuiEffect.prompt = "Enter a number";
+        gGuiEffect.prompt = "Enter a number:";
         gGuiEffect.choices.clear();
         gGuiEffect.ready = false;
         gGuiEffect.cv.notify_all();
@@ -948,7 +940,7 @@ int Controller::getChoice(std::vector<int> valid)
     {
         std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
         gGuiEffect.requestType = GuiEffectBridge::RequestType::Choice;
-        gGuiEffect.prompt = "Choose one of the available options";
+        gGuiEffect.prompt = "Choose one of the available options:";
         gGuiEffect.choices = std::move(valid);
         gGuiEffect.ready = false;
         gGuiEffect.cv.notify_all();
@@ -961,8 +953,6 @@ int Controller::getChoice(std::vector<int> valid)
         const int value = gGuiEffect.value;
         gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
         gGuiEffect.prompt.clear();
-        gGuiEffect.title.clear();
-        gGuiEffect.description.clear();
         gGuiEffect.choices.clear();
         gGuiEffect.ready = false;
         return value;
@@ -987,7 +977,7 @@ bool Controller::getYesNo()
     {
         std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
         gGuiEffect.requestType = GuiEffectBridge::RequestType::YesNo;
-        gGuiEffect.prompt = "Do you want to use this effect?";
+        gGuiEffect.prompt = "Choose an option:";
         gGuiEffect.choices.clear();
         gGuiEffect.ready = false;
         gGuiEffect.cv.notify_all();
@@ -1158,17 +1148,22 @@ int Controller::aiScoreCardChoice(int idx, Player* decider)
 
 void Controller::aiThink(Player* decider)
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
-    effectLog << "🤖 " << decider->getName() << " is thinking...";
+    cout << "🤖 " << decider->getName() << " is thinking";
+    cout.flush();
 
     int ms = 2500 + (rand() % 1500);
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-
-    effectLog << "🤖 " << decider->getName() << " finished thinking.";
+    int dots = 4;
+    for(int i = 0 ; i < dots ; i++)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms / dots));
+        cout << ".";
+        cout.flush();
+    }
+    cout << "\n";
 }
+
 int Controller::aiChoose(const std::vector<int>& valid, Player* decider)
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     if(valid.empty())
         return 0;
 
@@ -1203,13 +1198,12 @@ int Controller::aiChoose(const std::vector<int>& valid, Player* decider)
     }
 
     int pick = best[rand() % best.size()];
-    effectLog << "🤖 " << decider->getName() << " (AI) chooses: " << pick << "\n";
+    cout << "🤖 " << decider->getName() << " (AI) chooses: " << pick << "\n";
     return pick;
 }
 
 bool Controller::aiYesNo(Player* decider)
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     aiThink(decider);
 
     bool yes;
@@ -1229,17 +1223,16 @@ bool Controller::aiYesNo(Player* decider)
         yes = (rand() % 2) == 0;
     }
 
-    effectLog << "🤖 " << decider->getName() << " (AI) answers: " << (yes ? "yes" : "no") << "\n";
+    cout << "🤖 " << decider->getName() << " (AI) answers: " << (yes ? "yes" : "no") << "\n";
     return yes;
 }
 
 int Controller::aiInt(Player* decider)
 {
-    GuiEffectLogger effectLog([this](const std::string& message) { guiLog(message); });
     aiThink(decider);
 
     int x = rand() % 7 + 1;
-    effectLog << "🤖 " << decider->getName() << " (AI) enters: " << x << "\n";
+    cout << "🤖 " << decider->getName() << " (AI) enters: " << x << "\n";
     return x;
 }
 
@@ -1364,7 +1357,6 @@ bool Controller::beginGuiSetup(Player players[2])
     activeDecider = nullptr;
     guiMode = false;
     guiCombatLog.clear();
-    guiTurnOwner = -1;
 
     gamerand = 0;
     guiCharacterPlayerIndex = -1;
@@ -1732,7 +1724,6 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
     enemy = &players[1];
     activeDecider = current;
     gamerand = 0;
-    guiTurnOwner = -1;
     guiMode = true;
 
     {
@@ -1745,6 +1736,7 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
         gGuiEffect.ready = false;
     }
     guiCombatLog.clear();
+    clearGuiEffectLog();
 
     // Same opening hero spaces as the original console setup.
     bord.addCharacter(4, current->getHero());
@@ -1932,7 +1924,6 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
         if (gGuiEffect.busy) return false;
         gGuiEffect.busy = true;
         gGuiEffect.finished = false;
-        guiCombatLog.clear();
         gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
         gGuiEffect.ready = false;
         gGuiEffect.prompt.clear();
@@ -1949,11 +1940,33 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
     std::thread([this, attacker, defender,
                  selectedAttack, selectedDefense]() mutable
     {
+        std::ostringstream captured;
+        std::streambuf* old = std::cout.rdbuf(captured.rdbuf());
+
         GuessElementary = false;
-        guiLog("Combat started: " + selectedAttack.getName() +
-               " vs " + selectedDefense.getName() + ".");
         resolveCombat(selectedAttack, selectedDefense, attacker, defender);
-        guiLog("Combat resolved.");
+
+        std::cout.rdbuf(old);
+
+        std::vector<std::string> logs;
+        std::istringstream lines(captured.str());
+        std::string line;
+        while (std::getline(lines, line))
+        {
+            while (!line.empty() && (line.front() == ' ' || line.front() == '\t'))
+                line.erase(line.begin());
+            while (!line.empty() && (line.back() == ' ' || line.back() == '\t' || line.back() == '\r'))
+                line.pop_back();
+            if (line.empty()) continue;
+
+            bool separators = true;
+            for (char c : line)
+                if (c != '=' && c != '-' && c != ' ') { separators = false; break; }
+            if (!separators) logs.push_back(line);
+        }
+        logs.push_back("Combat resolved.");
+
+        guiCombatLog = std::move(logs);
 
         {
             std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
@@ -2018,7 +2031,6 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
     if (!ownerOK || !card.isScheme()) return false;
 
     {
-        guiCombatLog.clear();
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
         if (gGuiEffect.busy) return false;
         gGuiEffect.busy = true;
@@ -2034,12 +2046,6 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
 
     std::thread([this, selected, fighter]() mutable
     {
-        {
-            std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-            gGuiEffect.title = selected.getName();
-            gGuiEffect.description = selected.geteffect();
-        }
-        guiLog("Effect started: " + selected.getName() + ".");
         applyEffectScheme(selected, current, enemy, fighter);
 
         {
@@ -2053,95 +2059,83 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
     return true;
 }
 
-void Controller::guiLog(const std::string& message)
+void Controller::guiLogEffect(const std::string& text)
 {
-    if (message.empty())
-        return;
-
-    if (!guiMode)
-    {
-        std::cout << message << '\n';
-        return;
-    }
-
+    if (text.empty()) return;
     std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-    guiCombatLog.push_back(message);
+    if (guiEffectLog.empty()) guiEffectLog.emplace_back();
 
-    constexpr std::size_t maxLogLines = 24;
-    if (guiCombatLog.size() > maxLogLines)
-        guiCombatLog.erase(guiCombatLog.begin(), guiCombatLog.end() - static_cast<std::ptrdiff_t>(maxLogLines));
+    for (char c : text)
+    {
+        if (c == '\n') guiEffectLog.emplace_back();
+        else if (c != '\r') guiEffectLog.back() += c;
+    }
 }
 
-void Controller::guiBeginTurn()
+std::vector<std::string> Controller::getGuiEffectLog() const
 {
-    if (!guiMode || !current || !current->getHero())
-        return;
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    return guiEffectLog;
+}
 
-    if (current->getHero()->getowner() == guiTurnOwner)
-        return;
+void Controller::clearGuiEffectLog()
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    guiEffectLog.clear();
+}
 
-    guiTurnOwner = current->getHero()->getowner();
+bool Controller::guiEffectCanClose() const
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    return !gGuiEffect.busy &&
+           gGuiEffect.requestType == GuiEffectBridge::RequestType::None;
+}
 
-    if (current->getHero()->getName() != "Dracula" ||
-        !current->getHero()->checkalive())
-        return;
+bool Controller::guiBeginTurn()
+{
+    if (!current || !current->getHero()) return false;
 
     {
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-        if (gGuiEffect.busy)
-            return;
-
-        gGuiEffect.busy = true;
+        if (gGuiEffect.busy) return false;
+        gGuiEffect.busy = false;
         gGuiEffect.finished = false;
         gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
-        gGuiEffect.prompt.clear();
-        gGuiEffect.title = "DRACULA'S SPECIAL ABILITY";
-        gGuiEffect.description =
-            "Dracula may deal 1 damage to an adjacent fighter and then draw 1 card.";
-        gGuiEffect.choices.clear();
         gGuiEffect.ready = false;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.choices.clear();
+        guiEffectLog.clear();
     }
 
-    std::thread([this]()
+    if (current->getHero()->getName() != "Dracula")
+        return false;
+
+    {
+        std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        gGuiEffect.busy = true;
+    }
+
+    std::thread([this]
     {
         activeDecider = current;
+        guiLogEffect("Dracula's special ability");
+        guiLogEffect("Do you want to use Dracula's ability? (Yes / No)");
 
+        bool useAbility = getYesNo();
+        if (useAbility)
         {
-            std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-            gGuiEffect.requestType = GuiEffectBridge::RequestType::YesNo;
-            gGuiEffect.prompt = "Do you want to use Dracula's special ability?";
-            gGuiEffect.title = "DRACULA'S SPECIAL ABILITY";
-            gGuiEffect.description =
-                "Deal 1 damage to one adjacent fighter, then draw 1 card.";
-            gGuiEffect.ready = false;
-        }
-        gGuiEffect.cv.notify_all();
-
-        if (getYesNo())
-        {
-            Character* dracula = current ? current->getHero() : nullptr;
-            if (!dracula)
-            {
-                std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-                gGuiEffect.busy = false;
-                gGuiEffect.finished = true;
-                gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
-                gGuiEffect.cv.notify_all();
-                return;
-            }
-
-            const std::vector<int> adjacent = bord.getCharacterAdjacent(dracula);
+            Character* dracula = current->getHero();
+            std::vector<int> adjacent = bord.getCharacterAdjacent(dracula);
             std::vector<Character*> targets;
             for (int pos : adjacent)
             {
                 Character* target = bord.getCharacter(pos);
-                if (target && target->checkalive())
-                    targets.push_back(target);
+                if (target && target->checkalive()) targets.push_back(target);
             }
 
             if (targets.empty())
             {
-                guiLog("No adjacent enemy fighter is available. Dracula's ability was not used.");
+                guiLogEffect("No adjacent fighters to attack!");
             }
             else
             {
@@ -2149,61 +2143,44 @@ void Controller::guiBeginTurn()
                 for (int i = 0; i < static_cast<int>(targets.size()); ++i)
                     choices.push_back(i + 1);
 
-                {
-                    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-                    gGuiEffect.requestType = GuiEffectBridge::RequestType::Choice;
-                    gGuiEffect.prompt = "Choose an adjacent enemy to damage:";
-                    gGuiEffect.title = "DRACULA'S SPECIAL ABILITY";
-                    gGuiEffect.description.clear();
-                    gGuiEffect.choices = choices;
-                    gGuiEffect.ready = false;
-                }
-                gGuiEffect.cv.notify_all();
-
-                const int selected = getChoice(choices);
-                Character* target = targets[selected - 1];
-
+                int choice = getChoice(choices);
+                Character* target = targets[choice - 1];
                 target->takeDamage(1);
-                guiLog(target->getName() + " took 1 damage from Dracula's ability.");
+                guiLogEffect("1 damage dealt to " + target->getName() + ".");
 
                 try
                 {
                     current->getDeck()->draw();
-                    guiLog("1 card was added to " + current->getName() + "'s hand.");
+                    guiLogEffect("1 card added to " + current->getName() + " hand.");
                 }
                 catch (const std::runtime_error& e)
                 {
-                    guiLog(e.what());
-                    damageAllFighters(current, 2);
-                    guiLog("All living characters on the team took 2 damage.");
+                    guiLogEffect(e.what());
+                    for (Character* fighter : current->getCharacters())
+                        if (fighter && fighter->checkalive()) fighter->takeDamage(2);
+                    guiLogEffect("All characters on the team took 2 damage.");
                 }
-
-                if (!target->checkalive() && target->getSpace() != -1)
-                {
-                    bord.deletCharacter(target->getSpace());
-                    target->setSpace(-1);
-                    guiLog(target->getName() + " was defeated.");
-                }
-
-                guiLog("Dracula's special ability was used.");
+                guiLogEffect("Ability used successfully.");
             }
         }
         else
         {
-            guiLog("Dracula's special ability was not used.");
+            guiLogEffect("Not using ability.");
         }
 
         {
             std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-            gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
-            gGuiEffect.prompt.clear();
-            gGuiEffect.choices.clear();
             gGuiEffect.busy = false;
             gGuiEffect.finished = true;
+            gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
             gGuiEffect.ready = false;
+            gGuiEffect.prompt.clear();
+            gGuiEffect.choices.clear();
         }
         gGuiEffect.cv.notify_all();
     }).detach();
+
+    return true;
 }
 
 bool Controller::guiEffectBusy() const
@@ -2217,8 +2194,6 @@ bool Controller::guiEffectFinished()
     std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
     if (!gGuiEffect.finished) return false;
     gGuiEffect.finished = false;
-    gGuiEffect.title.clear();
-    gGuiEffect.description.clear();
     return true;
 }
 
@@ -2235,14 +2210,6 @@ bool Controller::getGuiInputRequest(std::string& prompt, std::vector<int>& choic
     integerInput = gGuiEffect.requestType == GuiEffectBridge::RequestType::Integer ||
                    gGuiEffect.requestType == GuiEffectBridge::RequestType::Choice;
     return true;
-}
-
-bool Controller::getGuiEffectContext(std::string& title, std::string& description) const
-{
-    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-    title = gGuiEffect.title;
-    description = gGuiEffect.description;
-    return !title.empty() || !description.empty();
 }
 
 bool Controller::submitGuiInput(int value)
@@ -2288,13 +2255,11 @@ bool Controller::guiSaveGame(const std::string& filename)
 
 std::vector<std::string> Controller::getGuiCombatLog() const
 {
-    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
     return guiCombatLog;
 }
 
 void Controller::clearGuiCombatLog()
 {
-    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
     guiCombatLog.clear();
 }
 
@@ -2335,12 +2300,13 @@ int Controller::getActionCount() const { return gamerand; }
 void Controller::guiEndAction() { if (gamerand < 2) ++gamerand; }
 void Controller::guiEndTurn()
 {
-
+    // The GUI resolves the 7-card hand limit before calling this method.
+    // Keep the guard here as a second line of defense so the controller can
+    // never pass a turn while the current hand is above the official limit.
     if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
         return;
 
     gamerand = 0;
-    guiTurnOwner = -1;
     std::swap(current, enemy);
 }
 

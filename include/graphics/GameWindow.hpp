@@ -57,14 +57,40 @@ private:
     bool defenseSelectionMode = false;
     bool awaitingMoveBoost = false;
     bool moveBoostPrompt = false;
-    bool effectPanelActive = false;
-    std::string effectCardName;
-    std::string effectCardText;
-    std::string effectPrompt;
-    std::vector<int> effectChoices;
-    bool effectYesNo = false;
-    bool effectInteger = false;
-    int effectFinishTimer = 0;
+    // Which of the three fully-independent effect panels (if any) currently
+    // owns the screen. Only one can be active at a time, since only one
+    // effect can be resolving on the Controller side at once.
+    enum class EffectPanelKind { None, Attack, Scheme, Dracula };
+    EffectPanelKind activeEffectPanel = EffectPanelKind::None;
+
+    // --- Attack effects panel state (combat resolution) ---
+    std::string attackCardName;
+    std::string attackCardText;
+    std::string attackPrompt;
+    std::vector<int> attackChoices;
+    bool attackYesNo = false;
+    bool attackInteger = false;
+    bool attackResolved = false;
+    std::string attackInputBuffer;
+
+    // --- Scheme effects panel state ---
+    std::string schemeCardName;
+    std::string schemeCardText;
+    std::string schemePrompt;
+    std::vector<int> schemeChoices;
+    bool schemeYesNo = false;
+    bool schemeInteger = false;
+    bool schemeResolved = false;
+    std::string schemeInputBuffer;
+
+    // --- Dracula special-ability panel state ---
+    std::string draculaPrompt;
+    std::vector<int> draculaChoices;
+    bool draculaYesNo = false;
+    bool draculaInteger = false;
+    bool draculaResolved = false;
+    std::string draculaInputBuffer;
+
     bool handLimitMode = false;
 
     struct SaveEntry
@@ -116,10 +142,22 @@ private:
     Character* selectedCurrentCharacter() const;
     void checkGameOver();
     void refreshCombatLog();
-    void updateEffectPanel();
-    void drawEffectPanel();
-    void handleEffectInput(sf::Vector2f p);
+
+    // Each of the three effect panels below is fully self-contained: its own
+    // update (polling the Controller for input requests / completion), its
+    // own render, and its own click handling. None of them share logic or
+    // state with the others.
+    void updateAttackEffectPanel();
+    void drawAttackEffectPanel();
+    void handleAttackEffectInput(sf::Vector2f p);
+
+    void updateSchemeEffectPanel();
+    void drawSchemeEffectPanel();
+    void handleSchemeEffectInput(sf::Vector2f p);
+
+    void updateDraculaEffectPanel();
+    void drawDraculaEffectPanel();
+    void handleDraculaEffectInput(sf::Vector2f p);
+
     void finishTurnAfterHandLimit();
-    void drawDraculaPrompt();
-    void handleDraculaAbilityClick(sf::Vector2f p);
 };

@@ -21,7 +21,7 @@ public:
     void run();
 
 private:
-    enum class Screen { MainMenu, Setup, Game, GameOver };
+    enum class Screen { MainMenu, LoadGame, Setup, Game, GameOver };
 
     sf::RenderWindow window;
     sf::Font font;
@@ -92,6 +92,22 @@ private:
     std::string draculaInputBuffer;
 
     bool handLimitMode = false;
+
+    struct SaveEntry
+    {
+        std::string path;
+        std::string date;
+        std::string time;
+        std::string player1;
+        std::string player2;
+        std::string heroes;
+        long long timestamp = 0;
+    };
+
+    std::vector<SaveEntry> saveEntries;
+    float loadScroll = 0.f;
+    bool draculaAbilityPrompt = false;
+    std::string effectInputBuffer;
     int moveBoost = 0;
     std::string message;
     int messageTimer = 0;
@@ -103,10 +119,13 @@ private:
     void render();
     void drawMainMenu();
     void drawSetup();
+    void drawLoadGame();
     void drawGame();
     void drawGameOver();
     void handleMainMenuClick(sf::Vector2f p);
+    void handleLoadGameClick(sf::Vector2f p);
     void handleSetupClick(sf::Vector2f p);
+    void refreshSaveEntries();
     void handleGameClick(sf::Vector2f p);
     void startGame();
     void showMessage(const std::string& text);

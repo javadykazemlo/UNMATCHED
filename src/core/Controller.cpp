@@ -1310,6 +1310,26 @@ bool Controller::LoadGame(Player player[2], const string& filename)
 
     current = loadedCurrent;
     enemy = loadedEnemy;
+    guiMode = true;
+    guiPlayers = player;
+    guiTurnOwner = -1;
+    guiSetupStage = GuiSetupStage::Ready;
+    guiCharacterPlayerIndex = -1;
+    guiPositionPlayerIndex = -1;
+    guiSidekickPlayerIndex = -1;
+    guiSidekicksDonePlayers = 0;
+    {
+        std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        gGuiEffect.busy = false;
+        gGuiEffect.finished = false;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.title.clear();
+        gGuiEffect.description.clear();
+        gGuiEffect.choices.clear();
+        gGuiEffect.ready = false;
+    }
+    guiCombatLog.clear();
 
     cancelEffectDR = loadedCancelDR;
     cancelEffectSH = loadedCancelSH;

@@ -156,23 +156,66 @@ void GameWindow::processEvents()
             continue;
         }
 
-        if (screen == Screen::Game && effectPanelActive && effectInteger)
+        // Graphical input box (typed number) for whichever effect panel is
+        // currently active. Each panel keeps its own input buffer; this is
+        // just keystroke routing to the right one, not panel logic.
+        if (screen == Screen::Game && activeEffectPanel == EffectPanelKind::Attack && attackInteger)
         {
             if (const auto* text = event->getIf<sf::Event::TextEntered>())
             {
                 if (text->unicode >= '0' && text->unicode <= '9' &&
-                    effectInputBuffer.size() < 3)
-                    effectInputBuffer.push_back(static_cast<char>(text->unicode));
+                    attackInputBuffer.size() < 3)
+                    attackInputBuffer.push_back(static_cast<char>(text->unicode));
             }
 
             if (const auto* key = event->getIf<sf::Event::KeyPressed>())
             {
-                if (key->code == sf::Keyboard::Key::Backspace && !effectInputBuffer.empty())
-                    effectInputBuffer.pop_back();
-                else if (key->code == sf::Keyboard::Key::Enter && !effectInputBuffer.empty())
+                if (key->code == sf::Keyboard::Key::Backspace && !attackInputBuffer.empty())
+                    attackInputBuffer.pop_back();
+                else if (key->code == sf::Keyboard::Key::Enter && !attackInputBuffer.empty())
                 {
-                    if (controller.submitGuiInput(std::stoi(effectInputBuffer)))
-                        effectInputBuffer.clear();
+                    if (controller.submitGuiInput(std::stoi(attackInputBuffer)))
+                        attackInputBuffer.clear();
+                }
+            }
+        }
+        else if (screen == Screen::Game && activeEffectPanel == EffectPanelKind::Scheme && schemeInteger)
+        {
+            if (const auto* text = event->getIf<sf::Event::TextEntered>())
+            {
+                if (text->unicode >= '0' && text->unicode <= '9' &&
+                    schemeInputBuffer.size() < 3)
+                    schemeInputBuffer.push_back(static_cast<char>(text->unicode));
+            }
+
+            if (const auto* key = event->getIf<sf::Event::KeyPressed>())
+            {
+                if (key->code == sf::Keyboard::Key::Backspace && !schemeInputBuffer.empty())
+                    schemeInputBuffer.pop_back();
+                else if (key->code == sf::Keyboard::Key::Enter && !schemeInputBuffer.empty())
+                {
+                    if (controller.submitGuiInput(std::stoi(schemeInputBuffer)))
+                        schemeInputBuffer.clear();
+                }
+            }
+        }
+        else if (screen == Screen::Game && activeEffectPanel == EffectPanelKind::Dracula && draculaInteger)
+        {
+            if (const auto* text = event->getIf<sf::Event::TextEntered>())
+            {
+                if (text->unicode >= '0' && text->unicode <= '9' &&
+                    draculaInputBuffer.size() < 3)
+                    draculaInputBuffer.push_back(static_cast<char>(text->unicode));
+            }
+
+            if (const auto* key = event->getIf<sf::Event::KeyPressed>())
+            {
+                if (key->code == sf::Keyboard::Key::Backspace && !draculaInputBuffer.empty())
+                    draculaInputBuffer.pop_back();
+                else if (key->code == sf::Keyboard::Key::Enter && !draculaInputBuffer.empty())
+                {
+                    if (controller.submitGuiInput(std::stoi(draculaInputBuffer)))
+                        draculaInputBuffer.clear();
                 }
             }
         }
@@ -245,8 +288,15 @@ void GameWindow::update()
 
     if (screen == Screen::Game)
     {
-        updateEffectPanel();
-        if (!controller.guiEffectBusy() && !effectPanelActive)
+        switch (activeEffectPanel)
+        {
+            case EffectPanelKind::Attack:  updateAttackEffectPanel();  break;
+            case EffectPanelKind::Scheme:  updateSchemeEffectPanel();  break;
+            case EffectPanelKind::Dracula: updateDraculaEffectPanel(); break;
+            case EffectPanelKind::None:    break;
+        }
+
+        if (!controller.guiEffectBusy() && activeEffectPanel == EffectPanelKind::None)
             checkGameOver();
     }
 }
@@ -699,9 +749,13 @@ void GameWindow::drawGame()
     }
     ui->drawButton(window, {{1385.f, 815.f}, {175.f, 42.f}}, "END TURN", true, BLUE);
 
-    if (effectPanelActive)
-        drawEffectPanel();
-
+    switch (activeEffectPanel)
+    {
+        case EffectPanelKind::Attack:  drawAttackEffectPanel();  break;
+        case EffectPanelKind::Scheme:  drawSchemeEffectPanel();  break;
+        case EffectPanelKind::Dracula: drawDraculaEffectPanel(); break;
+        case EffectPanelKind::None:    break;
+    }
 }
 
 void GameWindow::drawGameOver()
@@ -861,14 +915,13 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
             resetSelections();
             if (controller.guiBeginTurn())
             {
-                effectPanelActive = true;
-                effectResolved = false;
-                effectCardName = "DRACULA ABILITY";
-                effectCardText = "At the beginning of Dracula's turn, his special ability can be used.";
-                effectPrompt.clear();
-                effectChoices.clear();
-                effectYesNo = false;
-                effectInteger = false;
+                activeEffectPanel = EffectPanelKind::Dracula;
+                draculaResolved = false;
+                draculaPrompt.clear();
+                draculaChoices.clear();
+                draculaYesNo = false;
+                draculaInteger = false;
+                draculaInputBuffer.clear();
             }
             showMessage("The game has started.");
         }
@@ -882,12 +935,19 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     Character* selected = selectedCurrentCharacter();
 
     // Keep the game locked while a card effect is resolving or while the
-    // resolved-effect result is still being displayed.
-    if (effectPanelActive)
+    // resolved-effect result is still being displayed. Each panel routes
+    // clicks through its own independent handler.
+    if (activeEffectPanel != EffectPanelKind::None)
     {
         if (controller.guiEffectBusy())
         {
-            handleEffectInput(p);
+            switch (activeEffectPanel)
+            {
+                case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
+                case EffectPanelKind::Scheme:  handleSchemeEffectInput(p);  break;
+                case EffectPanelKind::Dracula: handleDraculaEffectInput(p); break;
+                case EffectPanelKind::None:    break;
+            }
         }
         return;
     }
@@ -905,13 +965,9 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // While a card effect/combat is waiting for an input, no other game action
-    // may mutate the Controller.
-    if (controller.guiEffectBusy())
-    {
-        handleEffectInput(p);
-        return;
-    }
+    // Note: activeEffectPanel is always set together with the Controller's
+    // busy flag at every call site below, so controller.guiEffectBusy()
+    // cannot be true here (activeEffectPanel == None already handled above).
 
     // Hand limit: exactly the same rule as Controller::playTurn.
     // If the hand is above 7, the player must choose cards to discard first.
@@ -947,14 +1003,13 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         combatLog.clear();
         if (controller.guiBeginTurn())
         {
-            effectPanelActive = true;
-            effectResolved = false;
-            effectCardName = "DRACULA ABILITY";
-            effectCardText = "At the beginning of Dracula's turn, his special ability can be used.";
-            effectPrompt.clear();
-            effectChoices.clear();
-            effectYesNo = false;
-            effectInteger = false;
+            activeEffectPanel = EffectPanelKind::Dracula;
+            draculaResolved = false;
+            draculaPrompt.clear();
+            draculaChoices.clear();
+            draculaYesNo = false;
+            draculaInteger = false;
+            draculaInputBuffer.clear();
         }
         showMessage("Turn changed.");
         return;
@@ -1085,15 +1140,16 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         {
             const Card attackCard = current->getDeck()->getHandcard(selectedCard);
             const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
-            effectPanelActive = true;
-            effectResolved = false;
-            effectCardName = "COMBAT";
-            effectCardText = attackCard.getName() + "  VS  " + defensePlayedCard.getName() +
+            activeEffectPanel = EffectPanelKind::Attack;
+            attackResolved = false;
+            attackCardName = "COMBAT";
+            attackCardText = attackCard.getName() + "  VS  " + defensePlayedCard.getName() +
                              "\n\nResolving attack, defense and combat effects...";
-            effectPrompt = "Resolving combat...";
-            effectChoices.clear();
-            effectYesNo = false;
-            effectInteger = false;
+            attackPrompt = "Resolving combat...";
+            attackChoices.clear();
+            attackYesNo = false;
+            attackInteger = false;
+            attackInputBuffer.clear();
             refreshCombatLog();
             defenseSelectionMode = false;
             attackMode = false;
@@ -1146,14 +1202,15 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     const Card chosenCard = current->getDeck()->gethand()[card];
                     if (controller.guiScheme(selected, card))
                     {
-                        effectPanelActive = true;
-                        effectResolved = false;
-                        effectCardName = chosenCard.getName();
-                        effectCardText = chosenCard.geteffect();
-                        effectPrompt = "Resolving effect...";
-                        effectChoices.clear();
-                        effectYesNo = false;
-                        effectInteger = false;
+                        activeEffectPanel = EffectPanelKind::Scheme;
+                        schemeResolved = false;
+                        schemeCardName = chosenCard.getName();
+                        schemeCardText = chosenCard.geteffect();
+                        schemePrompt = "Resolving effect...";
+                        schemeChoices.clear();
+                        schemeYesNo = false;
+                        schemeInteger = false;
+                        schemeInputBuffer.clear();
                         schemeMode = false;
                         selectedCharacter = -1;
                         selectedCard = -1;
@@ -1224,15 +1281,16 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                 {
                     const Card attackCard = current->getDeck()->getHandcard(selectedCard);
                     const Card defenseCard = enemyPlayer->getDeck()->gethand()[valid.front()];
-                    effectPanelActive = true;
-                    effectResolved = false;
-                    effectCardName = "COMBAT";
-                    effectCardText = attackCard.getName() + "  VS  " + defenseCard.getName() +
+                    activeEffectPanel = EffectPanelKind::Attack;
+                    attackResolved = false;
+                    attackCardName = "COMBAT";
+                    attackCardText = attackCard.getName() + "  VS  " + defenseCard.getName() +
                                      "\n\nResolving attack, defense and combat effects...";
-                    effectPrompt = "Resolving combat...";
-                    effectChoices.clear();
-                    effectYesNo = false;
-                    effectInteger = false;
+                    attackPrompt = "Resolving combat...";
+                    attackChoices.clear();
+                    attackYesNo = false;
+                    attackInteger = false;
+                    attackInputBuffer.clear();
                     attackMode = false;
                     selectedCard = -1;
                     selectedEnemy = -1;
@@ -1272,7 +1330,13 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 }
 
 
-void GameWindow::updateEffectPanel()
+// ============================================================================
+// ATTACK EFFECTS PANEL
+// Fully independent from the Scheme and Dracula panels: its own state,
+// its own update/render/click-handling.
+// ============================================================================
+
+void GameWindow::updateAttackEffectPanel()
 {
     std::string prompt;
     std::vector<int> choices;
@@ -1281,40 +1345,31 @@ void GameWindow::updateEffectPanel()
 
     if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput))
     {
-        effectPrompt = prompt;
-        effectChoices = choices;
-        effectYesNo = yesNo;
-        effectInteger = integerInput;
+        attackPrompt = prompt;
+        attackChoices = choices;
+        attackYesNo = yesNo;
+        attackInteger = integerInput;
     }
 
-    if (effectPanelActive && controller.guiEffectFinished())
+    if (controller.guiEffectFinished())
     {
-        effectResolved = true;
-        effectPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
-        effectChoices.clear();
-        effectYesNo = false;
-        effectInteger = false;
-        effectInputBuffer.clear();
+        attackResolved = true;
+        attackPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        attackChoices.clear();
+        attackYesNo = false;
+        attackInteger = false;
+        attackInputBuffer.clear();
 
-        if (effectCardName == "COMBAT")
-        {
-            refreshCombatLog();
-            attackMode = false;
-            defenseSelectionMode = false;
-            selectedCard = -1;
-            selectedEnemy = -1;
-            selectedCharacter = -1;
-        }
-        else
-        {
-            schemeMode = false;
-            selectedCard = -1;
-            selectedCharacter = -1;
-        }
+        refreshCombatLog();
+        attackMode = false;
+        defenseSelectionMode = false;
+        selectedCard = -1;
+        selectedEnemy = -1;
+        selectedCharacter = -1;
     }
 }
 
-void GameWindow::drawEffectPanel()
+void GameWindow::drawAttackEffectPanel()
 {
     sf::RectangleShape overlay({1600.f, 900.f});
     overlay.setFillColor(sf::Color(2, 3, 7, 175));
@@ -1323,13 +1378,14 @@ void GameWindow::drawEffectPanel()
     const sf::FloatRect panel({330.f, 70.f}, {940.f, 760.f});
     ui->drawPanel(window, panel, GOLD);
 
-    ui->drawText(window, effectCardName.empty() ? "CARD EFFECT" : effectCardName,
+    ui->drawText(window, attackCardName.empty() ? "ATTACK EFFECT" : attackCardName,
                  {385.f, 100.f}, 24, GOLD);
 
-    ui->drawText(window, effectCardText.empty() ? "Resolving card effect..." : effectCardText,
+    ui->drawText(window, attackCardText.empty() ? "Resolving combat..." : attackCardText,
                  {385.f, 145.f}, 14, PARCHMENT);
 
-    // Live effect log: every cout-like message generated by an effect is shown here.
+    // Live effect log: every cout-like message generated by the combat/attack
+    // effects is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 190.f;
     int shown = 0;
@@ -1356,17 +1412,21 @@ void GameWindow::drawEffectPanel()
         ++shown;
     }
 
-    if (!effectPrompt.empty())
-        ui->drawText(window, effectPrompt, {385.f, 470.f}, 16, GOLD);
+    if (!attackPrompt.empty())
+        ui->drawText(window, attackPrompt, {385.f, 470.f}, 16, GOLD);
 
-    if (!effectResolved)
+    if (!attackResolved)
     {
-        if (effectYesNo)
+        // Graphical input box: wherever the attack/combat effect logic calls
+        // for cin (yes/no, a numbered choice, or a typed number), the
+        // corresponding control below appears right under the effect log
+        // and its value is fed back to the Controller instead of stdin.
+        if (attackYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
             ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
         }
-        else if (!effectChoices.empty())
+        else if (!attackChoices.empty())
         {
             const float startX = 390.f;
             const float startY = 520.f;
@@ -1374,7 +1434,7 @@ void GameWindow::drawEffectPanel()
             const float bh = 36.f;
             const float gap = 8.f;
 
-            for (std::size_t i = 0; i < effectChoices.size() && i < 40; ++i)
+            for (std::size_t i = 0; i < attackChoices.size() && i < 40; ++i)
             {
                 const int col = static_cast<int>(i % 8);
                 const int row = static_cast<int>(i / 8);
@@ -1382,71 +1442,49 @@ void GameWindow::drawEffectPanel()
                                {{startX + col * (bw + gap),
                                  startY + row * (bh + gap)},
                                 {bw, bh}},
-                               std::to_string(effectChoices[i]), true, GOLD);
+                               std::to_string(attackChoices[i]), true, GOLD);
             }
         }
-        else if (effectInteger)
+        else if (attackInteger)
         {
             ui->drawPanel(window, {{470.f, 520.f}, {500.f, 55.f}}, GOLD);
-            ui->drawText(window, effectInputBuffer.empty() ? "_" : effectInputBuffer,
+            ui->drawText(window, attackInputBuffer.empty() ? "_" : attackInputBuffer,
                          {490.f, 534.f}, 18, PARCHMENT);
             ui->drawText(window, "Type the number, then press ENTER.",
                          {470.f, 585.f}, 12, PARCHMENT);
         }
     }
-    // Dracula's special-ability panel keeps the return button visible from the
-    // moment the panel opens. It becomes clickable as soon as the controller
-    // says the effect may be closed.
-    if (effectCardName == "DRACULA ABILITY" || effectResolved)
+
+    if (attackResolved)
     {
-        const bool canClose = effectResolved && controller.guiEffectCanClose();
+        const bool canClose = controller.guiEffectCanClose();
         ui->drawButton(window, {{565.f, 705.f}, {470.f, 58.f}},
                        "RETURN TO GAME", canClose, GOLD);
     }
 }
 
-void GameWindow::handleEffectInput(sf::Vector2f p)
+void GameWindow::handleAttackEffectInput(sf::Vector2f p)
 {
-    if (effectCardName == "DRACULA ABILITY" &&
-        sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p))
-    {
-        if (controller.guiEffectCanClose())
-        {
-            effectPanelActive = false;
-            effectResolved = false;
-            effectCardName.clear();
-            effectCardText.clear();
-            effectPrompt.clear();
-            effectChoices.clear();
-            effectYesNo = false;
-            effectInteger = false;
-            effectInputBuffer.clear();
-            controller.clearGuiEffectLog();
-            checkGameOver();
-        }
-        return;
-    }
-
-    if (effectResolved)
+    if (attackResolved)
     {
         if (sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p) && controller.guiEffectCanClose())
         {
-            effectPanelActive = false;
-            effectResolved = false;
-            effectCardName.clear();
-            effectCardText.clear();
-            effectPrompt.clear();
-            effectChoices.clear();
-            effectYesNo = false;
-            effectInteger = false;
-            effectInputBuffer.clear();
+            activeEffectPanel = EffectPanelKind::None;
+            attackResolved = false;
+            attackCardName.clear();
+            attackCardText.clear();
+            attackPrompt.clear();
+            attackChoices.clear();
+            attackYesNo = false;
+            attackInteger = false;
+            attackInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
         }
         return;
     }
 
-    if (effectYesNo)
+    if (attackYesNo)
     {
         if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
             controller.submitGuiYesNo(true);
@@ -1455,7 +1493,7 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
         return;
     }
 
-    if (!effectChoices.empty())
+    if (!attackChoices.empty())
     {
         const float startX = 390.f;
         const float startY = 520.f;
@@ -1463,7 +1501,7 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
         const float bh = 36.f;
         const float gap = 8.f;
 
-        for (std::size_t i = 0; i < effectChoices.size() && i < 40; ++i)
+        for (std::size_t i = 0; i < attackChoices.size() && i < 40; ++i)
         {
             const int col = static_cast<int>(i % 8);
             const int row = static_cast<int>(i / 8);
@@ -1473,7 +1511,375 @@ void GameWindow::handleEffectInput(sf::Vector2f p)
 
             if (button.contains(p))
             {
-                controller.submitGuiInput(effectChoices[i]);
+                controller.submitGuiInput(attackChoices[i]);
+                return;
+            }
+        }
+    }
+}
+
+// ============================================================================
+// SCHEME EFFECTS PANEL
+// Fully independent from the Attack and Dracula panels: its own state,
+// its own update/render/click-handling.
+// ============================================================================
+
+void GameWindow::updateSchemeEffectPanel()
+{
+    std::string prompt;
+    std::vector<int> choices;
+    bool yesNo = false;
+    bool integerInput = false;
+
+    if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput))
+    {
+        schemePrompt = prompt;
+        schemeChoices = choices;
+        schemeYesNo = yesNo;
+        schemeInteger = integerInput;
+    }
+
+    if (controller.guiEffectFinished())
+    {
+        schemeResolved = true;
+        schemePrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        schemeChoices.clear();
+        schemeYesNo = false;
+        schemeInteger = false;
+        schemeInputBuffer.clear();
+
+        schemeMode = false;
+        selectedCard = -1;
+        selectedCharacter = -1;
+    }
+}
+
+void GameWindow::drawSchemeEffectPanel()
+{
+    sf::RectangleShape overlay({1600.f, 900.f});
+    overlay.setFillColor(sf::Color(2, 3, 7, 175));
+    window.draw(overlay);
+
+    const sf::FloatRect panel({330.f, 70.f}, {940.f, 760.f});
+    ui->drawPanel(window, panel, GOLD);
+
+    ui->drawText(window, schemeCardName.empty() ? "SCHEME EFFECT" : schemeCardName,
+                 {385.f, 100.f}, 24, GOLD);
+
+    ui->drawText(window, schemeCardText.empty() ? "Resolving Scheme effect..." : schemeCardText,
+                 {385.f, 145.f}, 14, PARCHMENT);
+
+    // Live effect log: every cout-like message generated by the Scheme
+    // effect is shown here.
+    const std::vector<std::string> logs = controller.getGuiEffectLog();
+    float y = 190.f;
+    int shown = 0;
+    for (auto it = logs.rbegin(); it != logs.rend() && shown < 11; ++it)
+    {
+        if (it->empty()) continue;
+        std::string line = *it;
+        float lineY = y + static_cast<float>(shown) * 25.f;
+        std::string chunk;
+        int wrapped = 0;
+        for (char c : line)
+        {
+            chunk += c;
+            if (chunk.size() >= 82)
+            {
+                ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+                chunk.clear();
+                ++wrapped;
+                if (wrapped >= 2) break;
+            }
+        }
+        if (!chunk.empty() && wrapped < 2)
+            ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+        ++shown;
+    }
+
+    if (!schemePrompt.empty())
+        ui->drawText(window, schemePrompt, {385.f, 470.f}, 16, GOLD);
+
+    if (!schemeResolved)
+    {
+        // Graphical input box: wherever the Scheme effect logic calls for
+        // cin (yes/no, a numbered choice, or a typed number), the
+        // corresponding control below appears right under the effect log
+        // and its value is fed back to the Controller instead of stdin.
+        if (schemeYesNo)
+        {
+            ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+        }
+        else if (!schemeChoices.empty())
+        {
+            const float startX = 390.f;
+            const float startY = 520.f;
+            const float bw = 88.f;
+            const float bh = 36.f;
+            const float gap = 8.f;
+
+            for (std::size_t i = 0; i < schemeChoices.size() && i < 40; ++i)
+            {
+                const int col = static_cast<int>(i % 8);
+                const int row = static_cast<int>(i / 8);
+                ui->drawButton(window,
+                               {{startX + col * (bw + gap),
+                                 startY + row * (bh + gap)},
+                                {bw, bh}},
+                               std::to_string(schemeChoices[i]), true, GOLD);
+            }
+        }
+        else if (schemeInteger)
+        {
+            ui->drawPanel(window, {{470.f, 520.f}, {500.f, 55.f}}, GOLD);
+            ui->drawText(window, schemeInputBuffer.empty() ? "_" : schemeInputBuffer,
+                         {490.f, 534.f}, 18, PARCHMENT);
+            ui->drawText(window, "Type the number, then press ENTER.",
+                         {470.f, 585.f}, 12, PARCHMENT);
+        }
+    }
+
+    if (schemeResolved)
+    {
+        const bool canClose = controller.guiEffectCanClose();
+        ui->drawButton(window, {{565.f, 705.f}, {470.f, 58.f}},
+                       "RETURN TO GAME", canClose, GOLD);
+    }
+}
+
+void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
+{
+    if (schemeResolved)
+    {
+        if (sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p) && controller.guiEffectCanClose())
+        {
+            activeEffectPanel = EffectPanelKind::None;
+            schemeResolved = false;
+            schemeCardName.clear();
+            schemeCardText.clear();
+            schemePrompt.clear();
+            schemeChoices.clear();
+            schemeYesNo = false;
+            schemeInteger = false;
+            schemeInputBuffer.clear();
+            controller.clearGuiEffectLog();
+            checkGameOver();
+        }
+        return;
+    }
+
+    if (schemeYesNo)
+    {
+        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(true);
+        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(false);
+        return;
+    }
+
+    if (!schemeChoices.empty())
+    {
+        const float startX = 390.f;
+        const float startY = 520.f;
+        const float bw = 88.f;
+        const float bh = 36.f;
+        const float gap = 8.f;
+
+        for (std::size_t i = 0; i < schemeChoices.size() && i < 40; ++i)
+        {
+            const int col = static_cast<int>(i % 8);
+            const int row = static_cast<int>(i / 8);
+            sf::FloatRect button(
+                {startX + col * (bw + gap), startY + row * (bh + gap)},
+                {bw, bh});
+
+            if (button.contains(p))
+            {
+                controller.submitGuiInput(schemeChoices[i]);
+                return;
+            }
+        }
+    }
+}
+
+// ============================================================================
+// DRACULA SPECIAL-ABILITY PANEL
+// Fully independent from the Attack and Scheme panels: its own state,
+// its own update/render/click-handling. Unlike the other two, its title
+// and body text are fixed, and its RETURN TO GAME button stays visible
+// (disabled) from the moment the panel opens rather than only once resolved.
+// ============================================================================
+
+void GameWindow::updateDraculaEffectPanel()
+{
+    std::string prompt;
+    std::vector<int> choices;
+    bool yesNo = false;
+    bool integerInput = false;
+
+    if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput))
+    {
+        draculaPrompt = prompt;
+        draculaChoices = choices;
+        draculaYesNo = yesNo;
+        draculaInteger = integerInput;
+    }
+
+    if (controller.guiEffectFinished())
+    {
+        draculaResolved = true;
+        draculaPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        draculaChoices.clear();
+        draculaYesNo = false;
+        draculaInteger = false;
+        draculaInputBuffer.clear();
+    }
+}
+
+void GameWindow::drawDraculaEffectPanel()
+{
+    sf::RectangleShape overlay({1600.f, 900.f});
+    overlay.setFillColor(sf::Color(2, 3, 7, 175));
+    window.draw(overlay);
+
+    const sf::FloatRect panel({330.f, 70.f}, {940.f, 760.f});
+    ui->drawPanel(window, panel, GOLD);
+
+    ui->drawText(window, "DRACULA ABILITY", {385.f, 100.f}, 24, GOLD);
+
+    ui->drawText(window, "At the beginning of Dracula's turn, his special ability can be used.",
+                 {385.f, 145.f}, 14, PARCHMENT);
+
+    // Live effect log: every cout-like message generated by Dracula's
+    // ability is shown here.
+    const std::vector<std::string> logs = controller.getGuiEffectLog();
+    float y = 190.f;
+    int shown = 0;
+    for (auto it = logs.rbegin(); it != logs.rend() && shown < 11; ++it)
+    {
+        if (it->empty()) continue;
+        std::string line = *it;
+        float lineY = y + static_cast<float>(shown) * 25.f;
+        std::string chunk;
+        int wrapped = 0;
+        for (char c : line)
+        {
+            chunk += c;
+            if (chunk.size() >= 82)
+            {
+                ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+                chunk.clear();
+                ++wrapped;
+                if (wrapped >= 2) break;
+            }
+        }
+        if (!chunk.empty() && wrapped < 2)
+            ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+        ++shown;
+    }
+
+    if (!draculaPrompt.empty())
+        ui->drawText(window, draculaPrompt, {385.f, 470.f}, 16, GOLD);
+
+    if (!draculaResolved)
+    {
+        // Graphical input box: wherever Dracula's ability calls for cin
+        // (yes/no to use the ability, or a numbered target choice), the
+        // corresponding control below appears right under the effect log
+        // and its value is fed back to the Controller instead of stdin.
+        if (draculaYesNo)
+        {
+            ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+        }
+        else if (!draculaChoices.empty())
+        {
+            const float startX = 390.f;
+            const float startY = 520.f;
+            const float bw = 88.f;
+            const float bh = 36.f;
+            const float gap = 8.f;
+
+            for (std::size_t i = 0; i < draculaChoices.size() && i < 40; ++i)
+            {
+                const int col = static_cast<int>(i % 8);
+                const int row = static_cast<int>(i / 8);
+                ui->drawButton(window,
+                               {{startX + col * (bw + gap),
+                                 startY + row * (bh + gap)},
+                                {bw, bh}},
+                               std::to_string(draculaChoices[i]), true, GOLD);
+            }
+        }
+        else if (draculaInteger)
+        {
+            ui->drawPanel(window, {{470.f, 520.f}, {500.f, 55.f}}, GOLD);
+            ui->drawText(window, draculaInputBuffer.empty() ? "_" : draculaInputBuffer,
+                         {490.f, 534.f}, 18, PARCHMENT);
+            ui->drawText(window, "Type the number, then press ENTER.",
+                         {470.f, 585.f}, 12, PARCHMENT);
+        }
+    }
+
+    // Dracula's special-ability panel keeps the return button visible from
+    // the moment the panel opens. It becomes clickable as soon as the
+    // controller says the effect may be closed.
+    const bool canClose = draculaResolved && controller.guiEffectCanClose();
+    ui->drawButton(window, {{565.f, 705.f}, {470.f, 58.f}},
+                   "RETURN TO GAME", canClose, GOLD);
+}
+
+void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
+{
+    if (sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p))
+    {
+        if (controller.guiEffectCanClose())
+        {
+            activeEffectPanel = EffectPanelKind::None;
+            draculaResolved = false;
+            draculaPrompt.clear();
+            draculaChoices.clear();
+            draculaYesNo = false;
+            draculaInteger = false;
+            draculaInputBuffer.clear();
+            controller.clearGuiEffectLog();
+            checkGameOver();
+        }
+        return;
+    }
+
+    if (draculaResolved)
+        return;
+
+    if (draculaYesNo)
+    {
+        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(true);
+        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(false);
+        return;
+    }
+
+    if (!draculaChoices.empty())
+    {
+        const float startX = 390.f;
+        const float startY = 520.f;
+        const float bw = 88.f;
+        const float bh = 36.f;
+        const float gap = 8.f;
+
+        for (std::size_t i = 0; i < draculaChoices.size() && i < 40; ++i)
+        {
+            const int col = static_cast<int>(i % 8);
+            const int row = static_cast<int>(i / 8);
+            sf::FloatRect button(
+                {startX + col * (bw + gap), startY + row * (bh + gap)},
+                {bw, bh});
+
+            if (button.contains(p))
+            {
+                controller.submitGuiInput(draculaChoices[i]);
                 return;
             }
         }
@@ -1488,14 +1894,13 @@ void GameWindow::finishTurnAfterHandLimit()
     combatLog.clear();
     if (controller.guiBeginTurn())
     {
-        effectPanelActive = true;
-        effectResolved = false;
-        effectCardName = "DRACULA ABILITY";
-        effectCardText = "At the beginning of Dracula's turn, his special ability can be used.";
-        effectPrompt.clear();
-        effectChoices.clear();
-        effectYesNo = false;
-        effectInteger = false;
+        activeEffectPanel = EffectPanelKind::Dracula;
+        draculaResolved = false;
+        draculaPrompt.clear();
+        draculaChoices.clear();
+        draculaYesNo = false;
+        draculaInteger = false;
+        draculaInputBuffer.clear();
     }
     showMessage("Turn changed.");
 }
@@ -1531,15 +1936,34 @@ void GameWindow::resetSelections()
     awaitingMoveBoost = false;
     moveBoostPrompt = false;
     moveBoost = 0;
-    effectPanelActive = false;
-    effectCardName.clear();
-    effectCardText.clear();
-    effectPrompt.clear();
-    effectChoices.clear();
-    effectYesNo = false;
-    effectInteger = false;
-    effectInputBuffer.clear();
-    effectResolved = false;
+
+    activeEffectPanel = EffectPanelKind::None;
+
+    attackCardName.clear();
+    attackCardText.clear();
+    attackPrompt.clear();
+    attackChoices.clear();
+    attackYesNo = false;
+    attackInteger = false;
+    attackResolved = false;
+    attackInputBuffer.clear();
+
+    schemeCardName.clear();
+    schemeCardText.clear();
+    schemePrompt.clear();
+    schemeChoices.clear();
+    schemeYesNo = false;
+    schemeInteger = false;
+    schemeResolved = false;
+    schemeInputBuffer.clear();
+
+    draculaPrompt.clear();
+    draculaChoices.clear();
+    draculaYesNo = false;
+    draculaInteger = false;
+    draculaResolved = false;
+    draculaInputBuffer.clear();
+
     handLimitMode = false;
 }
 

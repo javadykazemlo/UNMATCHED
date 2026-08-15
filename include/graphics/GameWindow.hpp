@@ -159,5 +159,8 @@ private:
     void drawDraculaEffectPanel();
     void handleDraculaEffectInput(sf::Vector2f p);
 
+    void advanceTurnIfTwoActionsUsed();
     void finishTurnAfterHandLimit();
+    void completeCurrentAction();
+    void openNextTurnIfReady();
 };

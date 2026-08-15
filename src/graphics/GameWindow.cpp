@@ -903,15 +903,14 @@ void GameWindow::drawGame()
     ui->drawPanel(window, {{18.f, 650.f}, {385.f, 232.f}}, RED);
     ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, RED);
     const bool canAct = controller.getActionCount() < 2;
-    ui->drawButton(window, {{35.f, 700.f}, {78.f, 43.f}}, "MOVE", moveMode, GREEN);
-    ui->drawButton(window, {{120.f, 700.f}, {78.f, 43.f}}, "ATTACK", attackMode, RED);
-    ui->drawButton(window, {{205.f, 700.f}, {78.f, 43.f}}, "SCHEME", schemeMode, PURPLE);
-    const bool abilityAvailable = controller.guiHeroAbilityAvailable();
-    ui->drawButton(window, {{290.f, 700.f}, {78.f, 43.f}}, "ABILITY", false,
-                   abilityAvailable ? GOLD : sf::Color(70, 65, 55));
+    ui->drawButton(window, {{35.f, 700.f}, {105.f, 43.f}}, "MOVE", canAct, GREEN);
+    ui->drawButton(window, {{150.f, 700.f}, {105.f, 43.f}}, "ATTACK", canAct, RED);
+    ui->drawButton(window, {{265.f, 700.f}, {105.f, 43.f}}, "SCHEME", canAct, PURPLE);
 
-    ui->drawButton(window, {{35.f, 754.f}, {160.f, 43.f}}, "SAVE GAME", false, GOLD);
-    ui->drawButton(window, {{210.f, 754.f}, {160.f, 43.f}}, "END ACTION", false, GOLD);
+    const bool activeAbility = controller.guiHeroAbilityAvailable();
+    ui->drawButton(window, {{35.f, 754.f}, {105.f, 43.f}}, "ABILITY", activeAbility, GOLD);
+    ui->drawButton(window, {{150.f, 754.f}, {105.f, 43.f}}, "SAVE", true, GOLD);
+    ui->drawButton(window, {{265.f, 754.f}, {105.f, 43.f}}, "END ACTION", true, GOLD);
 
     if (moveBoostPrompt)
     {
@@ -1187,11 +1186,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     // clicks through its own independent handler.
     if (activeEffectPanel != EffectPanelKind::None)
     {
-        // The effect panel owns mouse input for its entire lifetime. The
-        // individual handler decides whether it is waiting for an answer or
-        // is ready for RETURN TO GAME. Do not gate this on busy: busy becomes
-        // false as soon as the worker finishes, while the result panel stays
-        // visible until the player closes it.
         switch (activeEffectPanel)
         {
             case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
@@ -1212,6 +1206,38 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     if (sf::FloatRect({1472.f, 12.f}, {105.f, 42.f}).contains(p))
     {
         window.close();
+        return;
+    }
+
+    // Hero abilities are not Actions in Unmatched.  Dracula's ability is an
+    // optional once-per-turn active ability; Sherlock's and Invisible Man's
+    // abilities are passive and therefore have no active button.
+    if (sf::FloatRect({35.f, 754.f}, {105.f, 43.f}).contains(p))
+    {
+        if (controller.guiHeroAbilityAvailable())
+        {
+            if (controller.guiUseHeroAbility())
+            {
+                activeEffectPanel = EffectPanelKind::Dracula;
+                draculaResolved = false;
+                draculaPrompt.clear();
+                draculaChoices.clear();
+                draculaYesNo = false;
+                draculaInteger = false;
+                draculaInputBuffer.clear();
+                showMessage("Dracula's ability is resolving.");
+            }
+        }
+        else if (current && current->getHero())
+        {
+            const std::string hero = current->getHero()->getName();
+            if (hero == "sherlock")
+                showMessage("Sherlock's ability is passive.");
+            else if (hero == "invisible man")
+                showMessage("Invisible Man's ability is passive.");
+            else
+                showMessage("This hero has no available ability.");
+        }
         return;
     }
 
@@ -1249,15 +1275,15 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         }
 
         controller.guiEndTurn();
+        controller.guiBeginTurn();
         resetSelections();
         combatLog.clear();
-        controller.guiBeginTurn();
-        showMessage("Turn changed. Choose MOVE, ATTACK, SCHEME, or ABILITY.");
+        showMessage("Turn changed.");
         return;
     }
 
     // SAVE GAME: every click creates a new file in a persistent saves folder.
-    if (sf::FloatRect({35.f, 754.f}, {160.f, 43.f}).contains(p))
+    if (sf::FloatRect({150.f, 754.f}, {105.f, 43.f}).contains(p))
     {
         namespace fs = std::filesystem;
         std::error_code ec;
@@ -1302,7 +1328,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     }
 
     // END ACTION: immediately cancels the currently selected action/mode.
-    if (sf::FloatRect({210.f, 754.f}, {160.f, 43.f}).contains(p))
+    if (sf::FloatRect({265.f, 754.f}, {105.f, 43.f}).contains(p))
     {
         resetSelections();
         combatLog.clear();
@@ -1336,34 +1362,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
     const bool canAct = controller.getActionCount() < 2;
 
-    // HERO ABILITY: an explicit optional action button. It is only active
-    // for a hero that actually has a player-invoked ability.
-    if (sf::FloatRect({290.f, 700.f}, {78.f, 43.f}).contains(p))
-    {
-        if (!controller.guiHeroAbilityAvailable())
-        {
-            showMessage("This hero has no available active ability right now.");
-            return;
-        }
-
-        resetSelections();
-        combatLog.clear();
-        if (controller.guiUseHeroAbility())
-        {
-            activeEffectPanel = EffectPanelKind::Dracula;
-            draculaResolved = false;
-            draculaPrompt = "Use Dracula's ability?";
-            draculaChoices.clear();
-            draculaYesNo = true;
-            draculaInteger = false;
-            draculaInputBuffer.clear();
-            showMessage("Hero ability opened. Choose an option in the panel.");
-        }
-        return;
-    }
-
     // Each real action is counted immediately when its button is pressed.
-    if (sf::FloatRect({35.f, 700.f}, {78.f, 43.f}).contains(p))
+    if (sf::FloatRect({35.f, 700.f}, {105.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1386,7 +1386,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    if (sf::FloatRect({120.f, 700.f}, {78.f, 43.f}).contains(p))
+    if (sf::FloatRect({150.f, 700.f}, {105.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1404,7 +1404,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    if (sf::FloatRect({205.f, 700.f}, {78.f, 43.f}).contains(p))
+    if (sf::FloatRect({265.f, 700.f}, {105.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1625,6 +1625,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             moveBoost = 0;
             showMessage("Movement completed.");
             checkGameOver();
+            completeCurrentAction();
         }
     }
 }
@@ -1649,11 +1650,6 @@ void GameWindow::updateAttackEffectPanel()
         attackChoices = choices;
         attackYesNo = yesNo;
         attackInteger = integerInput;
-    }
-    else if (controller.guiEffectBusy() && !attackResolved &&
-             attackChoices.empty() && !attackInteger && !attackYesNo)
-    {
-        attackPrompt = "Resolving combat effect...";
     }
 
     if (controller.guiEffectFinished())
@@ -1729,7 +1725,7 @@ void GameWindow::drawAttackEffectPanel()
         if (attackYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
         }
         else if (!attackChoices.empty())
         {
@@ -1785,6 +1781,7 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
             attackInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
+            completeCurrentAction();
         }
         return;
     }
@@ -1842,11 +1839,6 @@ void GameWindow::updateSchemeEffectPanel()
         schemeChoices = choices;
         schemeYesNo = yesNo;
         schemeInteger = integerInput;
-    }
-    else if (controller.guiEffectBusy() && !schemeResolved &&
-             schemeChoices.empty() && !schemeInteger && !schemeYesNo)
-    {
-        schemePrompt = "Resolving scheme effect...";
     }
 
     if (controller.guiEffectFinished())
@@ -1919,7 +1911,7 @@ void GameWindow::drawSchemeEffectPanel()
         if (schemeYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
         }
         else if (!schemeChoices.empty())
         {
@@ -1975,6 +1967,7 @@ void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
             schemeInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
+            completeCurrentAction();
         }
         return;
     }
@@ -2023,23 +2016,6 @@ void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
 
 void GameWindow::updateDraculaEffectPanel()
 {
-    if (controller.guiEffectFinished())
-    {
-        draculaResolved = true;
-        draculaPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
-        draculaChoices.clear();
-        draculaYesNo = false;
-        draculaInteger = false;
-        draculaInputBuffer.clear();
-        return;
-    }
-
-    if (draculaResolved)
-        return;
-
-    // Always mirror the Controller's current request. There is deliberately
-    // no fake/fallback Yes/No request here: the buttons must be backed by an
-    // actual pending request so every click has a real consumer.
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -2051,6 +2027,16 @@ void GameWindow::updateDraculaEffectPanel()
         draculaChoices = choices;
         draculaYesNo = yesNo;
         draculaInteger = integerInput;
+    }
+
+    if (controller.guiEffectFinished())
+    {
+        draculaResolved = true;
+        draculaPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        draculaChoices.clear();
+        draculaYesNo = false;
+        draculaInteger = false;
+        draculaInputBuffer.clear();
     }
 }
 
@@ -2108,7 +2094,7 @@ void GameWindow::drawDraculaEffectPanel()
         if (draculaYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
         }
         else if (!draculaChoices.empty())
         {
@@ -2171,20 +2157,10 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 
     if (draculaYesNo)
     {
-        const bool clickedYes = sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p);
-        const bool clickedNo  = sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p);
-
-        if (clickedYes || clickedNo)
-        {
-            // Query the Controller at click time so the UI cannot submit a
-            // stale request from a previous frame.
-            std::string prompt;
-            std::vector<int> choices;
-            bool yesNo = false;
-            bool integerInput = false;
-            if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput) && yesNo)
-                controller.submitGuiYesNo(clickedYes);
-        }
+        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(true);
+        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
+            controller.submitGuiYesNo(false);
         return;
     }
 
@@ -2213,13 +2189,43 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
     }
 }
 
+void GameWindow::openNextTurnIfReady()
+{
+    if (controller.getActionCount() < 2)
+        return;
+
+    Player* current = controller.getCurrentPlayer();
+    if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
+    {
+        handLimitMode = true;
+        resetSelections();
+        showMessage("Two actions completed. Discard down to 7 cards to end the turn.");
+        return;
+    }
+
+    controller.guiEndTurn();
+    controller.guiBeginTurn();
+    resetSelections();
+    combatLog.clear();
+    showMessage("Two actions completed. Turn changed.");
+}
+
+void GameWindow::completeCurrentAction()
+{
+    // The action has already been committed when its MOVE/ATTACK/SCHEME
+    // button was pressed.  Here we wait for the real action to finish, then
+    // immediately pass the turn once the second action is complete.
+    if (controller.getActionCount() >= 2)
+        openNextTurnIfReady();
+}
+
 void GameWindow::finishTurnAfterHandLimit()
 {
     handLimitMode = false;
     controller.guiEndTurn();
+    controller.guiBeginTurn();
     resetSelections();
     combatLog.clear();
-    controller.guiBeginTurn();
     showMessage("Turn changed.");
 }
 

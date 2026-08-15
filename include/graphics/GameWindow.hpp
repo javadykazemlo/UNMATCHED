@@ -160,4 +160,6 @@ private:
     void handleDraculaEffectInput(sf::Vector2f p);
 
     void finishTurnAfterHandLimit();
+    void completeCurrentAction();
+    void openNextTurnIfReady();
 };

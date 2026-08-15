@@ -1312,6 +1312,7 @@ bool Controller::LoadGame(Player player[2], const string& filename)
     enemy = loadedEnemy;
     guiMode = true;
     guiPlayers = player;
+    abilityUsedThisTurn = false;
     guiSetupStage = GuiSetupStage::Ready;
     guiCharacterPlayerIndex = -1;
     guiPositionPlayerIndex = -1;
@@ -1721,6 +1722,7 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
     enemy = &players[1];
     activeDecider = current;
     gamerand = 0;
+    abilityUsedThisTurn = false;
     guiMode = true;
 
     {
@@ -2104,79 +2106,61 @@ bool Controller::guiBeginTurn()
         guiEffectLog.clear();
     }
 
-    // Hero abilities are explicit GUI actions. The beginning of a turn no
-    // longer opens a modal asking about the ability automatically.
-    guiHeroAbilityUsed = false;
+    activeDecider = current;
+    abilityUsedThisTurn = false;
     return true;
 }
 
 bool Controller::guiHeroAbilityAvailable() const
 {
-    if (!current || !current->getHero()) return false;
-    if (!current->getHero()->checkalive()) return false;
-    if (guiHeroAbilityUsed) return false;
-
-    // In the current project only Dracula has an active, player-invoked
-    // special ability. Sherlock's implementation is empty and Invisible
-    // Man's implementation is passive information rather than an action.
-    return current->getHero()->getName() == "Dracula";
+    return current && current->getHero() &&
+           current->getHero()->getName() == "Dracula" &&
+           !abilityUsedThisTurn;
 }
 
 bool Controller::guiUseHeroAbility()
 {
-    if (!guiHeroAbilityAvailable()) return false;
-    if (!current || !current->getHero()) return false;
+    if (!guiHeroAbilityAvailable() || !current || !current->getHero())
+        return false;
 
     {
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
-        if (gGuiEffect.busy) return false;
+        if (gGuiEffect.busy || gGuiEffect.requestType != GuiEffectBridge::RequestType::None)
+            return false;
         gGuiEffect.busy = true;
         gGuiEffect.finished = false;
-        gGuiEffect.requestType = GuiEffectBridge::RequestType::YesNo;
-        gGuiEffect.prompt = "Use Dracula's ability?";
-        gGuiEffect.choices.clear();
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
         gGuiEffect.ready = false;
+        gGuiEffect.prompt.clear();
+        gGuiEffect.choices.clear();
         guiEffectLog.clear();
     }
 
-    guiHeroAbilityUsed = true;
+    abilityUsedThisTurn = true;
 
     std::thread([this]
     {
         activeDecider = current;
-        guiLogEffect("Dracula's special ability");
+        guiLogEffect("Dracula's ability: at the beginning of his turn, choose one adjacent fighter (including a Sister) to take 1 damage. If damage is dealt, draw 1 card.");
 
-        // The GUI Yes/No request is published before this worker starts.
-        // Wait on that exact request instead of calling getYesNo() again.
-        // Calling getYesNo() here would replace the request and can race the
-        // SFML event loop, causing visible YES/NO buttons to ignore clicks.
-        bool useAbility = false;
+        Character* dracula = current ? current->getHero() : nullptr;
+        if (!dracula || !dracula->checkalive())
         {
-            std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
-            gGuiEffect.cv.wait(lock, []
-            {
-                return gGuiEffect.ready;
-            });
-            useAbility = gGuiEffect.boolValue;
-            gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
-            gGuiEffect.prompt.clear();
-            gGuiEffect.ready = false;
+            guiLogEffect("Dracula is not available.");
         }
-
-        if (useAbility)
+        else
         {
-            Character* dracula = current->getHero();
-            std::vector<int> adjacent = bord.getCharacterAdjacent(dracula);
             std::vector<Character*> targets;
-            for (int pos : adjacent)
+            for (int pos : bord.getCharacterAdjacent(dracula))
             {
                 Character* target = bord.getCharacter(pos);
-                if (target && target->checkalive()) targets.push_back(target);
+                if (target && target->checkalive())
+                    targets.push_back(target);
             }
 
             if (targets.empty())
             {
-                guiLogEffect("No adjacent living fighters to attack.");
+                guiLogEffect("No adjacent fighters are available.");
             }
             else
             {
@@ -2184,29 +2168,38 @@ bool Controller::guiUseHeroAbility()
                 for (int i = 0; i < static_cast<int>(targets.size()); ++i)
                     choices.push_back(i + 1);
 
-                int choice = getChoice(choices);
-                Character* target = targets[choice - 1];
-                target->takeDamage(1);
-                guiLogEffect("1 damage dealt to " + target->getName() + ".");
+                const int choice = getChoice(choices);
+                if (choice >= 1 && choice <= static_cast<int>(targets.size()))
+                {
+                    Character* target = targets[choice - 1];
+                    target->takeDamage(1);
+                    guiLogEffect("1 damage dealt to " + target->getName() + ".");
 
-                try
-                {
-                    current->getDeck()->draw();
-                    guiLogEffect("1 card added to " + current->getName() + " hand.");
+                    if (current->getDeck())
+                    {
+                        try
+                        {
+                            current->getDeck()->draw();
+                            guiLogEffect("1 card drawn.");
+                        }
+                        catch (const std::runtime_error& e)
+                        {
+                            guiLogEffect(e.what());
+                            for (Character* fighter : current->getCharacters())
+                                if (fighter && fighter->checkalive())
+                                    fighter->takeDamage(2);
+                            guiLogEffect("All fighters on the team took 2 damage.");
+                        }
+                    }
+
+                    if (!target->checkalive() && target->getSpace() != -1)
+                    {
+                        bord.deletCharacter(target->getSpace());
+                        target->setSpace(-1);
+                        guiLogEffect(target->getName() + " was defeated.");
+                    }
                 }
-                catch (const std::runtime_error& e)
-                {
-                    guiLogEffect(e.what());
-                    for (Character* fighter : current->getCharacters())
-                        if (fighter && fighter->checkalive()) fighter->takeDamage(2);
-                    guiLogEffect("All characters on the team took 2 damage.");
-                }
-                guiLogEffect("Ability used successfully.");
             }
-        }
-        else
-        {
-            guiLogEffect("Ability skipped.");
         }
 
         {
@@ -2341,6 +2334,7 @@ int Controller::getActionCount() const { return gamerand; }
 void Controller::guiEndAction() { if (gamerand < 2) ++gamerand; }
 void Controller::guiEndTurn()
 {
+    abilityUsedThisTurn = false;
     // The GUI resolves the 7-card hand limit before calling this method.
     // Keep the guard here as a second line of defense so the controller can
     // never pass a turn while the current hand is above the official limit.

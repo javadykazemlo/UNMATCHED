@@ -5,6 +5,7 @@
 #include <string>
 #include "core/Controller.hpp"
 #include "graphics/TextureManager.hpp"
+#include "graphics/AudioManager.hpp"
 
 class BoardView;
 class CharacterView;
@@ -26,6 +27,7 @@ private:
     sf::RenderWindow window;
     sf::Font font;
     TextureManager textures;
+    AudioManager audio;
     Controller controller;
     Player players[2];
 

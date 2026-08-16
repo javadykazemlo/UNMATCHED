@@ -59,13 +59,9 @@ private:
     bool defenseSelectionMode = false;
     bool awaitingMoveBoost = false;
     bool moveBoostPrompt = false;
-    // Which of the three fully-independent effect panels (if any) currently
-    // owns the screen. Only one can be active at a time, since only one
-    // effect can be resolving on the Controller side at once.
     enum class EffectPanelKind { None, Attack, Scheme, Dracula };
     EffectPanelKind activeEffectPanel = EffectPanelKind::None;
 
-    // --- Attack effects panel state (combat resolution) ---
     std::string attackCardName;
     std::string attackCardText;
     std::string attackPrompt;
@@ -75,7 +71,6 @@ private:
     bool attackResolved = false;
     std::string attackInputBuffer;
 
-    // --- Scheme effects panel state ---
     std::string schemeCardName;
     std::string schemeCardText;
     std::string schemePrompt;
@@ -85,7 +80,6 @@ private:
     bool schemeResolved = false;
     std::string schemeInputBuffer;
 
-    // --- Dracula special-ability panel state ---
     std::string draculaPrompt;
     std::vector<int> draculaChoices;
     bool draculaYesNo = false;
@@ -103,11 +97,13 @@ private:
         std::string player1;
         std::string player2;
         std::string heroes;
+        int slot = 0;
         long long timestamp = 0;
     };
 
     std::vector<SaveEntry> saveEntries;
     float loadScroll = 0.f;
+    bool saveSlotPopup = false;
     bool draculaAbilityPrompt = false;
     std::string effectInputBuffer;
     int moveBoost = 0;
@@ -145,10 +141,6 @@ private:
     void checkGameOver();
     void refreshCombatLog();
 
-    // Each of the three effect panels below is fully self-contained: its own
-    // update (polling the Controller for input requests / completion), its
-    // own render, and its own click handling. None of them share logic or
-    // state with the others.
     void updateAttackEffectPanel();
     void drawAttackEffectPanel();
     void handleAttackEffectInput(sf::Vector2f p);

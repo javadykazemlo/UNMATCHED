@@ -165,9 +165,6 @@ void GameWindow::processEvents()
             continue;
         }
 
-        // Graphical input box (typed number) for whichever effect panel is
-        // currently active. Each panel keeps its own input buffer; this is
-        // just keystroke routing to the right one, not panel logic.
         if (screen == Screen::Game && activeEffectPanel == EffectPanelKind::Attack && attackInteger)
         {
             if (const auto* text = event->getIf<sf::Event::TextEntered>())
@@ -231,6 +228,13 @@ void GameWindow::processEvents()
 
         if (const auto* key = event->getIf<sf::Event::KeyPressed>())
         {
+            if (screen == Screen::Game && saveSlotPopup &&
+                key->code == sf::Keyboard::Key::Escape)
+            {
+                saveSlotPopup = false;
+                continue;
+            }
+
             if (screen == Screen::LoadGame && key->code == sf::Keyboard::Key::Escape)
             {
                 screen = Screen::MainMenu;
@@ -384,108 +388,115 @@ void GameWindow::refreshSaveEntries()
     using json = nlohmann::json;
 
     saveEntries.clear();
-    std::unordered_set<std::string> seen;
-    std::vector<fs::path> roots;
-    std::error_code ec;
 
-    fs::path currentSaveDir = fs::absolute("saves", ec);
-    if (!ec) roots.push_back(currentSaveDir);
-
-    fs::path parentSaveDir = fs::absolute(fs::path("..") / "saves", ec);
-    if (!ec && parentSaveDir != currentSaveDir) roots.push_back(parentSaveDir);
-
-    for (const fs::path& dir : roots)
+    // The GUI save system intentionally exposes exactly three persistent slots.
+    // Each slot has a fixed filename and is overwritten on every save.
+    for (int slot = 1; slot <= 3; ++slot)
     {
-        if (!fs::exists(dir, ec) || !fs::is_directory(dir, ec))
+        SaveEntry info;
+        info.slot = slot;
+
+        std::error_code ec;
+        const fs::path path = fs::absolute(
+            fs::path("saves") / ("slot_" + std::to_string(slot) + ".json"), ec);
+
+        if (ec)
             continue;
 
-        for (const auto& entry : fs::directory_iterator(dir, ec))
+        info.path = path.string();
+
+        if (!fs::exists(path, ec) || !fs::is_regular_file(path, ec))
         {
-            if (ec) break;
-            if (!entry.is_regular_file(ec) || entry.path().extension() != ".json")
-                continue;
-
-            const std::string canonical = fs::weakly_canonical(entry.path(), ec).string();
-            if (!seen.insert(canonical).second)
-                continue;
-
-            try
-            {
-                std::ifstream file(entry.path());
-                if (!file.is_open()) continue;
-                json root;
-                file >> root;
-                const json& state = root.contains("gameState") ? root.at("gameState") : root;
-                if (!state.contains("players") || state["players"].size() < 2)
-                    continue;
-
-                SaveEntry info;
-                info.path = entry.path().string();
-                info.timestamp = 0;
-
-                if (root.contains("saveMetadata"))
-                {
-                    const auto& meta = root.at("saveMetadata");
-                    info.date = meta.value("date", "");
-                    info.time = meta.value("time", "");
-                    info.timestamp = meta.value("timestamp", 0LL);
-                }
-
-                if (info.timestamp == 0)
-                {
-                    const auto last = fs::last_write_time(entry.path(), ec);
-                    if (!ec)
-                    {
-                        const auto sys = std::chrono::time_point_cast<std::chrono::milliseconds>(
-                            std::chrono::system_clock::now() +
-                            (last - fs::file_time_type::clock::now()));
-                        info.timestamp = sys.time_since_epoch().count();
-                    }
-                }
-
-                if (info.date.empty() || info.time.empty())
-                {
-                    const std::time_t tt = std::chrono::system_clock::to_time_t(
-                        std::chrono::system_clock::time_point(std::chrono::milliseconds(info.timestamp)));
-                    std::tm localTm{};
-#ifdef _WIN32
-                    localtime_s(&localTm, &tt);
-#else
-                    localtime_r(&tt, &localTm);
-#endif
-                    std::ostringstream date, time;
-                    date << std::put_time(&localTm, "%Y-%m-%d");
-                    time << std::put_time(&localTm, "%H:%M:%S");
-                    info.date = date.str();
-                    info.time = time.str();
-                }
-
-                const auto& p0 = state["players"][0];
-                const auto& p1 = state["players"][1];
-                info.player1 = p0.value("name", "PLAYER 1");
-                info.player2 = p1.value("name", "PLAYER 2");
-
-                auto heroName = [](const json& p) -> std::string
-                {
-                    const int choice = p.value("heroChoice", 0);
-                    if (choice == 1) return "Dracula";
-                    if (choice == 2) return "Sherlock";
-                    if (choice == 3) return "Invisible Man";
-                    return "Unknown Hero";
-                };
-                info.heroes = heroName(p0) + " vs " + heroName(p1);
-                saveEntries.push_back(std::move(info));
-            }
-            catch (...) { /* ignore one bad save; keep the others */ }
+            saveEntries.push_back(std::move(info));
+            continue;
         }
-    }
 
-    std::sort(saveEntries.begin(), saveEntries.end(),
-              [](const SaveEntry& a, const SaveEntry& b)
-              {
-                  if (a.timestamp != b.timestamp) return a.timestamp > b.timestamp;
-                  return a.path > b.path;
-              });
+        try
+        {
+            std::ifstream file(path);
+            if (!file.is_open())
+            {
+                saveEntries.push_back(std::move(info));
+                continue;
+            }
+
+            json root;
+            file >> root;
+
+            if (!root.contains("players") ||
+                !root["players"].is_array() ||
+                root["players"].size() < 2)
+            {
+                saveEntries.push_back(std::move(info));
+                continue;
+            }
+
+            info.timestamp = 0;
+
+            if (root.contains("saveMetadata") && root["saveMetadata"].is_object())
+            {
+                const auto& meta = root.at("saveMetadata");
+                info.date = meta.value("date", "");
+                info.time = meta.value("time", "");
+                info.timestamp = meta.value("timestamp", 0LL);
+            }
+
+            if (info.timestamp == 0)
+            {
+                const auto last = fs::last_write_time(path, ec);
+                if (!ec)
+                {
+                    const auto sys = std::chrono::time_point_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now() +
+                        (last - fs::file_time_type::clock::now()));
+                    info.timestamp = sys.time_since_epoch().count();
+                }
+            }
+
+            if (info.date.empty() || info.time.empty())
+            {
+                const std::time_t tt = std::chrono::system_clock::to_time_t(
+                    std::chrono::system_clock::time_point(
+                        std::chrono::milliseconds(info.timestamp)));
+
+                std::tm localTm{};
+#ifdef _WIN32
+                localtime_s(&localTm, &tt);
+#else
+                localtime_r(&tt, &localTm);
+#endif
+
+                std::ostringstream date, time;
+                date << std::put_time(&localTm, "%Y-%m-%d");
+                time << std::put_time(&localTm, "%H:%M:%S");
+                info.date = date.str();
+                info.time = time.str();
+            }
+
+            const auto& p0 = root["players"][0];
+            const auto& p1 = root["players"][1];
+
+            info.player1 = p0.value("name", "PLAYER 1");
+            info.player2 = p1.value("name", "PLAYER 2");
+
+            auto heroName = [](const json& p) -> std::string
+            {
+                const int choice = p.value("heroChoice", 0);
+                if (choice == 1) return "Dracula";
+                if (choice == 2) return "Sherlock";
+                if (choice == 3) return "Invisible Man";
+                return "Unknown Hero";
+            };
+
+            info.heroes = heroName(p0) + " vs " + heroName(p1);
+        }
+        catch (...)
+        {
+            // Keep the slot visible even if its file is damaged.
+        }
+
+        saveEntries.push_back(std::move(info));
+    }
 }
 
 void GameWindow::drawLoadGame()
@@ -504,49 +515,47 @@ void GameWindow::drawLoadGame()
     window.draw(panel);
 
     ui->drawText(window, "LOAD GAME", {720.f, 140.f}, 32, GOLD);
-    ui->drawText(window, "SELECT A SAVED BATTLE TO CONTINUE FROM THE EXACT SAVED STATE.",
-                 {555.f, 185.f}, 10, PARCHMENT);
+    ui->drawText(window, "SELECT ONE OF THE THREE SAVE SLOTS.",
+                 {650.f, 185.f}, 10, PARCHMENT);
 
-    sf::RectangleShape listPanel({1150.f, 450.f});
-    listPanel.setPosition({225.f, 230.f});
-    listPanel.setFillColor(sf::Color(6, 7, 12, 210));
-    listPanel.setOutlineColor(sf::Color(95, 82, 60));
-    listPanel.setOutlineThickness(1.f);
-    window.draw(listPanel);
+    const float rowHeight = 118.f;
+    for (std::size_t i = 0; i < saveEntries.size() && i < 3; ++i)
+    {
+        const SaveEntry& save = saveEntries[i];
+        const float y = 230.f + static_cast<float>(i) * rowHeight;
 
-    if (saveEntries.empty())
-    {
-        ui->drawText(window, "NO SAVED GAMES FOUND", {650.f, 465.f}, 16, PARCHMENT);
-        ui->drawText(window, "USE SAVE GAME DURING A BATTLE TO CREATE A SAVE.",
-                     {580.f, 500.f}, 10, sf::Color(145, 138, 126));
-    }
-    else
-    {
-        const float rowHeight = 86.f;
-        for (std::size_t i = 0; i < saveEntries.size(); ++i)
+        sf::RectangleShape row({1110.f, 98.f});
+        row.setPosition({245.f, y});
+        row.setFillColor(sf::Color(15, 16, 23, 245));
+        row.setOutlineColor(sf::Color(74, 65, 50));
+        row.setOutlineThickness(1.f);
+        window.draw(row);
+
+        ui->drawText(window, "SLOT " + std::to_string(save.slot),
+                     {270.f, y + 12.f}, 16, GOLD);
+
+        if (save.date.empty())
         {
-            const SaveEntry& save = saveEntries[i];
-            const float y = 230.f + 12.f + static_cast<float>(i) * rowHeight - loadScroll;
-            if (y + 74.f < 230.f || y > 680.f) continue;
-
-            sf::RectangleShape row({1110.f, 74.f});
-            row.setPosition({245.f, y});
-            row.setFillColor(sf::Color(15, 16, 23, 245));
-            row.setOutlineColor(sf::Color(74, 65, 50));
-            row.setOutlineThickness(1.f);
-            window.draw(row);
-
-            ui->drawText(window, save.date + "   " + save.time, {265.f, y + 9.f}, 12, GOLD);
-            ui->drawText(window, save.heroes, {265.f, y + 32.f}, 13, PARCHMENT);
-            ui->drawText(window, save.player1 + "  vs  " + save.player2,
-                         {265.f, y + 54.f}, 9, sf::Color(155, 149, 138));
-            ui->drawText(window, "LOAD", {1210.f, y + 26.f}, 11, GOLD);
+            ui->drawText(window, "EMPTY SLOT",
+                         {270.f, y + 48.f}, 14, PARCHMENT);
         }
+        else
+        {
+            ui->drawText(window, save.heroes,
+                         {270.f, y + 42.f}, 13, PARCHMENT);
+            ui->drawText(window,
+                         save.player1 + "  vs  " + save.player2 +
+                         "    |    " + save.date + "  " + save.time,
+                         {270.f, y + 67.f}, 9,
+                         sf::Color(155, 149, 138));
+        }
+
+        ui->drawButton(window, {{1130.f, y + 25.f}, {185.f, 48.f}},
+                       "LOAD", !save.date.empty(), GOLD);
     }
 
-    ui->drawButton(window, {{745.f, 755.f}, {175.f, 45.f}}, "BACK", false, GOLD);
-    ui->drawText(window, "ESC: BACK  |  MOUSE WHEEL: SCROLL", {690.f, 810.f}, 9,
-                 sf::Color(145, 138, 126));
+    ui->drawButton(window, {{745.f, 755.f}, {175.f, 45.f}},
+                   "BACK", false, GOLD);
 }
 
 void GameWindow::handleLoadGameClick(sf::Vector2f p)
@@ -558,36 +567,42 @@ void GameWindow::handleLoadGameClick(sf::Vector2f p)
         return;
     }
 
-    if (saveEntries.empty()) return;
+    const float rowHeight = 118.f;
 
-    const float top = 230.f;
-    const float bottom = 680.f;
-    if (p.y < top || p.y > bottom) return;
-
-    const float rowHeight = 86.f;
-    const int index = static_cast<int>((p.y - top + loadScroll - 12.f) / rowHeight);
-    if (index < 0 || index >= static_cast<int>(saveEntries.size())) return;
-
-    const float rowTop = top + 12.f + index * rowHeight - loadScroll;
-    if (p.y < rowTop || p.y > rowTop + 74.f) return;
-
-    // Replace the temporary menu/setup state with the selected save state.
-    players[0].reset();
-    players[1].reset();
-    controller = Controller();
-
-    if (!controller.LoadGame(players, saveEntries[index].path))
+    for (std::size_t i = 0; i < saveEntries.size() && i < 3; ++i)
     {
-        showMessage("Could not load the selected saved game.");
+        const SaveEntry& save = saveEntries[i];
+        const float y = 230.f + static_cast<float>(i) * rowHeight;
+
+        if (!sf::FloatRect({245.f, y}, {1110.f, 98.f}).contains(p))
+            continue;
+
+        if (save.date.empty())
+            return;
+
+        players[0].reset();
+        players[1].reset();
+        controller = Controller();
+
+        if (!controller.LoadGame(players, save.path))
+        {
+            showMessage("Could not load the selected saved game.");
+            return;
+        }
+
+        screen = Screen::Game;
+        resetSelections();
+        combatLog.clear();
+        setupStarted = false;
+        message.clear();
+        messageTimer = 0;
+
+        // A loaded battle enters the gameplay state directly, so start the
+        // same audio used when a newly configured game begins.
+        audio.playGameplayMusic();
+        audio.playSfx(AudioManager::Sfx::TurnStart);
         return;
     }
-
-    screen = Screen::Game;
-    resetSelections();
-    combatLog.clear();
-    setupStarted = false;
-    message.clear();
-    messageTimer = 0;
 }
 
 void GameWindow::drawSetup()
@@ -1016,6 +1031,34 @@ void GameWindow::drawGame()
         case EffectPanelKind::Dracula: drawDraculaEffectPanel(); break;
         case EffectPanelKind::None:    break;
     }
+    if (saveSlotPopup)
+    {
+        sf::RectangleShape overlay({1600.f, 900.f});
+        overlay.setFillColor(sf::Color(0, 0, 0, 170));
+        window.draw(overlay);
+
+        const sf::FloatRect panel({390.f, 300.f}, {820.f, 300.f});
+        ui->drawPanel(window, panel, GOLD);
+
+        ui->drawText(window, "SAVE GAME", {700.f, 335.f}, 28, GOLD);
+        ui->drawText(window, "SELECT SAVE SLOT", {685.f, 375.f}, 12, PARCHMENT);
+
+        const float slotX = 490.f;
+        const float slotY = 390.f;
+        const float slotW = 180.f;
+        const float slotH = 70.f;
+        const float gap = 25.f;
+
+        for (int slot = 1; slot <= 3; ++slot)
+        {
+            ui->drawButton(
+                window,
+                {{slotX + static_cast<float>(slot - 1) * (slotW + gap), slotY},
+                 {slotW, slotH}},
+                std::to_string(slot), true, GOLD);
+        }
+    }
+
 }
 
 void GameWindow::drawGameOver()
@@ -1208,6 +1251,43 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 
 void GameWindow::handleGameClick(sf::Vector2f p)
 {
+    // While the save-slot popup is open, no control behind it may receive the click.
+    if (saveSlotPopup)
+    {
+        const float slotX = 490.f;
+        const float slotY = 390.f;
+        const float slotW = 180.f;
+        const float slotH = 70.f;
+        const float gap = 25.f;
+
+        for (int slot = 1; slot <= 3; ++slot)
+        {
+            const sf::FloatRect button(
+                {slotX + static_cast<float>(slot - 1) * (slotW + gap), slotY},
+                {slotW, slotH});
+
+            if (!button.contains(p))
+                continue;
+
+            const std::string savePath =
+                (std::filesystem::path("saves") /
+                 ("slot_" + std::to_string(slot) + ".json")).string();
+
+            if (controller.guiSaveGame(savePath))
+            {
+                saveSlotPopup = false;
+                combatLog.clear();
+            }
+            else
+            {
+                showMessage("Could not save the game.");
+            }
+            return;
+        }
+
+        return;
+    }
+
     Player* current = controller.getCurrentPlayer();
     Player* enemy = controller.getEnemyPlayer();
     Character* selected = selectedCurrentCharacter();
@@ -1298,48 +1378,46 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // SAVE GAME: every click creates a new file in a persistent saves folder.
+    // SAVE GAME: open the fixed three-slot selector.
     if (sf::FloatRect({35.f, 754.f}, {160.f, 43.f}).contains(p))
     {
-        namespace fs = std::filesystem;
-        std::error_code ec;
-        fs::path saveDir = fs::absolute("saves", ec);
-        if (ec || !fs::exists(saveDir, ec))
-            fs::create_directories(saveDir, ec);
+        saveSlotPopup = true;
+        return;
+    }
 
-        if (ec)
+    // SAVE SLOT POPUP: clicking 1/2/3 overwrites that fixed slot.
+    if (saveSlotPopup)
+    {
+        const float slotX = 490.f;
+        const float slotY = 390.f;
+        const float slotW = 180.f;
+        const float slotH = 70.f;
+        const float gap = 25.f;
+
+        for (int slot = 1; slot <= 3; ++slot)
         {
-            showMessage("Could not create the saves directory.");
+            const sf::FloatRect button(
+                {slotX + static_cast<float>(slot - 1) * (slotW + gap), slotY},
+                {slotW, slotH});
+
+            if (!button.contains(p))
+                continue;
+
+            const std::string savePath =
+                (std::filesystem::path("saves") /
+                 ("slot_" + std::to_string(slot) + ".json")).string();
+
+            if (!controller.guiSaveGame(savePath))
+            {
+                showMessage("Could not save the game.");
+                return;
+            }
+
+            saveSlotPopup = false;
+            combatLog.clear();
             return;
         }
 
-        const auto now = std::chrono::system_clock::now();
-        const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now.time_since_epoch()).count() % 1000;
-        const std::time_t tt = std::chrono::system_clock::to_time_t(now);
-        std::tm localTm{};
-#ifdef _WIN32
-        localtime_s(&localTm, &tt);
-#else
-        localtime_r(&tt, &localTm);
-#endif
-        std::ostringstream stamp;
-        stamp << std::put_time(&localTm, "%Y-%m-%d_%H-%M-%S")
-              << '-' << std::setw(3) << std::setfill('0') << millis;
-
-        fs::path savePath = saveDir / ("save_" + stamp.str() + ".json");
-        int suffix = 1;
-        while (fs::exists(savePath, ec))
-            savePath = saveDir / ("save_" + stamp.str() + "_" + std::to_string(suffix++) + ".json");
-
-        if (!controller.guiSaveGame(savePath.string()))
-        {
-            showMessage("Could not save the game.");
-            return;
-        }
-
-        combatLog.clear();
-        showMessage("Game saved successfully.");
         return;
     }
 

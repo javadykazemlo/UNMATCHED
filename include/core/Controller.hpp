@@ -23,6 +23,10 @@ public:
         SidekickPlacement,
         Ready
     };
+    void guiLogEffect(const std::string& text);
+    std::vector<std::string> getGuiEffectLog() const;
+    void clearGuiEffectLog();
+    bool guiEffectCanClose() const;
 
 private:
     Bord bord;
@@ -154,13 +158,6 @@ private:
     bool submitGuiInput(int value);
     bool submitGuiYesNo(bool value);
 
-public:
-    void guiLogEffect(const std::string& text);
-    std::vector<std::string> getGuiEffectLog() const;
-    void clearGuiEffectLog();
-    bool guiEffectCanClose() const;
-
-private:
     bool guiSaveGame(const std::string& filename = "save.json");
     std::vector<std::string> getGuiCombatLog() const;
     void clearGuiCombatLog();

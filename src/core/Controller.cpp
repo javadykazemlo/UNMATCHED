@@ -277,8 +277,6 @@ void Controller::playTurn()
         cout << "\n═══════════════════════════════════════════════════════════════════════════════" << endl;
         cout << "                          " << current->getName() << "'s turn\n";
 
-        // Dracula's ability triggers once, at the START of the turn, not
-        // before every action taken during it.
         if(current->getHero()->getName() == "Dracula")
         current->getHero()->ability(bord , current);
 
@@ -835,8 +833,6 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     if(attackCard.isDuringCombat())
         applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , false);
 
-    // Card effects can modify attack/defense values, so calculate the final
-    // combat values only after Before/During effects have finished.
     int attackValue = attackCard.getAttack();
     int defenseValue = defenseCard.getAttack();
 
@@ -1499,7 +1495,6 @@ bool Controller::guiChooseCharacter(int hero)
     const int owner = guiCharacterPlayerIndex == 0 ? 1 : 2;
     player.chooseCharacter(hero, owner);
 
-    // Move to the other player's character choice.
     const int other = guiCharacterPlayerIndex == 0 ? 1 : 0;
     if (!guiPlayers[other].getHero())
     {
@@ -1539,25 +1534,18 @@ bool Controller::guiChooseHeroPosition(int side)
     if (!currentHero || !enemyHero)
         return false;
 
-    // Place heroes on the board.
     const int currentPos = (side == 1) ? 4 : 15;
     const int enemyPos   = (side == 1) ? 15 : 4;
 
     bord.addCharacter(currentPos, currentHero);
     bord.addCharacter(enemyPos, enemyHero);
 
-    // Start sidekick placement with the player who chooses first.
     guiSidekickPlayerIndex = (current == &guiPlayers[0]) ? 0 : 1;
     guiSidekickIndex = 1;
     guiSidekicksDonePlayers = 0;
 
     Player& firstPlayer = guiPlayers[guiSidekickPlayerIndex];
 
-    // ---------------------------------------------------------
-    // INVISIBLE MAN
-    // ---------------------------------------------------------
-    // Invisible Man has no physical sidekicks.
-    // His mist tokens are placed automatically.
     if (firstPlayer.getHero()->getName() == "invisible man")
     {
         auto* im = dynamic_cast<invisible_man*>(firstPlayer.getHero());
@@ -1581,22 +1569,15 @@ bool Controller::guiChooseHeroPosition(int side)
             }
         }
 
-        // Invisible Man is finished.
-        // Move to the other player.
         guiSidekickPlayerIndex =
             (guiSidekickPlayerIndex == 0) ? 1 : 0;
 
         guiSidekickIndex = 1;
     }
 
-    // ---------------------------------------------------------
-    // CHECK THE NEXT PLAYER
-    // ---------------------------------------------------------
 
     Player& sidekickPlayer = guiPlayers[guiSidekickPlayerIndex];
 
-    // If the next player is also Invisible Man,
-    // there are no physical sidekicks to place.
     if (sidekickPlayer.getHero()->getName() == "invisible man")
     {
         auto* im = dynamic_cast<invisible_man*>(
@@ -1626,11 +1607,6 @@ bool Controller::guiChooseHeroPosition(int side)
         return true;
     }
 
-    // ---------------------------------------------------------
-    // NORMAL PLAYER
-    // ---------------------------------------------------------
-    // The player has physical sidekicks.
-    // Let the GUI display the sidekick placement screen.
     guiSetupStage = GuiSetupStage::SidekickPlacement;
 
     return true;
@@ -1738,7 +1714,6 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
     guiCombatLog.clear();
     clearGuiEffectLog();
 
-    // Same opening hero spaces as the original console setup.
     bord.addCharacter(4, current->getHero());
     bord.addCharacter(15, enemy->getHero());
 
@@ -1934,9 +1909,6 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
         gGuiEffect.choices.clear();
     }
 
-    // Remove the attack card now. The defense card is removed only when the
-    // defender explicitly chose one. If defenseCardIndex == -1, combat proceeds
-    // with no defense card and all normal attack/combat effects still resolve.
     Card selectedAttack = attackDeck->playCard(attackCardIndex, attackCard);
     Card selectedDefense;
     if (usingDefenseCard)
@@ -1956,7 +1928,6 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
         }
         catch (const std::exception& e)
         {
-            // Never leave the GUI combat panel locked if an effect throws.
             guiLogEffect(std::string("Combat effect error: ") + e.what());
         }
         catch (...)
@@ -2107,8 +2078,6 @@ bool Controller::guiBeginTurn()
         guiEffectLog.clear();
     }
 
-    // Hero abilities are explicit GUI actions. The beginning of a turn no
-    // longer opens a modal asking about the ability automatically.
     guiHeroAbilityUsed = false;
     return true;
 }
@@ -2120,9 +2089,6 @@ bool Controller::guiHeroAbilityAvailable() const
     if (guiHeroAbilityUsed) return false;
     if (gamerand != 0) return false;
 
-    // In the current project only Dracula has an active, player-invoked
-    // special ability. Sherlock's implementation is empty and Invisible
-    // Man's implementation is passive information rather than an action.
     return current->getHero()->getName() == "Dracula";
 }
 
@@ -2150,10 +2116,6 @@ bool Controller::guiUseHeroAbility()
         activeDecider = current;
         guiLogEffect("Dracula's special ability");
 
-        // The GUI Yes/No request is published before this worker starts.
-        // Wait on that exact request instead of calling getYesNo() again.
-        // Calling getYesNo() here would replace the request and can race the
-        // SFML event loop, causing visible YES/NO buttons to ignore clicks.
         bool useAbility = false;
         {
             std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
@@ -2351,9 +2313,6 @@ int Controller::getActionCount() const { return gamerand; }
 void Controller::guiEndAction() { if (gamerand < 2) ++gamerand; }
 void Controller::guiEndTurn()
 {
-    // The GUI resolves the 7-card hand limit before calling this method.
-    // Keep the guard here as a second line of defense so the controller can
-    // never pass a turn while the current hand is above the official limit.
     if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
         return;
 

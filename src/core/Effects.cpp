@@ -357,9 +357,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Education Never Ends")
     {
-        // Sherlock's ability: cards belonging to Holmes or Watson can never
-        // be disabled by an opponent's card effect (e.g. Feint, Impossible
-        // to See). cancelEffectSH is therefore intentionally NOT checked here.
 
         cout << card.geteffect() << endl; 
         
@@ -411,8 +408,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             string oppName = opponent->getHero()->getName();
             if (oppName == "Dracula") cancelEffectDR = true;
             else if (oppName == "invisible man") cancelEffectIM = true;
-            // Sherlock/Watson cards can never be cancelled (his own passive
-            // ability), so cancelEffectSH is intentionally never set.
 
             cout << "All effects on the " << opponent->getName() << " card were removed, and its attack value was ignored.\n";
         }
@@ -429,8 +424,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Feint" && self->getHero()->getName() == "sherlock")
     {
-        // Sherlock's ability makes his (and Watson's) cards immune to being
-        // disabled by other cards' events, so cancelEffectSH is ignored here.
 
         cout << card.geteffect() << endl; 
 
@@ -497,8 +490,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Study Methods")
     {
-        // Sherlock's ability makes his (and Watson's) cards immune to being
-        // disabled by other cards' events, so cancelEffectSH is ignored here.
 
         cout << card.geteffect() << endl; 
 
@@ -784,11 +775,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         cout << card.geteffect() << endl;
 
-        // The opponent's printed combat value is fixed at 0. This does NOT
-        // cancel the rest of their card's effect (e.g. a draw, a discard,
-        // a move) - those still happen, so the cancelEffectDR/SH/IM flags
-        // are deliberately left untouched here (those flags fully disable a
-        // card and are reserved for cards like Feint).
         enemycard.setAttack(0);
 
         cout << "The opponent's card value is now 0 and cannot be changed by card effects; its other effects still happen.\n";
@@ -1288,8 +1274,6 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         }
         activeDecider = self;
 
-        // The card's effect targets the opposing HERO specifically, not a
-        // freely chosen fighter.
         Character* enemyHero = opponent->getHero();
         int burnBoost = burn.getBoost();
 

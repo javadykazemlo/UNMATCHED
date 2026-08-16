@@ -109,8 +109,6 @@ void GameWindow::loadCharacterAssets()
     textures.load("sisters", "assets/characters/sisters.png");
     textures.load("invisible_man", "assets/characters/invisible_man.png");
 
-    // Separate portraits used only by the left/right player information panels.
-    // Keep these IDs and paths independent from the board character textures above.
     textures.load("panel_dracul", "assets/character/dracul.png");
     textures.load("panel_sherlok", "assets/character/sherlok.png");
     textures.load("panel_invisible", "assets/character/invisible.png");
@@ -396,8 +394,6 @@ void GameWindow::refreshSaveEntries()
 
     saveEntries.clear();
 
-    // The GUI save system intentionally exposes exactly three persistent slots.
-    // Each slot has a fixed filename and is overwritten on every save.
     for (int slot = 1; slot <= 3; ++slot)
     {
         SaveEntry info;
@@ -499,7 +495,6 @@ void GameWindow::refreshSaveEntries()
         }
         catch (...)
         {
-            // Keep the slot visible even if its file is damaged.
         }
 
         saveEntries.push_back(std::move(info));
@@ -808,7 +803,6 @@ void GameWindow::drawGame()
 
     ui->drawText(window, "UNMATCHED", {22.f, 16.f}, 26, GOLD);
 
-    // Music-only mute control. SFX remain enabled.
     const sf::FloatRect muteRect({305.f, 13.f}, {42.f, 42.f});
     if (const sf::Texture* muteTexture = textures.get("mute"))
     {
@@ -856,7 +850,6 @@ void GameWindow::drawGame()
         Character* hero = player->getHero();
         if (!hero) return;
 
-        // Player name: centered at the top of the panel.
         const std::string playerName = player->getName();
         sf::Text playerNameText(font, playerName, 24);
         const sf::FloatRect playerNameBounds = playerNameText.getLocalBounds();
@@ -871,8 +864,6 @@ void GameWindow::drawGame()
         playerNameText.setFillColor(accent);
         window.draw(playerNameText);
 
-        // The board uses the original assets/IDs ("dracula", "sherlock",
-        // "invisible_man"). These panel portraits are deliberately separate.
         std::string panelId;
         if (hero->getName() == "Dracula")
             panelId = "panel_dracul";
@@ -881,7 +872,6 @@ void GameWindow::drawGame()
         else if (hero->getName() == "invisible man")
             panelId = "panel_invisible";
 
-        // 35 px total inset from each panel edge, including the frame.
         const float frameInset = 35.f;
         const float frameSize = rect.size.x - 2.f * frameInset;
         const float frameY = rect.position.y + 50.f;
@@ -902,7 +892,6 @@ void GameWindow::drawGame()
 
                 if (size.x > 0 && size.y > 0)
                 {
-                    // Square crop: preserve aspect ratio and never stretch.
                     const float side = static_cast<float>(std::min(size.x, size.y));
                     const float left = (static_cast<float>(size.x) - side) / 2.f;
                     const float top = (static_cast<float>(size.y) - side) / 2.f;
@@ -925,8 +914,6 @@ void GameWindow::drawGame()
             }
         }
 
-        // Keep the existing information order after the portrait:
-        // hero name -> HP -> cards -> sidekicks.
         const float contentX = rect.position.x + 18.f;
         const float infoY = frameY + frameSize + 12.f;
 
@@ -937,7 +924,6 @@ void GameWindow::drawGame()
                                "/" + std::to_string(hero->getMaxhp());
         ui->drawText(window, hp, {contentX, infoY + 28.f}, 13, PARCHMENT);
 
-        // HP bar deliberately keeps its previous height (11 px).
         ui->drawHealth(window, {contentX, infoY + 51.f},
                        static_cast<float>(hero->getHp()) /
                            std::max(1, hero->getMaxhp()),
@@ -1063,7 +1049,6 @@ void GameWindow::drawGame()
                      {105.f, 812.f}, 12, PARCHMENT);
     }
 
-    // Message / combat report panel below the board.
     ui->drawPanel(window, {{420.f, 606.f}, {757.f, 66.f}}, combatLog.empty() ? GOLD : RED);
     if (!combatLog.empty())
     {
@@ -1082,7 +1067,6 @@ void GameWindow::drawGame()
         ui->drawText(window, message, {435.f, 621.f}, 16, GOLD);
     }
 
-    // Hand / card information.
     ui->drawPanel(window, {{420.f, 680.f}, {757.f, 215.f}}, defenseSelectionMode ? BLUE : GOLD);
     if (defenseSelectionMode && enemy && enemy->getDeck())
     {
@@ -1352,7 +1336,6 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 
 void GameWindow::handleGameClick(sf::Vector2f p)
 {
-    // While the save-slot popup is open, no control behind it may receive the click.
     if (saveSlotPopup)
     {
         const float slotX = 490.f;
@@ -1393,16 +1376,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     Player* enemy = controller.getEnemyPlayer();
     Character* selected = selectedCurrentCharacter();
 
-    // Keep the game locked while a card effect is resolving or while the
-    // resolved-effect result is still being displayed. Each panel routes
-    // clicks through its own independent handler.
     if (activeEffectPanel != EffectPanelKind::None)
     {
-        // The effect panel owns mouse input for its entire lifetime. The
-        // individual handler decides whether it is waiting for an answer or
-        // is ready for RETURN TO GAME. Do not gate this on busy: busy becomes
-        // false as soon as the worker finishes, while the result panel stays
-        // visible until the player closes it.
         switch (activeEffectPanel)
         {
             case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
@@ -1432,12 +1407,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // Note: activeEffectPanel is always set together with the Controller's
-    // busy flag at every call site below, so controller.guiEffectBusy()
-    // cannot be true here (activeEffectPanel == None already handled above).
-
-    // Hand limit: exactly the same rule as Controller::playTurn.
-    // If the hand is above 7, the player must choose cards to discard first.
     if (handLimitMode)
     {
         if (current && current->getDeck())
@@ -1454,8 +1423,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // End Turn keeps its original position, but the hand limit is resolved
-    // before the turn is actually passed to the opponent.
     if (sf::FloatRect({1385.f, 815.f}, {175.f, 42.f}).contains(p))
     {
         if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
@@ -1475,14 +1442,12 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // SAVE GAME: open the fixed three-slot selector.
     if (sf::FloatRect({35.f, 754.f}, {160.f, 43.f}).contains(p))
     {
         saveSlotPopup = true;
         return;
     }
 
-    // SAVE SLOT POPUP: clicking 1/2/3 overwrites that fixed slot.
     if (saveSlotPopup)
     {
         const float slotX = 490.f;
@@ -1518,7 +1483,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // END ACTION: immediately cancels the currently selected action/mode.
     if (sf::FloatRect({210.f, 754.f}, {160.f, 43.f}).contains(p))
     {
         resetSelections();
@@ -1553,9 +1517,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
     const bool canAct = controller.getActionCount() < 2;
 
-    // HERO ABILITY: Dracula has an active ability. Sherlock and Invisible Man
-    // have passive abilities, so the same button opens a readable ability
-    // panel without consuming an action or asking for input.
     if (sf::FloatRect({290.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!current || !current->getHero())
@@ -1596,9 +1557,9 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             draculaInteger = false;
             draculaInputBuffer.clear();
             if (heroName == "sherlock")
-                draculaPrompt = "PASSIVE ABILITY — Sherlock: effects that attempt to disable Sherlock/Dr. Watson-related cards do not disable them.";
+                draculaPrompt = "PASSIVE ABILITY : Sherlock: effects that attempt to disable Sherlock/Dr. Watson-related cards do not disable them.";
             else
-                draculaPrompt = "PASSIVE ABILITY — Invisible Man: +1 defense on a fog space (not a card effect) and movement between fog spaces is treated as adjacency.";
+                draculaPrompt = "PASSIVE ABILITY : Invisible Man: +1 defense on a fog space (not a card effect) and movement between fog spaces is treated as adjacency.";
         }
         else
         {
@@ -1607,7 +1568,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // Each real action is counted immediately when its button is pressed.
     if (sf::FloatRect({35.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
@@ -1667,7 +1627,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // During attack resolution the opponent chooses from their own hand.
     if (defenseSelectionMode && enemy)
     {
         if (!enemy->getDeck()) return;
@@ -1682,9 +1641,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         }
 
         Character* attacker = selectedCurrentCharacter();
-        // guiAttack removes both cards immediately, so copy their data before
-        // starting combat. Otherwise the effect panel can display the wrong
-        // cards (the old hand indices now refer to different cards).
         const Card attackPlayedCard =
             controller.getCurrentPlayer()->getDeck()->getHandcard(selectedCard);
         const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
@@ -1719,7 +1675,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // Card click belongs to the current player's hand.
     if (current && current->getDeck())
     {
         const int card = cardView->getCardAt(p, current->getDeck()->gethandSize());
@@ -1864,9 +1819,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             }
             else
             {
-                // A human defender must first decide whether to defend.
-                // Only after YES do we enter defense-card selection; NO resolves
-                // the attack immediately with an empty defense card.
                 defenseSelectionMode = false;
                 awaitingDefenseDecision = true;
                 activeEffectPanel = EffectPanelKind::Attack;
@@ -1916,12 +1868,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 }
 
 
-// ============================================================================
-// ATTACK EFFECTS PANEL
-// Fully independent from the Scheme and Dracula panels: its own state,
-// its own update/render/click-handling.
-// ============================================================================
-
 void GameWindow::updateAttackEffectPanel()
 {
     std::string prompt;
@@ -1958,8 +1904,6 @@ void GameWindow::updateAttackEffectPanel()
         selectedEnemy = -1;
         selectedCharacter = -1;
 
-        // The second action ends the turn automatically as soon as the
-        // complete combat/effect resolution has finished.
         if (controller.getActionCount() >= 2)
         {
             activeEffectPanel = EffectPanelKind::None;
@@ -2008,8 +1952,6 @@ void GameWindow::drawAttackEffectPanel()
     drawWrapped(attackCardText.empty() ? "Resolving combat..." : attackCardText,
                 385.f, 145.f, 94.f, 13, PARCHMENT, 7);
 
-    // Live effect log: every cout-like message generated by the combat/attack
-    // effects is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 300.f;
     int shown = 0;
@@ -2041,10 +1983,6 @@ void GameWindow::drawAttackEffectPanel()
 
     if (!attackResolved)
     {
-        // Graphical input box: wherever the attack/combat effect logic calls
-        // for cin (yes/no, a numbered choice, or a typed number), the
-        // corresponding control below appears right under the effect log
-        // and its value is fed back to the Controller instead of stdin.
         if (attackYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
@@ -2110,9 +2048,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
         return;
     }
 
-    // Resolve the attack with no defense card. The attack card is still in the
-    // current player's hand until this helper calls guiAttack(), so we can
-    // safely copy its display data first.
     auto resolveWithoutDefense = [&]() -> bool
     {
         Character* attacker = selectedCurrentCharacter();
@@ -2167,8 +2102,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
                 Character* defender = controller.getCharacterAt(selectedEnemy);
                 const std::vector<int> validDefense = controller.getGuiDefenseCards(defender);
 
-                // If the defender has no legal defense card, YES cannot lead to
-                // a card-selection screen. Resolve exactly as NO instead.
                 if (validDefense.empty())
                 {
                     awaitingDefenseDecision = false;
@@ -2182,8 +2115,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
                 awaitingDefenseDecision = false;
                 attackYesNo = false;
                 attackChoices.clear();
-                // Leave the effect panel so the defender can click a card in
-                // the normal hand area. The panel reopens after selection.
                 activeEffectPanel = EffectPanelKind::None;
                 defenseSelectionMode = true;
                 Player* enemyPlayer = controller.getEnemyPlayer();
@@ -2194,7 +2125,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
                 return;
             }
 
-            // NO: immediately resolve the combat without a defense card.
             awaitingDefenseDecision = false;
             attackYesNo = false;
             defenseSelectionMode = false;
@@ -2202,7 +2132,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
             return;
         }
 
-        // Generic yes/no requested by a card effect.
         controller.submitGuiYesNo(clickedYes);
         return;
     }
@@ -2231,12 +2160,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
         }
     }
 }
-
-// ============================================================================
-// SCHEME EFFECTS PANEL
-// Fully independent from the Attack and Dracula panels: its own state,
-// its own update/render/click-handling.
-// ============================================================================
 
 void GameWindow::updateSchemeEffectPanel()
 {
@@ -2318,8 +2241,6 @@ void GameWindow::drawSchemeEffectPanel()
     drawWrapped(schemeCardText.empty() ? "Resolving Scheme effect..." : schemeCardText,
                 385.f, 145.f, 94.f, 13, PARCHMENT, 7);
 
-    // Live effect log: every cout-like message generated by the Scheme
-    // effect is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 300.f;
     int shown = 0;
@@ -2351,10 +2272,6 @@ void GameWindow::drawSchemeEffectPanel()
 
     if (!schemeResolved)
     {
-        // Graphical input box: wherever the Scheme effect logic calls for
-        // cin (yes/no, a numbered choice, or a typed number), the
-        // corresponding control below appears right under the effect log
-        // and its value is fed back to the Controller instead of stdin.
         if (schemeYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
@@ -2453,13 +2370,6 @@ void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
     }
 }
 
-// ============================================================================
-// DRACULA SPECIAL-ABILITY PANEL
-// Fully independent from the Attack and Scheme panels: its own state,
-// its own update/render/click-handling. Unlike the other two, its title
-// and body text are fixed, and its RETURN TO GAME button stays visible
-// (disabled) from the moment the panel opens rather than only once resolved.
-// ============================================================================
 
 void GameWindow::updateDraculaEffectPanel()
 {
@@ -2477,9 +2387,6 @@ void GameWindow::updateDraculaEffectPanel()
     if (draculaResolved)
         return;
 
-    // Always mirror the Controller's current request. There is deliberately
-    // no fake/fallback Yes/No request here: the buttons must be backed by an
-    // actual pending request so every click has a real consumer.
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -2517,7 +2424,7 @@ void GameWindow::drawDraculaEffectPanel()
     if (heroName == "Dracula")
     {
         abilityTitle = "DRACULA ABILITY";
-        abilityBody = "At the beginning of Dracula's turn, choose one adjacent living fighter (including a Sister) to take 1 damage. If damage is dealt, draw 1 card.";
+        abilityBody = "At the beginning of Dracula's turn, choose one adjacent living fighter (including a Sister) to take 1 damage.";
     }
     else if (heroName == "sherlock")
     {
@@ -2527,14 +2434,12 @@ void GameWindow::drawDraculaEffectPanel()
     else if (heroName == "invisible man")
     {
         abilityTitle = "INVISIBLE MAN ABILITY";
-        abilityBody = "PASSIVE: while defending on fog, defense is +1 (not a card effect). Invisible Man may also move directly between fog spaces.";
+        abilityBody = "PASSIVE: while defending on fog, defense is +1. Invisible Man may also move directly between fog spaces.";
     }
 
     ui->drawText(window, abilityTitle, {385.f, 100.f}, 24, GOLD);
     ui->drawText(window, abilityBody, {385.f, 145.f}, 14, PARCHMENT);
 
-    // Live effect log: every cout-like message generated by Dracula's
-    // ability is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 190.f;
     int shown = 0;
@@ -2583,10 +2488,6 @@ void GameWindow::drawDraculaEffectPanel()
 
     if (!draculaResolved)
     {
-        // Graphical input box: wherever Dracula's ability calls for cin
-        // (yes/no to use the ability, or a numbered target choice), the
-        // corresponding control below appears right under the effect log
-        // and its value is fed back to the Controller instead of stdin.
         if (draculaYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
@@ -2621,9 +2522,6 @@ void GameWindow::drawDraculaEffectPanel()
         }
     }
 
-    // Dracula's special-ability panel keeps the return button visible from
-    // the moment the panel opens. It becomes clickable as soon as the
-    // controller says the effect may be closed.
     const bool canClose = draculaResolved && controller.guiEffectCanClose();
     ui->drawButton(window, {{565.f, 705.f}, {470.f, 58.f}},
                    "RETURN TO GAME", canClose, GOLD);
@@ -2658,8 +2556,6 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 
         if (clickedYes || clickedNo)
         {
-            // Query the Controller at click time so the UI cannot submit a
-            // stale request from a previous frame.
             std::string prompt;
             std::vector<int> choices;
             bool yesNo = false;

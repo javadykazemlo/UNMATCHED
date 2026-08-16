@@ -13,7 +13,6 @@ public:
     void close();
     bool isOpen() const;
 
-    // Returns true when the event was consumed by the Rules overlay.
     bool handleEvent(const sf::Event& event, sf::Vector2f mousePosition);
     void draw(sf::RenderTarget& target, sf::Vector2f viewportSize) const;
 

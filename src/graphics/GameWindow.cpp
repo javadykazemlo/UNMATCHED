@@ -294,6 +294,7 @@ void GameWindow::processEvents()
         if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>())
         {
             if (mouse->button != sf::Mouse::Button::Left) continue;
+            audio.playSfx(AudioManager::Sfx::Click);
             const sf::Vector2f p = window.mapPixelToCoords(mouse->position);
 
             if (screen == Screen::Game && rulesView && rulesView->isOpen())
@@ -309,7 +310,11 @@ void GameWindow::processEvents()
             else if (screen == Screen::GameOver)
             {
                 if (sf::FloatRect({610.f, 545.f}, {380.f, 50.f}).contains(p))
+                {
                     screen = Screen::MainMenu;
+                    audio.playIntroMusic();
+                    audio.playSfx(AudioManager::Sfx::Confirm);
+                }
             }
         }
     }
@@ -1006,7 +1011,7 @@ void GameWindow::drawGame()
 
 void GameWindow::drawGameOver()
 {
-    drawFullscreenTexture("game");
+    drawFullscreenTexture("end");
     sf::RectangleShape overlay({1600.f, 900.f});
     overlay.setFillColor(sf::Color(3, 4, 8, 220));
     window.draw(overlay);
@@ -1028,10 +1033,13 @@ void GameWindow::drawGameOver()
 void GameWindow::checkGameOver()
 {
     if (!controller.isGameOver()) return;
+    if (screen == Screen::GameOver) return;
+
     winnerName = controller.getGuiWinnerName();
     combatLog = controller.getGuiCombatLog();
     resetSelections();
     screen = Screen::GameOver;
+    audio.playGameOverMusic();
 }
 
 void GameWindow::refreshCombatLog()
@@ -1056,6 +1064,7 @@ void GameWindow::handleMainMenuClick(sf::Vector2f p)
 
         setupStarted = controller.beginGuiSetup(players);
         screen = Screen::Setup;
+        audio.playSfx(AudioManager::Sfx::Confirm);
         return;
     }
 
@@ -1112,6 +1121,7 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
                 return;
             }
             showMessage("Player information accepted.");
+            audio.playSfx(AudioManager::Sfx::Confirm);
         }
         return;
     }
@@ -1167,9 +1177,13 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
         {
             screen = Screen::Game;
             resetSelections();
+            audio.playGameplayMusic();
+            audio.playSfx(AudioManager::Sfx::Confirm);
+            audio.playSfx(AudioManager::Sfx::TurnStart);
             if (controller.guiBeginTurn())
             {
                 activeEffectPanel = EffectPanelKind::Dracula;
+                audio.playSfx(AudioManager::Sfx::EffectPanel);
                 draculaResolved = false;
                 draculaPrompt.clear();
                 draculaChoices.clear();
@@ -1253,11 +1267,14 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         }
 
         controller.guiEndTurn();
+        audio.playSfx(AudioManager::Sfx::TurnEnd);
         resetSelections();
         combatLog.clear();
         if (controller.guiBeginTurn())
         {
             activeEffectPanel = EffectPanelKind::Dracula;
+            audio.playSfx(AudioManager::Sfx::TurnStart);
+            audio.playSfx(AudioManager::Sfx::EffectPanel);
             draculaResolved = false;
             draculaPrompt.clear();
             draculaChoices.clear();
@@ -1428,6 +1445,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             const Card attackCard = current->getDeck()->getHandcard(selectedCard);
             const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
             activeEffectPanel = EffectPanelKind::Attack;
+            audio.playSfx(AudioManager::Sfx::Attack);
             attackResolved = false;
             attackCardName = "COMBAT";
             attackCardText = attackCard.getName() + "  VS  " + defensePlayedCard.getName() +
@@ -1490,6 +1508,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     if (controller.guiScheme(selected, card))
                     {
                         activeEffectPanel = EffectPanelKind::Scheme;
+                        audio.playSfx(AudioManager::Sfx::Scheme);
                         schemeResolved = false;
                         schemeCardName = chosenCard.getName();
                         schemeCardText = chosenCard.geteffect();
@@ -1569,6 +1588,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     const Card attackCard = current->getDeck()->getHandcard(selectedCard);
                     const Card defenseCard = enemyPlayer->getDeck()->gethand()[valid.front()];
                     activeEffectPanel = EffectPanelKind::Attack;
+                    audio.playSfx(AudioManager::Sfx::Attack);
                     attackResolved = false;
                     attackCardName = "COMBAT";
                     attackCardText = attackCard.getName() + "  VS  " + defenseCard.getName() +
@@ -1610,6 +1630,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             moveMode = false;
             selectedCharacter = -1;
             moveBoost = 0;
+            audio.playSfx(AudioManager::Sfx::Move);
             showMessage("Movement completed.");
             checkGameOver();
         }
@@ -2177,11 +2198,14 @@ void GameWindow::finishTurnAfterHandLimit()
 {
     handLimitMode = false;
     controller.guiEndTurn();
+    audio.playSfx(AudioManager::Sfx::TurnEnd);
     resetSelections();
     combatLog.clear();
     if (controller.guiBeginTurn())
     {
         activeEffectPanel = EffectPanelKind::Dracula;
+        audio.playSfx(AudioManager::Sfx::TurnStart);
+        audio.playSfx(AudioManager::Sfx::EffectPanel);
         draculaResolved = false;
         draculaPrompt.clear();
         draculaChoices.clear();

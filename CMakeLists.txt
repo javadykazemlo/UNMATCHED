@@ -13,7 +13,7 @@ if(WIN32)
     list(APPEND CMAKE_PREFIX_PATH "C:/Libraries/SFML/install")
 endif()
 
-find_package(SFML 3 REQUIRED COMPONENTS Graphics Window System)
+find_package(SFML 3 REQUIRED COMPONENTS Graphics Window System Audio)
 find_package(Threads REQUIRED)
 
 include_directories(
@@ -31,6 +31,7 @@ target_link_libraries(a PRIVATE
     SFML::Graphics
     SFML::Window
     SFML::System
+    SFML::Audio
     Threads::Threads
 )
 

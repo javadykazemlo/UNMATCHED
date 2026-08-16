@@ -1903,21 +1903,25 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
     Deck* defenseDeck = enemy->getDeck();
     if (!attackDeck || !defenseDeck) return false;
     if (attackCardIndex < 0 || attackCardIndex >= attackDeck->gethandSize()) return false;
-    if (defenseCardIndex < 0 || defenseCardIndex >= defenseDeck->gethandSize()) return false;
+    if (defenseCardIndex < -1 || defenseCardIndex >= defenseDeck->gethandSize()) return false;
 
     Card attackCard = attackDeck->getHandcard(attackCardIndex);
-    Card defenseCard = defenseDeck->getHandcard(defenseCardIndex);
+    Card defenseCard;
+    const bool usingDefenseCard = defenseCardIndex >= 0;
+    if (usingDefenseCard)
+        defenseCard = defenseDeck->getHandcard(defenseCardIndex);
 
     const bool attackOwnerOK = attacker->isHero()
         ? (attackCard.isHero() || attackCard.isAnyowner())
         : (attackCard.issideKick() || attackCard.isAnyowner());
-    const bool defenseOwnerOK = defender->isHero()
-        ? (defenseCard.isHero() || defenseCard.isAnyowner())
-        : (defenseCard.issideKick() || defenseCard.isAnyowner());
+    const bool defenseOwnerOK = !usingDefenseCard ||
+        (defender->isHero()
+            ? (defenseCard.isHero() || defenseCard.isAnyowner())
+            : (defenseCard.issideKick() || defenseCard.isAnyowner()));
 
     if (!attackOwnerOK || !defenseOwnerOK) return false;
     if (!(attackCard.isAttack() || attackCard.isVersatile())) return false;
-    if (!(defenseCard.isDefense() || defenseCard.isVersatile())) return false;
+    if (usingDefenseCard && !(defenseCard.isDefense() || defenseCard.isVersatile())) return false;
 
     {
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
@@ -1930,48 +1934,44 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
         gGuiEffect.choices.clear();
     }
 
-    // Remove both cards before starting the effect thread. This also prevents
-    // the GUI from displaying stale hand indices while the combat is resolving.
+    // Remove the attack card now. The defense card is removed only when the
+    // defender explicitly chose one. If defenseCardIndex == -1, combat proceeds
+    // with no defense card and all normal attack/combat effects still resolve.
     Card selectedAttack = attackDeck->playCard(attackCardIndex, attackCard);
-    Card selectedDefense = defenseDeck->playCard(defenseCardIndex, defenseCard);
+    Card selectedDefense;
+    if (usingDefenseCard)
+        selectedDefense = defenseDeck->playCard(defenseCardIndex, defenseCard);
 
     guiCombatLog.clear();
 
     std::thread([this, attacker, defender,
                  selectedAttack, selectedDefense]() mutable
     {
-        std::ostringstream captured;
-        std::streambuf* old = std::cout.rdbuf(captured.rdbuf());
-
-        GuessElementary = false;
-        resolveCombat(selectedAttack, selectedDefense, attacker, defender);
-
-        std::cout.rdbuf(old);
-
-        std::vector<std::string> logs;
-        std::istringstream lines(captured.str());
-        std::string line;
-        while (std::getline(lines, line))
+        try
         {
-            while (!line.empty() && (line.front() == ' ' || line.front() == '\t'))
-                line.erase(line.begin());
-            while (!line.empty() && (line.back() == ' ' || line.back() == '\t' || line.back() == '\r'))
-                line.pop_back();
-            if (line.empty()) continue;
-
-            bool separators = true;
-            for (char c : line)
-                if (c != '=' && c != '-' && c != ' ') { separators = false; break; }
-            if (!separators) logs.push_back(line);
+            GuessElementary = false;
+            guiLogEffect("Resolving attack, defense and combat effects...");
+            resolveCombat(selectedAttack, selectedDefense, attacker, defender);
+            guiLogEffect("Combat resolved successfully.");
         }
-        logs.push_back("Combat resolved.");
-
-        guiCombatLog = std::move(logs);
+        catch (const std::exception& e)
+        {
+            // Never leave the GUI combat panel locked if an effect throws.
+            guiLogEffect(std::string("Combat effect error: ") + e.what());
+        }
+        catch (...)
+        {
+            guiLogEffect("Combat effect error: unknown exception.");
+        }
 
         {
             std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
             gGuiEffect.busy = false;
             gGuiEffect.finished = true;
+            gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+            gGuiEffect.ready = false;
+            gGuiEffect.prompt.clear();
+            gGuiEffect.choices.clear();
         }
         gGuiEffect.cv.notify_all();
     }).detach();

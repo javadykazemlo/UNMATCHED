@@ -61,6 +61,7 @@ void GameWindow::loadAssets()
     textures.load("main_menu", "assets/backgrounds/main_menu.png");
     textures.load("setup", "assets/backgrounds/setup.png");
     textures.load("game", "assets/backgrounds/game.png");
+    textures.load("end", "assets/backgrounds/end.png");
     textures.load("board", "assets/board/board.png");
     textures.load("card_back", "assets/cards/card_back.png");
 
@@ -1013,7 +1014,7 @@ void GameWindow::drawGameOver()
 {
     drawFullscreenTexture("end");
     sf::RectangleShape overlay({1600.f, 900.f});
-    overlay.setFillColor(sf::Color(3, 4, 8, 220));
+    overlay.setFillColor(sf::Color(3, 4, 8, 70));
     window.draw(overlay);
 
     ui->drawText(window, "THE BATTLE IS OVER", {570.f, 170.f}, 38, GOLD);

@@ -1441,6 +1441,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         attackMode = false;
         schemeMode = false;
         defenseSelectionMode = false;
+        awaitingDefenseDecision = false;
         selectedCharacter = -1;
         selectedCard = -1;
         selectedEnemy = -1;
@@ -1506,10 +1507,16 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         }
 
         Character* attacker = selectedCurrentCharacter();
+        // guiAttack removes both cards immediately, so copy their data before
+        // starting combat. Otherwise the effect panel can display the wrong
+        // cards (the old hand indices now refer to different cards).
+        const Card attackPlayedCard =
+            controller.getCurrentPlayer()->getDeck()->getHandcard(selectedCard);
+        const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
+
         if (controller.guiAttack(attacker, defender, selectedCard, defenseCard))
         {
-            const Card attackCard = current->getDeck()->getHandcard(selectedCard);
-            const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
+            const Card& attackCard = attackPlayedCard;
             activeEffectPanel = EffectPanelKind::Attack;
             audio.playSfx(AudioManager::Sfx::Attack);
             attackResolved = false;
@@ -1522,6 +1529,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             attackChoices.clear();
             attackYesNo = false;
             attackInteger = false;
+            awaitingDefenseDecision = false;
             attackInputBuffer.clear();
             refreshCombatLog();
             defenseSelectionMode = false;
@@ -1651,10 +1659,14 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     showMessage("The defending fighter has no valid defense card.");
                     return;
                 }
+                const Card attackPlayedCard =
+            controller.getCurrentPlayer()->getDeck()->getHandcard(selectedCard);
+                const Card defensePlayedCard = enemyPlayer->getDeck()->gethand()[valid.front()];
+
                 if (controller.guiAttack(selected, occupant, selectedCard, valid.front()))
                 {
-                    const Card attackCard = current->getDeck()->getHandcard(selectedCard);
-                    const Card defenseCard = enemyPlayer->getDeck()->gethand()[valid.front()];
+                    const Card& attackCard = attackPlayedCard;
+                    const Card& defenseCard = defensePlayedCard;
                     activeEffectPanel = EffectPanelKind::Attack;
                     audio.playSfx(AudioManager::Sfx::Attack);
                     attackResolved = false;
@@ -1677,8 +1689,28 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             }
             else
             {
-                defenseSelectionMode = true;
-                showMessage(enemyPlayer ? enemyPlayer->getName() + ": choose a defense card." : "Choose a defense card.");
+                // A human defender must first decide whether to defend.
+                // Only after YES do we enter defense-card selection; NO resolves
+                // the attack immediately with an empty defense card.
+                defenseSelectionMode = false;
+                awaitingDefenseDecision = true;
+                activeEffectPanel = EffectPanelKind::Attack;
+                attackResolved = false;
+                attackCardName = "COMBAT";
+                const Card attackPreview = current->getDeck()->getHandcard(selectedCard);
+                attackCardText = attackPreview.getName() +
+                    "\n\nATTACK EFFECT: " +
+                    (attackPreview.geteffect().empty() ? "None" : attackPreview.geteffect()) +
+                    "\n\nDEFENSE: " +
+                    (enemyPlayer ? enemyPlayer->getName() : "Defender") +
+                    " may choose to play a defense card.";
+                attackPrompt = (enemyPlayer ? enemyPlayer->getName() : "Defender") +
+                    ": do you want to use a defense card?";
+                attackChoices.clear();
+                attackYesNo = true;
+                attackInteger = false;
+                attackInputBuffer.clear();
+                showMessage("Defender: choose YES to play a defense card or NO to defend without a card.");
             }
         }
         return;
@@ -1746,6 +1778,7 @@ void GameWindow::updateAttackEffectPanel()
         refreshCombatLog();
         attackMode = false;
         defenseSelectionMode = false;
+        awaitingDefenseDecision = false;
         selectedCard = -1;
         selectedEnemy = -1;
         selectedCharacter = -1;
@@ -1893,6 +1926,7 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
             attackChoices.clear();
             attackYesNo = false;
             attackInteger = false;
+            awaitingDefenseDecision = false;
             attackInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
@@ -1901,12 +1935,100 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
         return;
     }
 
+    // Resolve the attack with no defense card. The attack card is still in the
+    // current player's hand until this helper calls guiAttack(), so we can
+    // safely copy its display data first.
+    auto resolveWithoutDefense = [&]() -> bool
+    {
+        Character* attacker = selectedCurrentCharacter();
+        Character* defender = controller.getCharacterAt(selectedEnemy);
+        if (!attacker || !defender || !controller.getCurrentPlayer() ||
+            !controller.getCurrentPlayer()->getDeck() || selectedCard < 0)
+        {
+            attackPrompt = "Unable to resolve combat.";
+            return false;
+        }
+
+        const Card attackPlayedCard =
+            controller.getCurrentPlayer()->getDeck()->getHandcard(selectedCard);
+        if (!controller.guiAttack(attacker, defender, selectedCard, -1))
+        {
+            attackPrompt = "Unable to resolve combat without a defense card.";
+            showMessage("Combat could not be started.");
+            return false;
+        }
+
+        activeEffectPanel = EffectPanelKind::Attack;
+        audio.playSfx(AudioManager::Sfx::Attack);
+        attackResolved = false;
+        attackCardName = "COMBAT";
+        attackCardText = attackPlayedCard.getName() +
+            "\n\nATTACK EFFECT: " +
+            (attackPlayedCard.geteffect().empty() ? "None" : attackPlayedCard.geteffect()) +
+            "\n\nDEFENSE: No defense card played.";
+        attackPrompt = "Resolving combat without a defense card...";
+        attackChoices.clear();
+        attackYesNo = false;
+        attackInteger = false;
+        attackInputBuffer.clear();
+        selectedCard = -1;
+        selectedEnemy = -1;
+        selectedCharacter = -1;
+        showMessage("The defender chose not to use a defense card. Combat is resolving.");
+        checkGameOver();
+        return true;
+    };
+
     if (attackYesNo)
     {
-        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
-            controller.submitGuiYesNo(true);
-        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
-            controller.submitGuiYesNo(false);
+        const bool clickedYes = sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p);
+        const bool clickedNo  = sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p);
+        if (!clickedYes && !clickedNo) return;
+
+        if (awaitingDefenseDecision)
+        {
+            if (clickedYes)
+            {
+                Character* defender = controller.getCharacterAt(selectedEnemy);
+                const std::vector<int> validDefense = controller.getGuiDefenseCards(defender);
+
+                // If the defender has no legal defense card, YES cannot lead to
+                // a card-selection screen. Resolve exactly as NO instead.
+                if (validDefense.empty())
+                {
+                    awaitingDefenseDecision = false;
+                    attackYesNo = false;
+                    defenseSelectionMode = false;
+                    attackPrompt = "No valid defense card is available. Resolving without defense...";
+                    resolveWithoutDefense();
+                    return;
+                }
+
+                awaitingDefenseDecision = false;
+                attackYesNo = false;
+                attackChoices.clear();
+                // Leave the effect panel so the defender can click a card in
+                // the normal hand area. The panel reopens after selection.
+                activeEffectPanel = EffectPanelKind::None;
+                defenseSelectionMode = true;
+                Player* enemyPlayer = controller.getEnemyPlayer();
+                attackPrompt = (enemyPlayer ? enemyPlayer->getName() : "Defender") +
+                    ": choose a defense card.";
+                showMessage(enemyPlayer ? enemyPlayer->getName() + ": choose a defense card."
+                                        : "Choose a defense card.");
+                return;
+            }
+
+            // NO: immediately resolve the combat without a defense card.
+            awaitingDefenseDecision = false;
+            attackYesNo = false;
+            defenseSelectionMode = false;
+            resolveWithoutDefense();
+            return;
+        }
+
+        // Generic yes/no requested by a card effect.
+        controller.submitGuiYesNo(clickedYes);
         return;
     }
 
@@ -2468,6 +2590,7 @@ void GameWindow::resetSelections()
     boostMode = false;
     schemeMode = false;
     defenseSelectionMode = false;
+    awaitingDefenseDecision = false;
     awaitingMoveBoost = false;
     moveBoostPrompt = false;
     moveBoost = 0;

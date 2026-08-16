@@ -272,17 +272,20 @@ void Controller::playTurn()
     {
         
         gamerand = 0;
+        activeDecider = current;
+
+        cout << "\n═══════════════════════════════════════════════════════════════════════════════" << endl;
+        cout << "                          " << current->getName() << "'s turn\n";
+
+        // Dracula's ability triggers once, at the START of the turn, not
+        // before every action taken during it.
+        if(current->getHero()->getName() == "Dracula")
+        current->getHero()->ability(bord , current);
+
         while(gamerand < 2)
         {
             activeDecider = current;
 
-            cout << "\n═══════════════════════════════════════════════════════════════════════════════" << endl;
-            cout << "                          " << current->getName() << "'s turn\n";
-           
-            if(current->getHero()->getName() == "Dracula")
-            current->getHero()->ability(bord , current);
-
-    
             cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn\n 5.Save Game";
             cout << "\nChoose a action: ";
 
@@ -2189,6 +2192,13 @@ bool Controller::guiUseHeroAbility()
                 Character* target = targets[choice - 1];
                 target->takeDamage(1);
                 guiLogEffect("1 damage dealt to " + target->getName() + ".");
+
+                if (!target->checkalive())
+                {
+                    bord.deletCharacter(target->getSpace());
+                    target->setSpace(-1);
+                    guiLogEffect(target->getName() + " was defeated.");
+                }
 
                 try
                 {

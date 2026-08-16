@@ -30,9 +30,10 @@ void Dracula::ability(Bord& bord , Player* player)
 
         for (int pos : adjacent)
         {
-            if (bord.getCharacter(pos) != nullptr)
+            Character* occupant = bord.getCharacter(pos);
+            if (occupant != nullptr && occupant->checkalive())
             {
-                targets.push_back(bord.getCharacter(pos));
+                targets.push_back(occupant);
             }
         }
 
@@ -55,7 +56,17 @@ void Dracula::ability(Bord& bord , Player* player)
         
             if (k >= 1 && k <= targets.size())
             {
-                targets[k - 1]->takeDamage(1);
+                Character* target = targets[k - 1];
+                target->takeDamage(1);
+                effectLog << "1 damage dealt to " << target->getName() << ".\n";
+
+                if (!target->checkalive())
+                {
+                    bord.deletCharacter(target->getSpace());
+                    target->setSpace(-1);
+                    effectLog << target->getName() << " was defeated.\n";
+                }
+
                 try
                 {
                     player->getDeck()->draw();

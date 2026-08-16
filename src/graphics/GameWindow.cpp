@@ -64,6 +64,7 @@ void GameWindow::loadAssets()
     textures.load("end", "assets/backgrounds/end.png");
     textures.load("board", "assets/board/board.png");
     textures.load("card_back", "assets/cards/card_back.png");
+    textures.load("mute", "assets/mute.png");
 
     loadCharacterAssets();
     loadCardAssets();
@@ -107,6 +108,12 @@ void GameWindow::loadCharacterAssets()
     textures.load("watson", "assets/characters/watson.png");
     textures.load("sisters", "assets/characters/sisters.png");
     textures.load("invisible_man", "assets/characters/invisible_man.png");
+
+    // Separate portraits used only by the left/right player information panels.
+    // Keep these IDs and paths independent from the board character textures above.
+    textures.load("panel_dracul", "assets/character/dracul.png");
+    textures.load("panel_sherlok", "assets/character/sherlok.png");
+    textures.load("panel_invisible", "assets/character/invisible.png");
 }
 
 void GameWindow::drawFullscreenTexture(const std::string& id)
@@ -800,6 +807,37 @@ void GameWindow::drawGame()
     window.draw(top);
 
     ui->drawText(window, "UNMATCHED", {22.f, 16.f}, 26, GOLD);
+
+    // Music-only mute control. SFX remain enabled.
+    const sf::FloatRect muteRect({305.f, 13.f}, {42.f, 42.f});
+    if (const sf::Texture* muteTexture = textures.get("mute"))
+    {
+        sf::RectangleShape muteBackground(muteRect.size);
+        muteBackground.setPosition(muteRect.position);
+        muteBackground.setFillColor(audio.isMusicMuted()
+                                        ? sf::Color(55, 25, 28, 230)
+                                        : sf::Color(18, 18, 25, 220));
+        muteBackground.setOutlineColor(audio.isMusicMuted() ? RED : GOLD);
+        muteBackground.setOutlineThickness(1.5f);
+        window.draw(muteBackground);
+
+        sf::Sprite muteSprite(*muteTexture);
+        const sf::Vector2u muteSize = muteTexture->getSize();
+        if (muteSize.x > 0 && muteSize.y > 0)
+        {
+            const float scale = std::min(30.f / static_cast<float>(muteSize.x),
+                                         30.f / static_cast<float>(muteSize.y));
+            muteSprite.setScale({scale, scale});
+            const sf::FloatRect bounds = muteSprite.getGlobalBounds();
+            muteSprite.setPosition(
+                {muteRect.position.x + (muteRect.size.x - bounds.size.x) / 2.f,
+                 muteRect.position.y + (muteRect.size.y - bounds.size.y) / 2.f});
+            muteSprite.setColor(audio.isMusicMuted()
+                                    ? sf::Color(145, 135, 125)
+                                    : sf::Color::White);
+            window.draw(muteSprite);
+        }
+    }
     Player* current = controller.getCurrentPlayer();
     Player* enemy = controller.getEnemyPlayer();
     const sf::Color turnColor = current && current->getHero()->getowner() == 1 ? RED : BLUE;
@@ -816,58 +854,132 @@ void GameWindow::drawGame()
         if (!player || player->getCharacters().empty()) return;
 
         Character* hero = player->getHero();
-        ui->drawText(window, player->getName(), {rect.position.x + 18.f, rect.position.y + 14.f}, 15, accent);
-        ui->drawText(window, hero->getName(), {rect.position.x + 18.f, rect.position.y + 40.f}, 13, PARCHMENT);
+        if (!hero) return;
 
-        const std::string hp = "HP  " + std::to_string(hero->getHp()) + "/" + std::to_string(hero->getMaxhp());
-        ui->drawText(window, hp, {rect.position.x + 18.f, rect.position.y + 65.f}, 11, PARCHMENT);
-        ui->drawHealth(window, {rect.position.x + 18.f, rect.position.y + 88.f},
-                       static_cast<float>(hero->getHp()) / std::max(1, hero->getMaxhp()),
+        // Player name: centered at the top of the panel.
+        const std::string playerName = player->getName();
+        sf::Text playerNameText(font, playerName, 24);
+        const sf::FloatRect playerNameBounds = playerNameText.getLocalBounds();
+        playerNameText.setOrigin({
+            playerNameBounds.position.x + playerNameBounds.size.x / 2.f,
+            playerNameBounds.position.y
+        });
+        playerNameText.setPosition({
+            rect.position.x + rect.size.x / 2.f,
+            rect.position.y + 12.f
+        });
+        playerNameText.setFillColor(accent);
+        window.draw(playerNameText);
+
+        // The board uses the original assets/IDs ("dracula", "sherlock",
+        // "invisible_man"). These panel portraits are deliberately separate.
+        std::string panelId;
+        if (hero->getName() == "Dracula")
+            panelId = "panel_dracul";
+        else if (hero->getName() == "sherlock")
+            panelId = "panel_sherlok";
+        else if (hero->getName() == "invisible man")
+            panelId = "panel_invisible";
+
+        // 35 px total inset from each panel edge, including the frame.
+        const float frameInset = 35.f;
+        const float frameSize = rect.size.x - 2.f * frameInset;
+        const float frameY = rect.position.y + 50.f;
+
+        sf::RectangleShape portraitFrame({frameSize, frameSize});
+        portraitFrame.setPosition({rect.position.x + frameInset, frameY});
+        portraitFrame.setFillColor(sf::Color(18, 15, 21));
+        portraitFrame.setOutlineColor(accent);
+        portraitFrame.setOutlineThickness(4.f);
+        window.draw(portraitFrame);
+
+        if (!panelId.empty())
+        {
+            if (const sf::Texture* tex = textures.get(panelId))
+            {
+                sf::Sprite sprite(*tex);
+                const sf::Vector2u size = tex->getSize();
+
+                if (size.x > 0 && size.y > 0)
+                {
+                    // Square crop: preserve aspect ratio and never stretch.
+                    const float side = static_cast<float>(std::min(size.x, size.y));
+                    const float left = (static_cast<float>(size.x) - side) / 2.f;
+                    const float top = (static_cast<float>(size.y) - side) / 2.f;
+
+                    sprite.setTextureRect(sf::IntRect(
+                        {static_cast<int>(left), static_cast<int>(top)},
+                        {static_cast<int>(side), static_cast<int>(side)}
+                    ));
+
+                    const float imageInset = 4.f;
+                    const float imageSize = frameSize - 2.f * imageInset;
+                    const float scale = imageSize / side;
+                    sprite.setScale({scale, scale});
+                    sprite.setPosition({
+                        portraitFrame.getPosition().x + imageInset,
+                        portraitFrame.getPosition().y + imageInset
+                    });
+                    window.draw(sprite);
+                }
+            }
+        }
+
+        // Keep the existing information order after the portrait:
+        // hero name -> HP -> cards -> sidekicks.
+        const float contentX = rect.position.x + 18.f;
+        const float infoY = frameY + frameSize + 12.f;
+
+        ui->drawText(window, hero->getName(),
+                     {contentX, infoY}, 16, PARCHMENT);
+
+        const std::string hp = "HP  " + std::to_string(hero->getHp()) +
+                               "/" + std::to_string(hero->getMaxhp());
+        ui->drawText(window, hp, {contentX, infoY + 28.f}, 13, PARCHMENT);
+
+        // HP bar deliberately keeps its previous height (11 px).
+        ui->drawHealth(window, {contentX, infoY + 51.f},
+                       static_cast<float>(hero->getHp()) /
+                           std::max(1, hero->getMaxhp()),
                        rect.size.x - 36.f, accent);
 
         if (player->getDeck())
         {
-            ui->drawText(window, "DECK " + std::to_string(player->getDeck()->getdeckSize()),
-                         {rect.position.x + 18.f, rect.position.y + 112.f}, 10, PARCHMENT);
-            ui->drawText(window, "HAND " + std::to_string(player->getDeck()->gethandSize()),
-                         {rect.position.x + 120.f, rect.position.y + 112.f}, 10, PARCHMENT);
-            ui->drawText(window, "DISCARD " + std::to_string(player->getDeck()->getdiscardSize()),
-                         {rect.position.x + 220.f, rect.position.y + 112.f}, 10, PARCHMENT);
+            ui->drawText(window,
+                         "DECK " + std::to_string(player->getDeck()->getdeckSize()),
+                         {contentX, infoY + 75.f}, 12, PARCHMENT);
+            ui->drawText(window,
+                         "HAND " + std::to_string(player->getDeck()->gethandSize()),
+                         {contentX + 120.f, infoY + 75.f}, 12, PARCHMENT);
+            ui->drawText(window,
+                         "DISCARD " + std::to_string(player->getDeck()->getdiscardSize()),
+                         {contentX + 220.f, infoY + 75.f}, 12, PARCHMENT);
         }
 
-        std::string id;
-        if (hero->getName() == "Dracula") id = "dracula";
-        else if (hero->getName() == "sherlock") id = "sherlock";
-        else if (hero->getName() == "invisible man") id = "invisible_man";
-        if (const sf::Texture* tex = textures.get(id))
-        {
-            sf::Sprite sprite(*tex);
-            const sf::Vector2u size = tex->getSize();
-            const float scale = std::min(64.f / static_cast<float>(size.x), 64.f / static_cast<float>(size.y));
-            sprite.setScale({scale, scale});
-            const sf::FloatRect b = sprite.getGlobalBounds();
-            sprite.setPosition({rect.position.x + rect.size.x - b.size.x - 18.f,
-                                 rect.position.y + 25.f});
-            window.draw(sprite);
-        }
-
-        float y = rect.position.y + 145.f;
+        float y = infoY + 107.f;
         for (int i = 1; i < player->getfighterCount(); ++i)
         {
             Character* c = player->getFighter(i);
             if (!c) continue;
-            const std::string letter = c->getName() == "Dr_watson" ? "W" :
+
+            const std::string letter =
+                c->getName() == "Dr_watson" ? "W" :
                 (c->getName().find("Sister") != std::string::npos ? "S" : "I");
-            ui->drawText(window, letter, {rect.position.x + 18.f, y}, 15, accent);
-            ui->drawText(window, c->getName() + "  " + std::to_string(c->getHp()) + "/" + std::to_string(c->getMaxhp()),
-                         {rect.position.x + 43.f, y + 2.f}, 9,
-                         c->checkalive() ? PARCHMENT : sf::Color(100, 95, 90));
+
+            ui->drawText(window, letter, {contentX, y}, 17, accent);
+            ui->drawText(window,
+                         c->getName() + "  " +
+                         std::to_string(c->getHp()) + "/" +
+                         std::to_string(c->getMaxhp()),
+                         {contentX + 28.f, y + 2.f}, 11,
+                         c->checkalive() ? PARCHMENT :
+                                           sf::Color(100, 95, 90));
             y += 28.f;
         }
     };
 
-    drawPlayerPanel(current, {{18.f, 85.f}, {385.f, 550.f}}, RED);
-    drawPlayerPanel(enemy, {{1197.f, 85.f}, {385.f, 550.f}}, BLUE);
+    drawPlayerPanel(current, {{18.f, 70.f}, {385.f, 580.f}}, RED);
+    drawPlayerPanel(enemy, {{1197.f, 70.f}, {385.f, 580.f}}, BLUE);
 
     std::vector<int> highlights;
     Character* selected = selectedCurrentCharacter();
@@ -1232,17 +1344,6 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
             audio.playGameplayMusic();
             audio.playSfx(AudioManager::Sfx::Confirm);
             audio.playSfx(AudioManager::Sfx::TurnStart);
-            if (controller.guiBeginTurn())
-            {
-                activeEffectPanel = EffectPanelKind::Dracula;
-                audio.playSfx(AudioManager::Sfx::EffectPanel);
-                draculaResolved = false;
-                draculaPrompt.clear();
-                draculaChoices.clear();
-                draculaYesNo = false;
-                draculaInteger = false;
-                draculaInputBuffer.clear();
-            }
             controller.guiBeginTurn();
             showMessage("The game has started.");
         }
@@ -1312,6 +1413,12 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
+    if (sf::FloatRect({305.f, 13.f}, {42.f, 42.f}).contains(p))
+    {
+        audio.toggleMusicMute();
+        return;
+    }
+
     if (sf::FloatRect({1375.f, 12.f}, {90.f, 42.f}).contains(p))
     {
         if (rulesView)
@@ -1362,18 +1469,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         audio.playSfx(AudioManager::Sfx::TurnEnd);
         resetSelections();
         combatLog.clear();
-        if (controller.guiBeginTurn())
-        {
-            activeEffectPanel = EffectPanelKind::Dracula;
-            audio.playSfx(AudioManager::Sfx::TurnStart);
-            audio.playSfx(AudioManager::Sfx::EffectPanel);
-            draculaResolved = false;
-            draculaPrompt.clear();
-            draculaChoices.clear();
-            draculaYesNo = false;
-            draculaInteger = false;
-            draculaInputBuffer.clear();
-        }
+        controller.guiBeginTurn();
+        audio.playSfx(AudioManager::Sfx::TurnStart);
         showMessage("Turn changed.");
         return;
     }
@@ -2625,18 +2722,8 @@ void GameWindow::finishTurnAfterHandLimit()
     audio.playSfx(AudioManager::Sfx::TurnEnd);
     resetSelections();
     combatLog.clear();
-    if (controller.guiBeginTurn())
-    {
-        activeEffectPanel = EffectPanelKind::Dracula;
-        audio.playSfx(AudioManager::Sfx::TurnStart);
-        audio.playSfx(AudioManager::Sfx::EffectPanel);
-        draculaResolved = false;
-        draculaPrompt.clear();
-        draculaChoices.clear();
-        draculaYesNo = false;
-        draculaInteger = false;
-        draculaInputBuffer.clear();
-    }
+    controller.guiBeginTurn();
+    audio.playSfx(AudioManager::Sfx::TurnStart);
     showMessage("Turn changed.");
 }
 

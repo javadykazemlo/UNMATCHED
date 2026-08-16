@@ -1312,7 +1312,6 @@ bool Controller::LoadGame(Player player[2], const string& filename)
     enemy = loadedEnemy;
     guiMode = true;
     guiPlayers = player;
-    guiTurnOwner = -1;
     guiSetupStage = GuiSetupStage::Ready;
     guiCharacterPlayerIndex = -1;
     guiPositionPlayerIndex = -1;
@@ -1324,8 +1323,6 @@ bool Controller::LoadGame(Player player[2], const string& filename)
         gGuiEffect.finished = false;
         gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
         gGuiEffect.prompt.clear();
-        gGuiEffect.title.clear();
-        gGuiEffect.description.clear();
         gGuiEffect.choices.clear();
         gGuiEffect.ready = false;
     }
@@ -2107,21 +2104,66 @@ bool Controller::guiBeginTurn()
         guiEffectLog.clear();
     }
 
-    if (current->getHero()->getName() != "Dracula")
-        return false;
+    // Hero abilities are explicit GUI actions. The beginning of a turn no
+    // longer opens a modal asking about the ability automatically.
+    guiHeroAbilityUsed = false;
+    return true;
+}
+
+bool Controller::guiHeroAbilityAvailable() const
+{
+    if (!current || !current->getHero()) return false;
+    if (!current->getHero()->checkalive()) return false;
+    if (guiHeroAbilityUsed) return false;
+    if (gamerand != 0) return false;
+
+    // In the current project only Dracula has an active, player-invoked
+    // special ability. Sherlock's implementation is empty and Invisible
+    // Man's implementation is passive information rather than an action.
+    return current->getHero()->getName() == "Dracula";
+}
+
+bool Controller::guiUseHeroAbility()
+{
+    if (!guiHeroAbilityAvailable()) return false;
+    if (!current || !current->getHero()) return false;
 
     {
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        if (gGuiEffect.busy) return false;
         gGuiEffect.busy = true;
+        gGuiEffect.finished = false;
+        gGuiEffect.requestType = GuiEffectBridge::RequestType::YesNo;
+        gGuiEffect.prompt = "Use Dracula's ability?";
+        gGuiEffect.choices.clear();
+        gGuiEffect.ready = false;
+        guiEffectLog.clear();
     }
+
+    guiHeroAbilityUsed = true;
 
     std::thread([this]
     {
         activeDecider = current;
         guiLogEffect("Dracula's special ability");
-        guiLogEffect("Do you want to use Dracula's ability? (Yes / No)");
 
-        bool useAbility = getYesNo();
+        // The GUI Yes/No request is published before this worker starts.
+        // Wait on that exact request instead of calling getYesNo() again.
+        // Calling getYesNo() here would replace the request and can race the
+        // SFML event loop, causing visible YES/NO buttons to ignore clicks.
+        bool useAbility = false;
+        {
+            std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
+            gGuiEffect.cv.wait(lock, []
+            {
+                return gGuiEffect.ready;
+            });
+            useAbility = gGuiEffect.boolValue;
+            gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+            gGuiEffect.prompt.clear();
+            gGuiEffect.ready = false;
+        }
+
         if (useAbility)
         {
             Character* dracula = current->getHero();
@@ -2135,7 +2177,7 @@ bool Controller::guiBeginTurn()
 
             if (targets.empty())
             {
-                guiLogEffect("No adjacent fighters to attack!");
+                guiLogEffect("No adjacent living fighters to attack.");
             }
             else
             {
@@ -2165,7 +2207,7 @@ bool Controller::guiBeginTurn()
         }
         else
         {
-            guiLogEffect("Not using ability.");
+            guiLogEffect("Ability skipped.");
         }
 
         {
@@ -2207,8 +2249,7 @@ bool Controller::getGuiInputRequest(std::string& prompt, std::vector<int>& choic
     prompt = gGuiEffect.prompt;
     choices = gGuiEffect.choices;
     yesNo = gGuiEffect.requestType == GuiEffectBridge::RequestType::YesNo;
-    integerInput = gGuiEffect.requestType == GuiEffectBridge::RequestType::Integer ||
-                   gGuiEffect.requestType == GuiEffectBridge::RequestType::Choice;
+    integerInput = gGuiEffect.requestType == GuiEffectBridge::RequestType::Integer;
     return true;
 }
 

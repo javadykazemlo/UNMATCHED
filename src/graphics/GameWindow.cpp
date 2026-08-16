@@ -909,9 +909,17 @@ void GameWindow::drawGame()
     ui->drawPanel(window, {{18.f, 650.f}, {385.f, 232.f}}, RED);
     ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, RED);
     const bool canAct = controller.getActionCount() < 2;
-    ui->drawButton(window, {{35.f, 700.f}, {105.f, 43.f}}, "MOVE", moveMode, GREEN);
-    ui->drawButton(window, {{150.f, 700.f}, {105.f, 43.f}}, "ATTACK", attackMode, RED);
-    ui->drawButton(window, {{265.f, 700.f}, {105.f, 43.f}}, "SCHEME", schemeMode, PURPLE);
+    ui->drawButton(window, {{35.f, 700.f}, {78.f, 43.f}}, "MOVE", moveMode, GREEN);
+    ui->drawButton(window, {{120.f, 700.f}, {78.f, 43.f}}, "ATTACK", attackMode, RED);
+    ui->drawButton(window, {{205.f, 700.f}, {78.f, 43.f}}, "SCHEME", schemeMode, PURPLE);
+    bool abilityAvailable = controller.guiHeroAbilityAvailable();
+    if (current && current->getHero())
+    {
+        const std::string heroName = current->getHero()->getName();
+        abilityAvailable = abilityAvailable || heroName == "sherlock" || heroName == "invisible man";
+    }
+    ui->drawButton(window, {{290.f, 700.f}, {78.f, 43.f}}, "ABILITY", false,
+                   abilityAvailable ? GOLD : sf::Color(70, 65, 55));
 
     ui->drawButton(window, {{35.f, 754.f}, {160.f, 43.f}}, "SAVE GAME", false, GOLD);
     ui->drawButton(window, {{210.f, 754.f}, {160.f, 43.f}}, "END ACTION", false, GOLD);
@@ -1192,6 +1200,7 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
                 draculaInteger = false;
                 draculaInputBuffer.clear();
             }
+            controller.guiBeginTurn();
             showMessage("The game has started.");
         }
     }
@@ -1208,15 +1217,17 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     // clicks through its own independent handler.
     if (activeEffectPanel != EffectPanelKind::None)
     {
-        if (controller.guiEffectBusy())
+        // The effect panel owns mouse input for its entire lifetime. The
+        // individual handler decides whether it is waiting for an answer or
+        // is ready for RETURN TO GAME. Do not gate this on busy: busy becomes
+        // false as soon as the worker finishes, while the result panel stays
+        // visible until the player closes it.
+        switch (activeEffectPanel)
         {
-            switch (activeEffectPanel)
-            {
-                case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
-                case EffectPanelKind::Scheme:  handleSchemeEffectInput(p);  break;
-                case EffectPanelKind::Dracula: handleDraculaEffectInput(p); break;
-                case EffectPanelKind::None:    break;
-            }
+            case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
+            case EffectPanelKind::Scheme:  handleSchemeEffectInput(p);  break;
+            case EffectPanelKind::Dracula: handleDraculaEffectInput(p); break;
+            case EffectPanelKind::None:    break;
         }
         return;
     }
@@ -1367,8 +1378,62 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
     const bool canAct = controller.getActionCount() < 2;
 
+    // HERO ABILITY: Dracula has an active ability. Sherlock and Invisible Man
+    // have passive abilities, so the same button opens a readable ability
+    // panel without consuming an action or asking for input.
+    if (sf::FloatRect({290.f, 700.f}, {78.f, 43.f}).contains(p))
+    {
+        if (!current || !current->getHero())
+            return;
+
+        const std::string heroName = current->getHero()->getName();
+
+        if (heroName == "Dracula")
+        {
+            if (!controller.guiHeroAbilityAvailable())
+            {
+                showMessage("Dracula's ability is not available right now.");
+                return;
+            }
+
+            resetSelections();
+            combatLog.clear();
+            if (controller.guiUseHeroAbility())
+            {
+                activeEffectPanel = EffectPanelKind::Dracula;
+                draculaResolved = false;
+                draculaPrompt = "Use Dracula's ability?";
+                draculaChoices.clear();
+                draculaYesNo = true;
+                draculaInteger = false;
+                draculaInputBuffer.clear();
+                showMessage("Dracula ability opened. Choose YES or NO.");
+            }
+        }
+        else if (heroName == "sherlock" || heroName == "invisible man")
+        {
+            resetSelections();
+            combatLog.clear();
+            activeEffectPanel = EffectPanelKind::Dracula;
+            draculaResolved = true;
+            draculaChoices.clear();
+            draculaYesNo = false;
+            draculaInteger = false;
+            draculaInputBuffer.clear();
+            if (heroName == "sherlock")
+                draculaPrompt = "PASSIVE ABILITY — Sherlock: effects that attempt to disable Sherlock/Dr. Watson-related cards do not disable them.";
+            else
+                draculaPrompt = "PASSIVE ABILITY — Invisible Man: +1 defense on a fog space (not a card effect) and movement between fog spaces is treated as adjacency.";
+        }
+        else
+        {
+            showMessage("This fighter has no special ability.");
+        }
+        return;
+    }
+
     // Each real action is counted immediately when its button is pressed.
-    if (sf::FloatRect({35.f, 700.f}, {105.f, 43.f}).contains(p))
+    if (sf::FloatRect({35.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1391,7 +1456,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    if (sf::FloatRect({150.f, 700.f}, {105.f, 43.f}).contains(p))
+    if (sf::FloatRect({120.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1409,7 +1474,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    if (sf::FloatRect({265.f, 700.f}, {105.f, 43.f}).contains(p))
+    if (sf::FloatRect({205.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
         controller.guiEndAction();
@@ -1450,6 +1515,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             attackResolved = false;
             attackCardName = "COMBAT";
             attackCardText = attackCard.getName() + "  VS  " + defensePlayedCard.getName() +
+                             "\n\nATTACK EFFECT: " + (attackCard.geteffect().empty() ? "None" : attackCard.geteffect()) +
+                             "\nDEFENSE EFFECT: " + (defensePlayedCard.geteffect().empty() ? "None" : defensePlayedCard.geteffect()) +
                              "\n\nResolving attack, defense and combat effects...";
             attackPrompt = "Resolving combat...";
             attackChoices.clear();
@@ -1593,6 +1660,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
                     attackResolved = false;
                     attackCardName = "COMBAT";
                     attackCardText = attackCard.getName() + "  VS  " + defenseCard.getName() +
+                                     "\n\nATTACK EFFECT: " + (attackCard.geteffect().empty() ? "None" : attackCard.geteffect()) +
+                                     "\nDEFENSE EFFECT: " + (defenseCard.geteffect().empty() ? "None" : defenseCard.geteffect()) +
                                      "\n\nResolving attack, defense and combat effects...";
                     attackPrompt = "Resolving combat...";
                     attackChoices.clear();
@@ -1634,6 +1703,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             audio.playSfx(AudioManager::Sfx::Move);
             showMessage("Movement completed.");
             checkGameOver();
+            advanceTurnIfTwoActionsUsed();
         }
     }
 }
@@ -1659,11 +1729,15 @@ void GameWindow::updateAttackEffectPanel()
         attackYesNo = yesNo;
         attackInteger = integerInput;
     }
+    else if (controller.guiEffectBusy() && !attackResolved && attackPrompt.empty())
+    {
+        attackPrompt = "Resolving combat effect...";
+    }
 
     if (controller.guiEffectFinished())
     {
         attackResolved = true;
-        attackPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        attackPrompt = "Effect resolved.";
         attackChoices.clear();
         attackYesNo = false;
         attackInteger = false;
@@ -1675,6 +1749,17 @@ void GameWindow::updateAttackEffectPanel()
         selectedCard = -1;
         selectedEnemy = -1;
         selectedCharacter = -1;
+
+        // The second action ends the turn automatically as soon as the
+        // complete combat/effect resolution has finished.
+        if (controller.getActionCount() >= 2)
+        {
+            activeEffectPanel = EffectPanelKind::None;
+            attackResolved = false;
+            controller.clearGuiEffectLog();
+            checkGameOver();
+            advanceTurnIfTwoActionsUsed();
+        }
     }
 }
 
@@ -1690,13 +1775,35 @@ void GameWindow::drawAttackEffectPanel()
     ui->drawText(window, attackCardName.empty() ? "ATTACK EFFECT" : attackCardName,
                  {385.f, 100.f}, 24, GOLD);
 
-    ui->drawText(window, attackCardText.empty() ? "Resolving combat..." : attackCardText,
-                 {385.f, 145.f}, 14, PARCHMENT);
+    auto drawWrapped = [&](const std::string& text, float x, float y0, float widthChars, int size, sf::Color color, int maxLines)
+    {
+        std::string line;
+        int row = 0;
+        const auto flush = [&]()
+        {
+            if (!line.empty() && row < maxLines)
+                ui->drawText(window, line, {x, y0 + row * (size + 5.f)}, size, color);
+            line.clear();
+            ++row;
+        };
+        for (char ch : text)
+        {
+            if (row >= maxLines) break;
+            if (ch == '\n') { flush(); continue; }
+            line += ch;
+            if (line.size() >= static_cast<std::size_t>(widthChars) && ch == ' ')
+                flush();
+        }
+        if (row < maxLines && !line.empty()) flush();
+    };
+
+    drawWrapped(attackCardText.empty() ? "Resolving combat..." : attackCardText,
+                385.f, 145.f, 94.f, 13, PARCHMENT, 7);
 
     // Live effect log: every cout-like message generated by the combat/attack
     // effects is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
-    float y = 190.f;
+    float y = 300.f;
     int shown = 0;
     for (auto it = logs.rbegin(); it != logs.rend() && shown < 11; ++it)
     {
@@ -1733,7 +1840,7 @@ void GameWindow::drawAttackEffectPanel()
         if (attackYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
         }
         else if (!attackChoices.empty())
         {
@@ -1789,6 +1896,7 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
             attackInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
+            advanceTurnIfTwoActionsUsed();
         }
         return;
     }
@@ -1847,11 +1955,15 @@ void GameWindow::updateSchemeEffectPanel()
         schemeYesNo = yesNo;
         schemeInteger = integerInput;
     }
+    else if (controller.guiEffectBusy() && !schemeResolved && schemePrompt.empty())
+    {
+        schemePrompt = "Resolving scheme effect...";
+    }
 
     if (controller.guiEffectFinished())
     {
         schemeResolved = true;
-        schemePrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        schemePrompt = "Effect resolved.";
         schemeChoices.clear();
         schemeYesNo = false;
         schemeInteger = false;
@@ -1860,6 +1972,15 @@ void GameWindow::updateSchemeEffectPanel()
         schemeMode = false;
         selectedCard = -1;
         selectedCharacter = -1;
+
+        if (controller.getActionCount() >= 2)
+        {
+            activeEffectPanel = EffectPanelKind::None;
+            schemeResolved = false;
+            controller.clearGuiEffectLog();
+            checkGameOver();
+            advanceTurnIfTwoActionsUsed();
+        }
     }
 }
 
@@ -1875,13 +1996,35 @@ void GameWindow::drawSchemeEffectPanel()
     ui->drawText(window, schemeCardName.empty() ? "SCHEME EFFECT" : schemeCardName,
                  {385.f, 100.f}, 24, GOLD);
 
-    ui->drawText(window, schemeCardText.empty() ? "Resolving Scheme effect..." : schemeCardText,
-                 {385.f, 145.f}, 14, PARCHMENT);
+    auto drawWrapped = [&](const std::string& text, float x, float y0, float widthChars, int size, sf::Color color, int maxLines)
+    {
+        std::string line;
+        int row = 0;
+        const auto flush = [&]()
+        {
+            if (!line.empty() && row < maxLines)
+                ui->drawText(window, line, {x, y0 + row * (size + 5.f)}, size, color);
+            line.clear();
+            ++row;
+        };
+        for (char ch : text)
+        {
+            if (row >= maxLines) break;
+            if (ch == '\n') { flush(); continue; }
+            line += ch;
+            if (line.size() >= static_cast<std::size_t>(widthChars) && ch == ' ')
+                flush();
+        }
+        if (row < maxLines && !line.empty()) flush();
+    };
+
+    drawWrapped(schemeCardText.empty() ? "Resolving Scheme effect..." : schemeCardText,
+                385.f, 145.f, 94.f, 13, PARCHMENT, 7);
 
     // Live effect log: every cout-like message generated by the Scheme
     // effect is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
-    float y = 190.f;
+    float y = 300.f;
     int shown = 0;
     for (auto it = logs.rbegin(); it != logs.rend() && shown < 11; ++it)
     {
@@ -1918,7 +2061,7 @@ void GameWindow::drawSchemeEffectPanel()
         if (schemeYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
         }
         else if (!schemeChoices.empty())
         {
@@ -1974,6 +2117,7 @@ void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
             schemeInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
+            advanceTurnIfTwoActionsUsed();
         }
         return;
     }
@@ -2022,6 +2166,23 @@ void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
 
 void GameWindow::updateDraculaEffectPanel()
 {
+    if (controller.guiEffectFinished())
+    {
+        draculaResolved = true;
+        draculaPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
+        draculaChoices.clear();
+        draculaYesNo = false;
+        draculaInteger = false;
+        draculaInputBuffer.clear();
+        return;
+    }
+
+    if (draculaResolved)
+        return;
+
+    // Always mirror the Controller's current request. There is deliberately
+    // no fake/fallback Yes/No request here: the buttons must be backed by an
+    // actual pending request so every click has a real consumer.
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -2034,15 +2195,10 @@ void GameWindow::updateDraculaEffectPanel()
         draculaYesNo = yesNo;
         draculaInteger = integerInput;
     }
-
-    if (controller.guiEffectFinished())
+    else if (controller.guiEffectBusy() && draculaChoices.empty() && !draculaInteger && !draculaYesNo)
     {
-        draculaResolved = true;
-        draculaPrompt = "Effect resolved. Press RETURN TO GAME to continue.";
-        draculaChoices.clear();
-        draculaYesNo = false;
-        draculaInteger = false;
-        draculaInputBuffer.clear();
+        draculaYesNo = true;
+        draculaPrompt = "Use Dracula's ability?";
     }
 }
 
@@ -2055,10 +2211,30 @@ void GameWindow::drawDraculaEffectPanel()
     const sf::FloatRect panel({330.f, 70.f}, {940.f, 760.f});
     ui->drawPanel(window, panel, GOLD);
 
-    ui->drawText(window, "DRACULA ABILITY", {385.f, 100.f}, 24, GOLD);
+    Player* abilityPlayer = controller.getCurrentPlayer();
+    const std::string heroName = (abilityPlayer && abilityPlayer->getHero())
+        ? abilityPlayer->getHero()->getName() : "";
 
-    ui->drawText(window, "At the beginning of Dracula's turn, his special ability can be used.",
-                 {385.f, 145.f}, 14, PARCHMENT);
+    std::string abilityTitle = "HERO ABILITY";
+    std::string abilityBody;
+    if (heroName == "Dracula")
+    {
+        abilityTitle = "DRACULA ABILITY";
+        abilityBody = "At the beginning of Dracula's turn, choose one adjacent living fighter (including a Sister) to take 1 damage. If damage is dealt, draw 1 card.";
+    }
+    else if (heroName == "sherlock")
+    {
+        abilityTitle = "SHERLOCK HOLMES ABILITY";
+        abilityBody = "PASSIVE: effects that try to disable Sherlock or Dr. Watson-related cards do not disable those cards.";
+    }
+    else if (heroName == "invisible man")
+    {
+        abilityTitle = "INVISIBLE MAN ABILITY";
+        abilityBody = "PASSIVE: while defending on fog, defense is +1 (not a card effect). Invisible Man may also move directly between fog spaces.";
+    }
+
+    ui->drawText(window, abilityTitle, {385.f, 100.f}, 24, GOLD);
+    ui->drawText(window, abilityBody, {385.f, 145.f}, 14, PARCHMENT);
 
     // Live effect log: every cout-like message generated by Dracula's
     // ability is shown here.
@@ -2089,7 +2265,24 @@ void GameWindow::drawDraculaEffectPanel()
     }
 
     if (!draculaPrompt.empty())
-        ui->drawText(window, draculaPrompt, {385.f, 470.f}, 16, GOLD);
+    {
+        std::string text = draculaPrompt;
+        std::string line;
+        int row = 0;
+        for (char ch : text)
+        {
+            line += ch;
+            if (line.size() >= 88 && ch == ' ')
+            {
+                ui->drawText(window, line, {385.f, 460.f + row * 20.f}, 14, GOLD);
+                line.clear();
+                ++row;
+                if (row >= 3) break;
+            }
+        }
+        if (!line.empty() && row < 3)
+            ui->drawText(window, line, {385.f, 460.f + row * 20.f}, 14, GOLD);
+    }
 
     if (!draculaResolved)
     {
@@ -2100,7 +2293,7 @@ void GameWindow::drawDraculaEffectPanel()
         if (draculaYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", false, RED);
+            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
         }
         else if (!draculaChoices.empty())
         {
@@ -2163,10 +2356,20 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 
     if (draculaYesNo)
     {
-        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
-            controller.submitGuiYesNo(true);
-        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
-            controller.submitGuiYesNo(false);
+        const bool clickedYes = sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p);
+        const bool clickedNo  = sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p);
+
+        if (clickedYes || clickedNo)
+        {
+            // Query the Controller at click time so the UI cannot submit a
+            // stale request from a previous frame.
+            std::string prompt;
+            std::vector<int> choices;
+            bool yesNo = false;
+            bool integerInput = false;
+            if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput) && yesNo)
+                controller.submitGuiYesNo(clickedYes);
+        }
         return;
     }
 
@@ -2193,6 +2396,26 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
             }
         }
     }
+}
+
+void GameWindow::advanceTurnIfTwoActionsUsed()
+{
+    if (controller.getActionCount() < 2)
+        return;
+
+    Player* player = controller.getCurrentPlayer();
+    if (player && player->getDeck() && player->getDeck()->gethandSize() > 7)
+    {
+        handLimitMode = true;
+        showMessage("Both actions are complete. Discard down to 7 cards to end the turn.");
+        return;
+    }
+
+    controller.guiEndTurn();
+    resetSelections();
+    combatLog.clear();
+    controller.guiBeginTurn();
+    showMessage("Both actions are complete. Turn changed.");
 }
 
 void GameWindow::finishTurnAfterHandLimit()

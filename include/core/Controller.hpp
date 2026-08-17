@@ -99,6 +99,11 @@ private:
     void runDraculaAbility();
 
     void move(int mov, Character* selected);
+    // Scheme-only helper: same movement logic as move(), but writes its
+    // prompts to the supplied stream (the Scheme effect's effectCout)
+    // instead of Controller::move()'s console-bound cout, so the text
+    // shows up in the Scheme effect log panel instead of the console.
+    void moveCharacterForSchemeEffect(int mov, Character* selected, std::ostream& out);
     int boost();
     void Scheme();
     void startCombat();

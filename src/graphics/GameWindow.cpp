@@ -2267,7 +2267,10 @@ void GameWindow::drawSchemeEffectPanel()
     }
 
     if (!schemePrompt.empty())
-        ui->drawText(window, schemePrompt, {385.f, 470.f}, 16, GOLD);
+    {
+        const float schemePromptY = schemeResolved ? 470.f + 30.f : 470.f;
+        ui->drawText(window, schemePrompt, {385.f, schemePromptY}, 16, GOLD);
+    }
 
     if (!schemeResolved)
     {

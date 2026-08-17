@@ -959,6 +959,86 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 }    
 
 
+// Scheme-only helper: duplicates Controller::move()'s pathing/selection logic,
+// but writes its prompts to `out` (the calling Scheme card's effectCout)
+// instead of Controller::move()'s own console-bound cout. This keeps the
+// existing move() function (shared with Attack/Defense effects and the
+// normal turn-movement action) completely untouched, while making sure
+// movement performed inside a Scheme card's effect logs to the GUI panel.
+void Controller::moveCharacterForSchemeEffect(int mov, Character* selected, std::ostream& out)
+{
+    int place = selected->getSpace();
+
+    vector<int> validSpaces;
+    vector<int> currently;
+    vector<int> next;
+    vector<bool> visited(32, false);
+
+    validSpaces.push_back(place);
+    currently.push_back(place);
+    visited[place] = true;
+
+    invisible_man* imMover = dynamic_cast<invisible_man*>(selected);
+
+    while (mov--)
+    {
+        next.clear();
+        for (int currentPos : currently)
+        {
+            vector<int> neighbors = bord.getposAdjacent(currentPos);
+            vector<int> tunnel = bord.getSecretPassages(currentPos);
+            neighbors.insert(neighbors.end(), tunnel.begin(), tunnel.end());
+
+            if (imMover != nullptr && imMover->isMistPosition(currentPos))
+            {
+                for (int mistPos : imMover->getMistTokens())
+                {
+                    if (mistPos != -1 && mistPos != currentPos)
+                        neighbors.push_back(mistPos);
+                }
+            }
+
+            for (int pos : neighbors)
+            {
+                Character* target = bord.getCharacter(pos);
+                if (visited[pos])
+                    continue;
+                else if (target == nullptr)
+                {
+                    validSpaces.push_back(pos);
+                    next.push_back(pos);
+                    visited[pos] = true;
+                }
+                else if (selected->getowner() == target->getowner())
+                {
+                    next.push_back(pos);
+                    visited[pos] = true;
+                }
+                else if (selected->getowner() != target->getowner())
+                {
+                    visited[pos] = true;
+                    continue;
+                }
+            }
+        }
+        currently = next;
+    }
+
+    out << "\nAvailable spaces:   ";
+    for (int pos : validSpaces)
+        out << pos << "   ";
+    out << "\nSelect a destination: ";
+
+    aiDecisionKind = AIDecision::MoveDestination;
+    aiMovingCharacter = selected;
+    int destination = getChoice(validSpaces);
+    aiDecisionKind = AIDecision::Generic;
+    aiMovingCharacter = nullptr;
+
+    bord.deletCharacter(place);
+    bord.addCharacter(destination, selected);
+}
+
 void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , Character* attacker )
 {
     activeDecider = self;
@@ -1121,7 +1201,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         choose = getChoice(valid);
         Character* selected = choices[choose - 1];
 
-        move(2 , selected);
+        moveCharacterForSchemeEffect(2 , selected, cout);
 
         vector<int> target = bord.getCharacterAdjacent(selected);
         number = 0;

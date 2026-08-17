@@ -2001,6 +2001,11 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
         : (card.issideKick() || card.isAnyowner());
     if (!ownerOK || !card.isScheme()) return false;
 
+    // Scheme effects resolved through this GUI entry point must always talk
+    // to the graphical panel (never the console), regardless of how guiMode
+    // happened to be left set beforehand.
+    guiMode = true;
+
     {
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
         if (gGuiEffect.busy) return false;
@@ -2017,12 +2022,27 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
 
     std::thread([this, selected, fighter]() mutable
     {
-        applyEffectScheme(selected, current, enemy, fighter);
+        try
+        {
+            applyEffectScheme(selected, current, enemy, fighter);
+        }
+        catch (const std::exception& e)
+        {
+            guiLogEffect(std::string("Scheme effect error: ") + e.what());
+        }
+        catch (...)
+        {
+            guiLogEffect("Scheme effect error: unknown exception.");
+        }
 
         {
             std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
             gGuiEffect.busy = false;
             gGuiEffect.finished = true;
+            gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+            gGuiEffect.ready = false;
+            gGuiEffect.prompt.clear();
+            gGuiEffect.choices.clear();
         }
         gGuiEffect.cv.notify_all();
     }).detach();

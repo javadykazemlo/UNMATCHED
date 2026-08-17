@@ -848,7 +848,22 @@ void GameWindow::drawGame()
     }
     Player* current = controller.getCurrentPlayer();
     Player* enemy = controller.getEnemyPlayer();
-    const sf::Color turnColor = current && current->getHero()->getowner() == 1 ? RED : BLUE;
+    auto characterColor = [&](Character* character) -> sf::Color
+    {
+        if (!character) return GOLD;
+
+        const std::string& name = character->getName();
+        if (name == "Dracula" || name.find("Sister") != std::string::npos)
+            return RED;
+        if (name == "sherlock" || name == "Dr_watson")
+            return GOLD;
+        if (name == "invisible man")
+            return sf::Color(86, 101, 115);
+
+        return GOLD;
+    };
+
+    const sf::Color turnColor = current ? characterColor(current->getHero()) : GOLD;
     ui->drawText(window, current ? current->getName() + "'S TURN" : "PLAYER TURN",
                  {710.f, 17.f}, 18, turnColor);
     ui->drawText(window, "HERO PHASE", {760.f, 43.f}, 10, sf::Color(150, 143, 132));
@@ -978,8 +993,10 @@ void GameWindow::drawGame()
         }
     };
 
-    drawPlayerPanel(current, {{18.f, 73.f}, {385.f, 570.f}}, RED);
-    drawPlayerPanel(enemy, {{1197.f, 73.f}, {385.f, 570.f}}, BLUE);
+    drawPlayerPanel(current, {{18.f, 73.f}, {385.f, 570.f}},
+                    characterColor(current ? current->getHero() : nullptr));
+    drawPlayerPanel(enemy, {{1197.f, 73.f}, {385.f, 570.f}},
+                    characterColor(enemy ? enemy->getHero() : nullptr));
 
     std::vector<int> highlights;
     Character* selected = selectedCurrentCharacter();

@@ -10,7 +10,7 @@ class CharacterView
 private:
     const sf::Font& font;
     const TextureManager& textures;
-    sf::Color ownerColor(int owner) const;
+    sf::Color characterColor(const std::string& name) const;
     std::string shortName(const std::string& name) const;
     std::string textureId(const std::string& name) const;
 

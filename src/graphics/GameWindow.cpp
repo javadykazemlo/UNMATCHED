@@ -750,16 +750,28 @@ void GameWindow::drawSetupSidekicks()
     drawFullscreenTexture("setup");
 
     Player* player = controller.getGuiSetupPlayer();
-    ui->drawText(window, "PLACE YOUR FIGHTERS", {600.f, 40.f}, 30, GOLD);
-
     if (!player) return;
 
-    ui->drawPanel(window, {{245.f, 705.f}, {1110.f, 120.f}}, GOLD);
-    ui->drawText(window, player->getName() + " - choose a starting space",
-                 {510.f, 745.f}, 17, PARCHMENT);
+    const bool placingMistTokens =
+        player->getHero() &&
+        player->getHero()->getName() == "invisible man";
 
     ui->drawText(window,
-        "Only spaces in your hero's starting zone are legal.",
+        placingMistTokens ? "PLACE FOG TOKENS" : "PLACE YOUR FIGHTERS",
+        {600.f, 40.f}, 30, GOLD);
+
+    ui->drawPanel(window, {{245.f, 705.f}, {1110.f, 120.f}}, GOLD);
+    ui->drawText(window,
+        player->getName() + (placingMistTokens
+            ? " - choose a starting space for fog token #" +
+              std::to_string(controller.guiSidekickIndex)
+            : " - choose a starting space"),
+        {510.f, 745.f}, 17, PARCHMENT);
+
+    ui->drawText(window,
+        placingMistTokens
+            ? "Place each of your 3 fog tokens in your hero's starting zone."
+            : "Only spaces in your hero's starting zone are legal.",
         {510.f, 778.f}, 11, sf::Color(165, 157, 145));
 
     std::vector<int> valid = controller.getGuiPlacementSpaces();
@@ -768,7 +780,9 @@ void GameWindow::drawSetupSidekicks()
     for (int pos : valid)
     {
         const sf::Vector2f p = boardView->getPosition(pos);
-        ui->drawText(window, "PLACE", {p.x - 20.f, p.y - 43.f}, 7, GOLD);
+        ui->drawText(window, placingMistTokens ? "FOG" : "PLACE",
+                     {p.x - (placingMistTokens ? 12.f : 20.f), p.y - 43.f},
+                     7, GOLD);
     }
 }
 

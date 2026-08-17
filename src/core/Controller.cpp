@@ -1475,8 +1475,19 @@ std::vector<int> Controller::getGuiPlacementSpaces() const
 
     std::vector<int> result;
     for (int pos : spaces)
-        if (!bord.getSpaceStatus(pos))
-            result.push_back(pos);
+    {
+        if (bord.getSpaceStatus(pos))
+            continue;
+
+        if (hero->getName() == "invisible man")
+        {
+            auto* im = dynamic_cast<invisible_man*>(hero);
+            if (im && im->isMistPosition(pos))
+                continue;
+        }
+
+        result.push_back(pos);
+    }
 
     return result;
 }
@@ -1544,69 +1555,6 @@ bool Controller::guiChooseHeroPosition(int side)
     guiSidekickIndex = 1;
     guiSidekicksDonePlayers = 0;
 
-    Player& firstPlayer = guiPlayers[guiSidekickPlayerIndex];
-
-    if (firstPlayer.getHero()->getName() == "invisible man")
-    {
-        auto* im = dynamic_cast<invisible_man*>(firstPlayer.getHero());
-
-        if (im)
-        {
-            const std::vector<int> spaces = getGuiPlacementSpaces();
-
-            int token = 0;
-
-            for (int pos : spaces)
-            {
-                if (token >= 3)
-                    break;
-
-                if (!bord.getSpaceStatus(pos))
-                {
-                    im->setMistToken(token, pos);
-                    ++token;
-                }
-            }
-        }
-
-        guiSidekickPlayerIndex =
-            (guiSidekickPlayerIndex == 0) ? 1 : 0;
-
-        guiSidekickIndex = 1;
-    }
-
-
-    Player& sidekickPlayer = guiPlayers[guiSidekickPlayerIndex];
-
-    if (sidekickPlayer.getHero()->getName() == "invisible man")
-    {
-        auto* im = dynamic_cast<invisible_man*>(
-            sidekickPlayer.getHero());
-
-        if (im)
-        {
-            const std::vector<int> spaces =
-                getGuiPlacementSpaces();
-
-            int token = 0;
-
-            for (int pos : spaces)
-            {
-                if (token >= 3)
-                    break;
-
-                if (!bord.getSpaceStatus(pos))
-                {
-                    im->setMistToken(token, pos);
-                    ++token;
-                }
-            }
-        }
-
-        guiSetupStage = GuiSetupStage::Ready;
-        return true;
-    }
-
     guiSetupStage = GuiSetupStage::SidekickPlacement;
 
     return true;
@@ -1623,43 +1571,48 @@ bool Controller::guiPlaceSidekick(int space)
         return false;
 
     Player& player = guiPlayers[guiSidekickPlayerIndex];
-    if (guiSidekickIndex >= player.getfighterCount())
+    Character* hero = player.getHero();
+    if (!hero)
         return false;
 
-    Character* fighter = player.getFighter(guiSidekickIndex);
-    if (!fighter) return false;
+    const bool placingMistTokens = (hero->getName() == "invisible man");
 
-    bord.addCharacter(space, fighter);
-    ++guiSidekickIndex;
+    if (placingMistTokens)
+    {
+        if (guiSidekickIndex > 3)
+            return false;
 
-    if (guiSidekickIndex >= player.getfighterCount())
+        auto* im = dynamic_cast<invisible_man*>(hero);
+        if (!im)
+            return false;
+
+        im->setMistToken(guiSidekickIndex - 1, space);
+        ++guiSidekickIndex;
+    }
+    else
+    {
+        if (guiSidekickIndex >= player.getfighterCount())
+            return false;
+
+        Character* fighter = player.getFighter(guiSidekickIndex);
+        if (!fighter)
+            return false;
+
+        bord.addCharacter(space, fighter);
+        ++guiSidekickIndex;
+    }
+
+    const bool placementFinished =
+        placingMistTokens
+            ? (guiSidekickIndex > 3)
+            : (guiSidekickIndex >= player.getfighterCount());
+
+    if (placementFinished)
     {
         ++guiSidekicksDonePlayers;
 
         const int other = guiSidekickPlayerIndex == 0 ? 1 : 0;
-        Player& otherPlayer = guiPlayers[other];
 
-        if (otherPlayer.getHero()->getName() == "invisible man")
-        {
-            auto* im = dynamic_cast<invisible_man*>(otherPlayer.getHero());
-            const std::vector<int> spaces = bord.getEmptyZone(
-                bord.getCharacterZone(otherPlayer.getHero()));
-
-            if (im)
-            {
-                int token = 0;
-                for (int pos : spaces)
-                {
-                    if (token == 3) break;
-                    if (!bord.getSpaceStatus(pos))
-                        im->setMistToken(token++, pos);
-                }
-            }
-            guiSetupStage = GuiSetupStage::Ready;
-            return true;
-        }
-
-    
         if (guiSidekicksDonePlayers >= 2)
         {
             guiSetupStage = GuiSetupStage::Ready;
@@ -1726,17 +1679,7 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
         const std::vector<int> available = bord.getEmptyZone(zone);
 
         if (hero->getName() == "invisible man")
-        {
-            auto* im = dynamic_cast<invisible_man*>(hero);
-            if (!im) return;
-            int placed = 0;
-            for (int pos : available)
-            {
-                if (placed == 3) break;
-                im->setMistToken(placed++, pos);
-            }
             return;
-        }
 
         for (int i = 1; i < player.getfighterCount(); ++i)
         {

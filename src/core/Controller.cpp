@@ -277,8 +277,6 @@ void Controller::playTurn()
         cout << "\n═══════════════════════════════════════════════════════════════════════════════" << endl;
         cout << "                          " << current->getName() << "'s turn\n";
 
-        // Dracula's ability triggers once, at the START of the turn, not
-        // before every action taken during it.
         if(current->getHero()->getName() == "Dracula")
         current->getHero()->ability(bord , current);
 
@@ -835,8 +833,6 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     if(attackCard.isDuringCombat())
         applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , false);
 
-    // Card effects can modify attack/defense values, so calculate the final
-    // combat values only after Before/During effects have finished.
     int attackValue = attackCard.getAttack();
     int defenseValue = defenseCard.getAttack();
 
@@ -1479,8 +1475,19 @@ std::vector<int> Controller::getGuiPlacementSpaces() const
 
     std::vector<int> result;
     for (int pos : spaces)
-        if (!bord.getSpaceStatus(pos))
-            result.push_back(pos);
+    {
+        if (bord.getSpaceStatus(pos))
+            continue;
+
+        if (hero->getName() == "invisible man")
+        {
+            auto* im = dynamic_cast<invisible_man*>(hero);
+            if (im && im->isMistPosition(pos))
+                continue;
+        }
+
+        result.push_back(pos);
+    }
 
     return result;
 }
@@ -1499,7 +1506,6 @@ bool Controller::guiChooseCharacter(int hero)
     const int owner = guiCharacterPlayerIndex == 0 ? 1 : 2;
     player.chooseCharacter(hero, owner);
 
-    // Move to the other player's character choice.
     const int other = guiCharacterPlayerIndex == 0 ? 1 : 0;
     if (!guiPlayers[other].getHero())
     {
@@ -1539,98 +1545,16 @@ bool Controller::guiChooseHeroPosition(int side)
     if (!currentHero || !enemyHero)
         return false;
 
-    // Place heroes on the board.
     const int currentPos = (side == 1) ? 4 : 15;
     const int enemyPos   = (side == 1) ? 15 : 4;
 
     bord.addCharacter(currentPos, currentHero);
     bord.addCharacter(enemyPos, enemyHero);
 
-    // Start sidekick placement with the player who chooses first.
     guiSidekickPlayerIndex = (current == &guiPlayers[0]) ? 0 : 1;
     guiSidekickIndex = 1;
     guiSidekicksDonePlayers = 0;
 
-    Player& firstPlayer = guiPlayers[guiSidekickPlayerIndex];
-
-    // ---------------------------------------------------------
-    // INVISIBLE MAN
-    // ---------------------------------------------------------
-    // Invisible Man has no physical sidekicks.
-    // His mist tokens are placed automatically.
-    if (firstPlayer.getHero()->getName() == "invisible man")
-    {
-        auto* im = dynamic_cast<invisible_man*>(firstPlayer.getHero());
-
-        if (im)
-        {
-            const std::vector<int> spaces = getGuiPlacementSpaces();
-
-            int token = 0;
-
-            for (int pos : spaces)
-            {
-                if (token >= 3)
-                    break;
-
-                if (!bord.getSpaceStatus(pos))
-                {
-                    im->setMistToken(token, pos);
-                    ++token;
-                }
-            }
-        }
-
-        // Invisible Man is finished.
-        // Move to the other player.
-        guiSidekickPlayerIndex =
-            (guiSidekickPlayerIndex == 0) ? 1 : 0;
-
-        guiSidekickIndex = 1;
-    }
-
-    // ---------------------------------------------------------
-    // CHECK THE NEXT PLAYER
-    // ---------------------------------------------------------
-
-    Player& sidekickPlayer = guiPlayers[guiSidekickPlayerIndex];
-
-    // If the next player is also Invisible Man,
-    // there are no physical sidekicks to place.
-    if (sidekickPlayer.getHero()->getName() == "invisible man")
-    {
-        auto* im = dynamic_cast<invisible_man*>(
-            sidekickPlayer.getHero());
-
-        if (im)
-        {
-            const std::vector<int> spaces =
-                getGuiPlacementSpaces();
-
-            int token = 0;
-
-            for (int pos : spaces)
-            {
-                if (token >= 3)
-                    break;
-
-                if (!bord.getSpaceStatus(pos))
-                {
-                    im->setMistToken(token, pos);
-                    ++token;
-                }
-            }
-        }
-
-        guiSetupStage = GuiSetupStage::Ready;
-        return true;
-    }
-
-    // ---------------------------------------------------------
-    // NORMAL PLAYER
-    // ---------------------------------------------------------
-    // The player has physical sidekicks.
-    // Let the GUI display the sidekick placement screen.
     guiSetupStage = GuiSetupStage::SidekickPlacement;
 
     return true;
@@ -1647,43 +1571,48 @@ bool Controller::guiPlaceSidekick(int space)
         return false;
 
     Player& player = guiPlayers[guiSidekickPlayerIndex];
-    if (guiSidekickIndex >= player.getfighterCount())
+    Character* hero = player.getHero();
+    if (!hero)
         return false;
 
-    Character* fighter = player.getFighter(guiSidekickIndex);
-    if (!fighter) return false;
+    const bool placingMistTokens = (hero->getName() == "invisible man");
 
-    bord.addCharacter(space, fighter);
-    ++guiSidekickIndex;
+    if (placingMistTokens)
+    {
+        if (guiSidekickIndex > 3)
+            return false;
 
-    if (guiSidekickIndex >= player.getfighterCount())
+        auto* im = dynamic_cast<invisible_man*>(hero);
+        if (!im)
+            return false;
+
+        im->setMistToken(guiSidekickIndex - 1, space);
+        ++guiSidekickIndex;
+    }
+    else
+    {
+        if (guiSidekickIndex >= player.getfighterCount())
+            return false;
+
+        Character* fighter = player.getFighter(guiSidekickIndex);
+        if (!fighter)
+            return false;
+
+        bord.addCharacter(space, fighter);
+        ++guiSidekickIndex;
+    }
+
+    const bool placementFinished =
+        placingMistTokens
+            ? (guiSidekickIndex > 3)
+            : (guiSidekickIndex >= player.getfighterCount());
+
+    if (placementFinished)
     {
         ++guiSidekicksDonePlayers;
 
         const int other = guiSidekickPlayerIndex == 0 ? 1 : 0;
-        Player& otherPlayer = guiPlayers[other];
 
-        if (otherPlayer.getHero()->getName() == "invisible man")
-        {
-            auto* im = dynamic_cast<invisible_man*>(otherPlayer.getHero());
-            const std::vector<int> spaces = bord.getEmptyZone(
-                bord.getCharacterZone(otherPlayer.getHero()));
-
-            if (im)
-            {
-                int token = 0;
-                for (int pos : spaces)
-                {
-                    if (token == 3) break;
-                    if (!bord.getSpaceStatus(pos))
-                        im->setMistToken(token++, pos);
-                }
-            }
-            guiSetupStage = GuiSetupStage::Ready;
-            return true;
-        }
-
-    
         if (guiSidekicksDonePlayers >= 2)
         {
             guiSetupStage = GuiSetupStage::Ready;
@@ -1738,7 +1667,6 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
     guiCombatLog.clear();
     clearGuiEffectLog();
 
-    // Same opening hero spaces as the original console setup.
     bord.addCharacter(4, current->getHero());
     bord.addCharacter(15, enemy->getHero());
 
@@ -1751,17 +1679,7 @@ bool Controller::startGuiGame(Player players[2], int hero1, int hero2,
         const std::vector<int> available = bord.getEmptyZone(zone);
 
         if (hero->getName() == "invisible man")
-        {
-            auto* im = dynamic_cast<invisible_man*>(hero);
-            if (!im) return;
-            int placed = 0;
-            for (int pos : available)
-            {
-                if (placed == 3) break;
-                im->setMistToken(placed++, pos);
-            }
             return;
-        }
 
         for (int i = 1; i < player.getfighterCount(); ++i)
         {
@@ -1934,9 +1852,6 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
         gGuiEffect.choices.clear();
     }
 
-    // Remove the attack card now. The defense card is removed only when the
-    // defender explicitly chose one. If defenseCardIndex == -1, combat proceeds
-    // with no defense card and all normal attack/combat effects still resolve.
     Card selectedAttack = attackDeck->playCard(attackCardIndex, attackCard);
     Card selectedDefense;
     if (usingDefenseCard)
@@ -1956,7 +1871,6 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
         }
         catch (const std::exception& e)
         {
-            // Never leave the GUI combat panel locked if an effect throws.
             guiLogEffect(std::string("Combat effect error: ") + e.what());
         }
         catch (...)
@@ -2030,6 +1944,11 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
         : (card.issideKick() || card.isAnyowner());
     if (!ownerOK || !card.isScheme()) return false;
 
+    // Scheme effects resolved through this GUI entry point must always talk
+    // to the graphical panel (never the console), regardless of how guiMode
+    // happened to be left set beforehand.
+    guiMode = true;
+
     {
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
         if (gGuiEffect.busy) return false;
@@ -2046,12 +1965,27 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
 
     std::thread([this, selected, fighter]() mutable
     {
-        applyEffectScheme(selected, current, enemy, fighter);
+        try
+        {
+            applyEffectScheme(selected, current, enemy, fighter);
+        }
+        catch (const std::exception& e)
+        {
+            guiLogEffect(std::string("Scheme effect error: ") + e.what());
+        }
+        catch (...)
+        {
+            guiLogEffect("Scheme effect error: unknown exception.");
+        }
 
         {
             std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
             gGuiEffect.busy = false;
             gGuiEffect.finished = true;
+            gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+            gGuiEffect.ready = false;
+            gGuiEffect.prompt.clear();
+            gGuiEffect.choices.clear();
         }
         gGuiEffect.cv.notify_all();
     }).detach();
@@ -2107,8 +2041,6 @@ bool Controller::guiBeginTurn()
         guiEffectLog.clear();
     }
 
-    // Hero abilities are explicit GUI actions. The beginning of a turn no
-    // longer opens a modal asking about the ability automatically.
     guiHeroAbilityUsed = false;
     return true;
 }
@@ -2120,9 +2052,6 @@ bool Controller::guiHeroAbilityAvailable() const
     if (guiHeroAbilityUsed) return false;
     if (gamerand != 0) return false;
 
-    // In the current project only Dracula has an active, player-invoked
-    // special ability. Sherlock's implementation is empty and Invisible
-    // Man's implementation is passive information rather than an action.
     return current->getHero()->getName() == "Dracula";
 }
 
@@ -2150,10 +2079,6 @@ bool Controller::guiUseHeroAbility()
         activeDecider = current;
         guiLogEffect("Dracula's special ability");
 
-        // The GUI Yes/No request is published before this worker starts.
-        // Wait on that exact request instead of calling getYesNo() again.
-        // Calling getYesNo() here would replace the request and can race the
-        // SFML event loop, causing visible YES/NO buttons to ignore clicks.
         bool useAbility = false;
         {
             std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
@@ -2184,35 +2109,66 @@ bool Controller::guiUseHeroAbility()
             }
             else
             {
+                // Ask the graphical UI to choose the target instead of falling
+                // back to the old console-based getChoice().
                 std::vector<int> choices;
                 for (int i = 0; i < static_cast<int>(targets.size()); ++i)
+                {
                     choices.push_back(i + 1);
-
-                int choice = getChoice(choices);
-                Character* target = targets[choice - 1];
-                target->takeDamage(1);
-                guiLogEffect("1 damage dealt to " + target->getName() + ".");
-
-                if (!target->checkalive())
-                {
-                    bord.deletCharacter(target->getSpace());
-                    target->setSpace(-1);
-                    guiLogEffect(target->getName() + " was defeated.");
+                    guiLogEffect(std::to_string(i + 1) + ". " + targets[i]->getName());
                 }
 
-                try
                 {
-                    current->getDeck()->draw();
-                    guiLogEffect("1 card added to " + current->getName() + " hand.");
+                    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+                    gGuiEffect.requestType = GuiEffectBridge::RequestType::Choice;
+                    gGuiEffect.prompt = "Choose an adjacent living fighter to take 1 damage.";
+                    gGuiEffect.choices = choices;
+                    gGuiEffect.value = 0;
+                    gGuiEffect.ready = false;
                 }
-                catch (const std::runtime_error& e)
+                gGuiEffect.cv.notify_all();
+
+                int choice = 0;
                 {
-                    guiLogEffect(e.what());
-                    for (Character* fighter : current->getCharacters())
-                        if (fighter && fighter->checkalive()) fighter->takeDamage(2);
-                    guiLogEffect("All characters on the team took 2 damage.");
+                    std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
+                    gGuiEffect.cv.wait(lock, []
+                    {
+                        return gGuiEffect.ready;
+                    });
+                    choice = gGuiEffect.value;
+                    gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+                    gGuiEffect.prompt.clear();
+                    gGuiEffect.choices.clear();
+                    gGuiEffect.ready = false;
                 }
-                guiLogEffect("Ability used successfully.");
+
+                if (choice >= 1 && choice <= static_cast<int>(targets.size()))
+                {
+                    Character* target = targets[choice - 1];
+                    target->takeDamage(1);
+                    guiLogEffect("1 damage dealt to " + target->getName() + ".");
+
+                    if (!target->checkalive())
+                    {
+                        bord.deletCharacter(target->getSpace());
+                        target->setSpace(-1);
+                        guiLogEffect(target->getName() + " was defeated.");
+                    }
+
+                    try
+                    {
+                        current->getDeck()->draw();
+                        guiLogEffect("1 card added to " + current->getName() + " hand.");
+                    }
+                    catch (const std::runtime_error& e)
+                    {
+                        guiLogEffect(e.what());
+                        for (Character* fighter : current->getCharacters())
+                            if (fighter && fighter->checkalive()) fighter->takeDamage(2);
+                        guiLogEffect("All characters on the team took 2 damage.");
+                    }
+                    guiLogEffect("Ability used successfully.");
+                }
             }
         }
         else
@@ -2351,9 +2307,6 @@ int Controller::getActionCount() const { return gamerand; }
 void Controller::guiEndAction() { if (gamerand < 2) ++gamerand; }
 void Controller::guiEndTurn()
 {
-    // The GUI resolves the 7-card hand limit before calling this method.
-    // Keep the guard here as a second line of defense so the controller can
-    // never pass a turn while the current hand is above the official limit.
     if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
         return;
 

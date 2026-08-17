@@ -57,8 +57,6 @@ private:
     bool boostMode = false;
     bool schemeMode = false;
     bool defenseSelectionMode = false;
-    // After an attack target is chosen, the defender must explicitly decide
-    // whether to play a defense card. Only after YES do we enter card selection.
     bool awaitingDefenseDecision = false;
     bool awaitingMoveBoost = false;
     bool moveBoostPrompt = false;

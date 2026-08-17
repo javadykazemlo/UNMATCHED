@@ -75,7 +75,7 @@ void RulesView::buildSections()
         {"BOOST", {
             "During a Maneuver, you may Boost movement by discarding a card from your hand. Add that card's Boost value to the fighter's movement value for that Maneuver.",
             "The discarded card is used only for its Boost value; its normal card effect is not resolved.",
-            "Example: Movement 2 + Boost 3 = up to 5 spaces of movement for that fighter."
+            "Example: Movement 2 & Boost 3 : up to 5 spaces of movement for that fighter."
         }},
         {"COMBAT", {
             "Combat compares the attack value with the defense value after the appropriate card effects have resolved. If the attack exceeds the defense, the difference is combat damage.",
@@ -108,13 +108,13 @@ void RulesView::buildSections()
             "The project's implementation is the source of truth for controls and map-specific behavior. This Rules screen does not alter the underlying game engine."
         }},
         {"HOW TO PLAY THIS VERSION", {
-            "MOVE — activates movement selection. Choose one of your fighters and then choose a highlighted legal destination.",
-            "ATTACK — activates attack selection. Choose an appropriate Attack/Versatile card and an enemy target that the current fighter can legally attack.",
-            "SCHEME — enters the Scheme flow. Scheme cards are selected from your hand and resolved through the existing game logic.",
-            "BOOST — selects a card to use for its Boost value during movement. The current implementation handles this through the existing action flow.",
-            "DRAW CARD — draws one card from the current deck and ends the current action through the existing Controller rule path.",
-            "PLAY CARD — plays the currently selected card through the existing Deck/Controller implementation.",
-            "END ACTION — finishes the current action. END TURN finishes the turn and passes control to the next player.",
+            "MOVE : activates movement selection. Choose one of your fighters and then choose a highlighted legal destination.",
+            "ATTACK : activates attack selection. Choose an appropriate Attack/Versatile card and an enemy target that the current fighter can legally attack.",
+            "SCHEME : enters the Scheme flow. Scheme cards are selected from your hand and resolved through the existing game logic.",
+            "BOOST : selects a card to use for its Boost value during movement. The current implementation handles this through the existing action flow.",
+            "DRAW CARD : draws one card from the current deck and ends the current action through the existing Controller rule path.",
+            "PLAY CARD  plays the currently selected card through the existing Deck/Controller implementation.",
+            "END ACTION  finishes the current action. END TURN finishes the turn and passes control to the next player.",
             "While this Rules window is open, all game interaction behind it is disabled. Press ESC or CLOSE to return to the exact game state you left."
         }}
     };
@@ -170,8 +170,6 @@ bool RulesView::handleEvent(const sf::Event& event, sf::Vector2f mousePosition)
         if (content.contains(mousePosition))
         {
             scroll -= wheel->delta * 42.f;
-            // A conservative upper bound is enough here; draw() clamps to the
-            // actual content height again.
             scroll = std::max(0.f, scroll);
         }
         return true;
@@ -205,8 +203,6 @@ bool RulesView::handleEvent(const sf::Event& event, sf::Vector2f mousePosition)
         return true;
     }
 
-    // Consume every other event while the overlay is open so the game behind it
-    // cannot receive keyboard or mouse interaction.
     return true;
 }
 
@@ -381,13 +377,12 @@ void RulesView::draw(sf::RenderTarget& target, sf::Vector2f viewportSize) const
 
     for (const std::string& paragraph : section.paragraphs)
     {
-        const bool bullet = paragraph.rfind("—", 0) == 0 || paragraph.rfind("-", 0) == 0;
+        const bool bullet = paragraph.rfind("-", 0) == 0 || paragraph.rfind("-", 0) == 0;
         const std::string body = bullet ? "• " + paragraph.substr(1) : paragraph;
         y = drawWrappedText(target, body, {{innerX, y}, {innerW, 1800.f}}, 13, PARCHMENT, 1.42f);
         y += 14.f;
     }
 
-    // A compact battlefield/range diagram for the relevant sections.
     if (section.title == "THE BATTLEFIELD" || section.title == "ZONES & ATTACK RANGE")
     {
         const float dy = y;

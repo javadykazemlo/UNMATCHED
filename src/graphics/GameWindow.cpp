@@ -64,6 +64,7 @@ void GameWindow::loadAssets()
     textures.load("end", "assets/backgrounds/end.png");
     textures.load("board", "assets/board/board.png");
     textures.load("card_back", "assets/cards/card_back.png");
+    textures.load("mute", "assets/mute.png");
 
     loadCharacterAssets();
     loadCardAssets();
@@ -107,6 +108,10 @@ void GameWindow::loadCharacterAssets()
     textures.load("watson", "assets/characters/watson.png");
     textures.load("sisters", "assets/characters/sisters.png");
     textures.load("invisible_man", "assets/characters/invisible_man.png");
+
+    textures.load("panel_dracul", "assets/character/dracul.png");
+    textures.load("panel_sherlok", "assets/character/sherlok.png");
+    textures.load("panel_invisible", "assets/character/invisible.png");
 }
 
 void GameWindow::drawFullscreenTexture(const std::string& id)
@@ -389,8 +394,6 @@ void GameWindow::refreshSaveEntries()
 
     saveEntries.clear();
 
-    // The GUI save system intentionally exposes exactly three persistent slots.
-    // Each slot has a fixed filename and is overwritten on every save.
     for (int slot = 1; slot <= 3; ++slot)
     {
         SaveEntry info;
@@ -492,7 +495,6 @@ void GameWindow::refreshSaveEntries()
         }
         catch (...)
         {
-            // Keep the slot visible even if its file is damaged.
         }
 
         saveEntries.push_back(std::move(info));
@@ -748,16 +750,28 @@ void GameWindow::drawSetupSidekicks()
     drawFullscreenTexture("setup");
 
     Player* player = controller.getGuiSetupPlayer();
-    ui->drawText(window, "PLACE YOUR FIGHTERS", {600.f, 40.f}, 30, GOLD);
-
     if (!player) return;
 
-    ui->drawPanel(window, {{245.f, 705.f}, {1110.f, 120.f}}, GOLD);
-    ui->drawText(window, player->getName() + " - choose a starting space",
-                 {510.f, 745.f}, 17, PARCHMENT);
+    const bool placingMistTokens =
+        player->getHero() &&
+        player->getHero()->getName() == "invisible man";
 
     ui->drawText(window,
-        "Only spaces in your hero's starting zone are legal.",
+        placingMistTokens ? "PLACE FOG TOKENS" : "PLACE YOUR FIGHTERS",
+        {600.f, 40.f}, 30, GOLD);
+
+    ui->drawPanel(window, {{245.f, 705.f}, {1110.f, 120.f}}, GOLD);
+    ui->drawText(window,
+        player->getName() + (placingMistTokens
+            ? " - choose a starting space for fog token #" +
+              std::to_string(controller.guiSidekickIndex)
+            : " - choose a starting space"),
+        {510.f, 745.f}, 17, PARCHMENT);
+
+    ui->drawText(window,
+        placingMistTokens
+            ? "Place each of your 3 fog tokens in your hero's starting zone."
+            : "Only spaces in your hero's starting zone are legal.",
         {510.f, 778.f}, 11, sf::Color(165, 157, 145));
 
     std::vector<int> valid = controller.getGuiPlacementSpaces();
@@ -766,7 +780,9 @@ void GameWindow::drawSetupSidekicks()
     for (int pos : valid)
     {
         const sf::Vector2f p = boardView->getPosition(pos);
-        ui->drawText(window, "PLACE", {p.x - 20.f, p.y - 43.f}, 7, GOLD);
+        ui->drawText(window, placingMistTokens ? "FOG" : "PLACE",
+                     {p.x - (placingMistTokens ? 12.f : 20.f), p.y - 43.f},
+                     7, GOLD);
     }
 }
 
@@ -800,6 +816,36 @@ void GameWindow::drawGame()
     window.draw(top);
 
     ui->drawText(window, "UNMATCHED", {22.f, 16.f}, 26, GOLD);
+
+    const sf::FloatRect muteRect({305.f, 13.f}, {42.f, 42.f});
+    if (const sf::Texture* muteTexture = textures.get("mute"))
+    {
+        sf::RectangleShape muteBackground(muteRect.size);
+        muteBackground.setPosition(muteRect.position);
+        muteBackground.setFillColor(audio.isMusicMuted()
+                                        ? sf::Color(55, 25, 28, 230)
+                                        : sf::Color(18, 18, 25, 220));
+        muteBackground.setOutlineColor(audio.isMusicMuted() ? RED : GOLD);
+        muteBackground.setOutlineThickness(1.5f);
+        window.draw(muteBackground);
+
+        sf::Sprite muteSprite(*muteTexture);
+        const sf::Vector2u muteSize = muteTexture->getSize();
+        if (muteSize.x > 0 && muteSize.y > 0)
+        {
+            const float scale = std::min(30.f / static_cast<float>(muteSize.x),
+                                         30.f / static_cast<float>(muteSize.y));
+            muteSprite.setScale({scale, scale});
+            const sf::FloatRect bounds = muteSprite.getGlobalBounds();
+            muteSprite.setPosition(
+                {muteRect.position.x + (muteRect.size.x - bounds.size.x) / 2.f,
+                 muteRect.position.y + (muteRect.size.y - bounds.size.y) / 2.f});
+            muteSprite.setColor(audio.isMusicMuted()
+                                    ? sf::Color(145, 135, 125)
+                                    : sf::Color::White);
+            window.draw(muteSprite);
+        }
+    }
     Player* current = controller.getCurrentPlayer();
     Player* enemy = controller.getEnemyPlayer();
     const sf::Color turnColor = current && current->getHero()->getowner() == 1 ? RED : BLUE;
@@ -816,58 +862,124 @@ void GameWindow::drawGame()
         if (!player || player->getCharacters().empty()) return;
 
         Character* hero = player->getHero();
-        ui->drawText(window, player->getName(), {rect.position.x + 18.f, rect.position.y + 14.f}, 15, accent);
-        ui->drawText(window, hero->getName(), {rect.position.x + 18.f, rect.position.y + 40.f}, 13, PARCHMENT);
+        if (!hero) return;
 
-        const std::string hp = "HP  " + std::to_string(hero->getHp()) + "/" + std::to_string(hero->getMaxhp());
-        ui->drawText(window, hp, {rect.position.x + 18.f, rect.position.y + 65.f}, 11, PARCHMENT);
-        ui->drawHealth(window, {rect.position.x + 18.f, rect.position.y + 88.f},
-                       static_cast<float>(hero->getHp()) / std::max(1, hero->getMaxhp()),
+        const std::string playerName = player->getName();
+        sf::Text playerNameText(font, playerName, 24);
+        const sf::FloatRect playerNameBounds = playerNameText.getLocalBounds();
+        playerNameText.setOrigin({
+            playerNameBounds.position.x + playerNameBounds.size.x / 2.f,
+            playerNameBounds.position.y
+        });
+        playerNameText.setPosition({
+            rect.position.x + rect.size.x / 2.f,
+            rect.position.y + 12.f
+        });
+        playerNameText.setFillColor(accent);
+        window.draw(playerNameText);
+
+        std::string panelId;
+        if (hero->getName() == "Dracula")
+            panelId = "panel_dracul";
+        else if (hero->getName() == "sherlock")
+            panelId = "panel_sherlok";
+        else if (hero->getName() == "invisible man")
+            panelId = "panel_invisible";
+
+        const float frameInset = 35.f;
+        const float frameSize = rect.size.x - 2.f * frameInset;
+        const float frameY = rect.position.y + 50.f;
+
+        sf::RectangleShape portraitFrame({frameSize, frameSize});
+        portraitFrame.setPosition({rect.position.x + frameInset, frameY});
+        portraitFrame.setFillColor(sf::Color(18, 15, 21));
+        portraitFrame.setOutlineColor(accent);
+        portraitFrame.setOutlineThickness(4.f);
+        window.draw(portraitFrame);
+
+        if (!panelId.empty())
+        {
+            if (const sf::Texture* tex = textures.get(panelId))
+            {
+                sf::Sprite sprite(*tex);
+                const sf::Vector2u size = tex->getSize();
+
+                if (size.x > 0 && size.y > 0)
+                {
+                    const float side = static_cast<float>(std::min(size.x, size.y));
+                    const float left = (static_cast<float>(size.x) - side) / 2.f;
+                    const float top = (static_cast<float>(size.y) - side) / 2.f;
+
+                    sprite.setTextureRect(sf::IntRect(
+                        {static_cast<int>(left), static_cast<int>(top)},
+                        {static_cast<int>(side), static_cast<int>(side)}
+                    ));
+
+                    const float imageInset = 4.f;
+                    const float imageSize = frameSize - 2.f * imageInset;
+                    const float scale = imageSize / side;
+                    sprite.setScale({scale, scale});
+                    sprite.setPosition({
+                        portraitFrame.getPosition().x + imageInset,
+                        portraitFrame.getPosition().y + imageInset
+                    });
+                    window.draw(sprite);
+                }
+            }
+        }
+
+        const float contentX = rect.position.x + 18.f;
+        const float infoY = frameY + frameSize + 12.f;
+
+        ui->drawText(window, hero->getName(),
+                     {contentX, infoY}, 16, PARCHMENT);
+
+        const std::string hp = "HP  " + std::to_string(hero->getHp()) +
+                               "/" + std::to_string(hero->getMaxhp());
+        ui->drawText(window, hp, {contentX, infoY + 28.f}, 13, PARCHMENT);
+
+        ui->drawHealth(window, {contentX, infoY + 51.f},
+                       static_cast<float>(hero->getHp()) /
+                           std::max(1, hero->getMaxhp()),
                        rect.size.x - 36.f, accent);
 
         if (player->getDeck())
         {
-            ui->drawText(window, "DECK " + std::to_string(player->getDeck()->getdeckSize()),
-                         {rect.position.x + 18.f, rect.position.y + 112.f}, 10, PARCHMENT);
-            ui->drawText(window, "HAND " + std::to_string(player->getDeck()->gethandSize()),
-                         {rect.position.x + 120.f, rect.position.y + 112.f}, 10, PARCHMENT);
-            ui->drawText(window, "DISCARD " + std::to_string(player->getDeck()->getdiscardSize()),
-                         {rect.position.x + 220.f, rect.position.y + 112.f}, 10, PARCHMENT);
+            ui->drawText(window,
+                         "DECK " + std::to_string(player->getDeck()->getdeckSize()),
+                         {contentX, infoY + 75.f}, 12, PARCHMENT);
+            ui->drawText(window,
+                         "HAND " + std::to_string(player->getDeck()->gethandSize()),
+                         {contentX + 120.f, infoY + 75.f}, 12, PARCHMENT);
+            ui->drawText(window,
+                         "DISCARD " + std::to_string(player->getDeck()->getdiscardSize()),
+                         {contentX + 220.f, infoY + 75.f}, 12, PARCHMENT);
         }
 
-        std::string id;
-        if (hero->getName() == "Dracula") id = "dracula";
-        else if (hero->getName() == "sherlock") id = "sherlock";
-        else if (hero->getName() == "invisible man") id = "invisible_man";
-        if (const sf::Texture* tex = textures.get(id))
-        {
-            sf::Sprite sprite(*tex);
-            const sf::Vector2u size = tex->getSize();
-            const float scale = std::min(64.f / static_cast<float>(size.x), 64.f / static_cast<float>(size.y));
-            sprite.setScale({scale, scale});
-            const sf::FloatRect b = sprite.getGlobalBounds();
-            sprite.setPosition({rect.position.x + rect.size.x - b.size.x - 18.f,
-                                 rect.position.y + 25.f});
-            window.draw(sprite);
-        }
-
-        float y = rect.position.y + 145.f;
+        float y = infoY + 107.f;
         for (int i = 1; i < player->getfighterCount(); ++i)
         {
             Character* c = player->getFighter(i);
             if (!c) continue;
-            const std::string letter = c->getName() == "Dr_watson" ? "W" :
+
+            const std::string letter =
+                c->getName() == "Dr_watson" ? "W" :
                 (c->getName().find("Sister") != std::string::npos ? "S" : "I");
-            ui->drawText(window, letter, {rect.position.x + 18.f, y}, 15, accent);
-            ui->drawText(window, c->getName() + "  " + std::to_string(c->getHp()) + "/" + std::to_string(c->getMaxhp()),
-                         {rect.position.x + 43.f, y + 2.f}, 9,
-                         c->checkalive() ? PARCHMENT : sf::Color(100, 95, 90));
+
+            ui->drawText(window, letter, {contentX, y}, 17, accent);
+            ui->drawText(window,
+                         c->getName() + "  " +
+                         std::to_string(c->getHp()) + "/" +
+                         std::to_string(c->getMaxhp()),
+                         {contentX + 28.f, y + 2.f}, 11,
+                         c->checkalive() ? PARCHMENT :
+                                           sf::Color(100, 95, 90));
             y += 28.f;
         }
     };
 
-    drawPlayerPanel(current, {{18.f, 85.f}, {385.f, 550.f}}, RED);
-    drawPlayerPanel(enemy, {{1197.f, 85.f}, {385.f, 550.f}}, BLUE);
+    drawPlayerPanel(current, {{18.f, 73.f}, {385.f, 570.f}}, RED);
+    drawPlayerPanel(enemy, {{1197.f, 73.f}, {385.f, 570.f}}, BLUE);
 
     std::vector<int> highlights;
     Character* selected = selectedCurrentCharacter();
@@ -921,8 +1033,8 @@ void GameWindow::drawGame()
         characterView->draw(window, c, boardView->getPosition(i), isSelected);
     }
 
-    ui->drawPanel(window, {{18.f, 650.f}, {385.f, 232.f}}, RED);
-    ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, RED);
+    ui->drawPanel(window, {{18.f, 657.f}, {385.f, 226.f}}, GOLD);
+    ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, GOLD);
     const bool canAct = controller.getActionCount() < 2;
     ui->drawButton(window, {{35.f, 700.f}, {78.f, 43.f}}, "MOVE", moveMode, GREEN);
     ui->drawButton(window, {{120.f, 700.f}, {78.f, 43.f}}, "ATTACK", attackMode, RED);
@@ -951,7 +1063,6 @@ void GameWindow::drawGame()
                      {105.f, 812.f}, 12, PARCHMENT);
     }
 
-    // Message / combat report panel below the board.
     ui->drawPanel(window, {{420.f, 606.f}, {757.f, 66.f}}, combatLog.empty() ? GOLD : RED);
     if (!combatLog.empty())
     {
@@ -970,7 +1081,6 @@ void GameWindow::drawGame()
         ui->drawText(window, message, {435.f, 621.f}, 16, GOLD);
     }
 
-    // Hand / card information.
     ui->drawPanel(window, {{420.f, 680.f}, {757.f, 215.f}}, defenseSelectionMode ? BLUE : GOLD);
     if (defenseSelectionMode && enemy && enemy->getDeck())
     {
@@ -1000,9 +1110,8 @@ void GameWindow::drawGame()
                          {440.f, 863.f}, 9, GOLD);
     }
 
-    // Right player/deck/turn panel.
-    ui->drawPanel(window, {{1197.f, 650.f}, {385.f, 232.f}}, BLUE);
-    ui->drawText(window, "TURN / DECK", {1215.f, 665.f}, 17, BLUE);
+    ui->drawPanel(window, {{1197.f, 657.f}, {385.f, 226.f}}, GOLD);
+    ui->drawText(window, "TURN / DECK", {1215.f, 665.f}, 17, GOLD);
     if (current)
     {
         ui->drawText(window, current->getName(), {1215.f, 700.f}, 13, PARCHMENT);
@@ -1232,17 +1341,6 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
             audio.playGameplayMusic();
             audio.playSfx(AudioManager::Sfx::Confirm);
             audio.playSfx(AudioManager::Sfx::TurnStart);
-            if (controller.guiBeginTurn())
-            {
-                activeEffectPanel = EffectPanelKind::Dracula;
-                audio.playSfx(AudioManager::Sfx::EffectPanel);
-                draculaResolved = false;
-                draculaPrompt.clear();
-                draculaChoices.clear();
-                draculaYesNo = false;
-                draculaInteger = false;
-                draculaInputBuffer.clear();
-            }
             controller.guiBeginTurn();
             showMessage("The game has started.");
         }
@@ -1251,7 +1349,6 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 
 void GameWindow::handleGameClick(sf::Vector2f p)
 {
-    // While the save-slot popup is open, no control behind it may receive the click.
     if (saveSlotPopup)
     {
         const float slotX = 490.f;
@@ -1292,16 +1389,8 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     Player* enemy = controller.getEnemyPlayer();
     Character* selected = selectedCurrentCharacter();
 
-    // Keep the game locked while a card effect is resolving or while the
-    // resolved-effect result is still being displayed. Each panel routes
-    // clicks through its own independent handler.
     if (activeEffectPanel != EffectPanelKind::None)
     {
-        // The effect panel owns mouse input for its entire lifetime. The
-        // individual handler decides whether it is waiting for an answer or
-        // is ready for RETURN TO GAME. Do not gate this on busy: busy becomes
-        // false as soon as the worker finishes, while the result panel stays
-        // visible until the player closes it.
         switch (activeEffectPanel)
         {
             case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
@@ -1309,6 +1398,12 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             case EffectPanelKind::Dracula: handleDraculaEffectInput(p); break;
             case EffectPanelKind::None:    break;
         }
+        return;
+    }
+
+    if (sf::FloatRect({305.f, 13.f}, {42.f, 42.f}).contains(p))
+    {
+        audio.toggleMusicMute();
         return;
     }
 
@@ -1325,12 +1420,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // Note: activeEffectPanel is always set together with the Controller's
-    // busy flag at every call site below, so controller.guiEffectBusy()
-    // cannot be true here (activeEffectPanel == None already handled above).
-
-    // Hand limit: exactly the same rule as Controller::playTurn.
-    // If the hand is above 7, the player must choose cards to discard first.
     if (handLimitMode)
     {
         if (current && current->getDeck())
@@ -1347,8 +1436,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // End Turn keeps its original position, but the hand limit is resolved
-    // before the turn is actually passed to the opponent.
     if (sf::FloatRect({1385.f, 815.f}, {175.f, 42.f}).contains(p))
     {
         if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)
@@ -1362,30 +1449,18 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         audio.playSfx(AudioManager::Sfx::TurnEnd);
         resetSelections();
         combatLog.clear();
-        if (controller.guiBeginTurn())
-        {
-            activeEffectPanel = EffectPanelKind::Dracula;
-            audio.playSfx(AudioManager::Sfx::TurnStart);
-            audio.playSfx(AudioManager::Sfx::EffectPanel);
-            draculaResolved = false;
-            draculaPrompt.clear();
-            draculaChoices.clear();
-            draculaYesNo = false;
-            draculaInteger = false;
-            draculaInputBuffer.clear();
-        }
+        controller.guiBeginTurn();
+        audio.playSfx(AudioManager::Sfx::TurnStart);
         showMessage("Turn changed.");
         return;
     }
 
-    // SAVE GAME: open the fixed three-slot selector.
     if (sf::FloatRect({35.f, 754.f}, {160.f, 43.f}).contains(p))
     {
         saveSlotPopup = true;
         return;
     }
 
-    // SAVE SLOT POPUP: clicking 1/2/3 overwrites that fixed slot.
     if (saveSlotPopup)
     {
         const float slotX = 490.f;
@@ -1421,7 +1496,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // END ACTION: immediately cancels the currently selected action/mode.
     if (sf::FloatRect({210.f, 754.f}, {160.f, 43.f}).contains(p))
     {
         resetSelections();
@@ -1456,9 +1530,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 
     const bool canAct = controller.getActionCount() < 2;
 
-    // HERO ABILITY: Dracula has an active ability. Sherlock and Invisible Man
-    // have passive abilities, so the same button opens a readable ability
-    // panel without consuming an action or asking for input.
     if (sf::FloatRect({290.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!current || !current->getHero())
@@ -1499,9 +1570,9 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             draculaInteger = false;
             draculaInputBuffer.clear();
             if (heroName == "sherlock")
-                draculaPrompt = "PASSIVE ABILITY — Sherlock: effects that attempt to disable Sherlock/Dr. Watson-related cards do not disable them.";
+                draculaPrompt = "PASSIVE ABILITY : Sherlock: effects that attempt to disable Sherlock/Dr. Watson-related cards do not disable them.";
             else
-                draculaPrompt = "PASSIVE ABILITY — Invisible Man: +1 defense on a fog space (not a card effect) and movement between fog spaces is treated as adjacency.";
+                draculaPrompt = "PASSIVE ABILITY : Invisible Man: +1 defense on a fog space (not a card effect) and movement between fog spaces is treated as adjacency.";
         }
         else
         {
@@ -1510,7 +1581,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // Each real action is counted immediately when its button is pressed.
     if (sf::FloatRect({35.f, 700.f}, {78.f, 43.f}).contains(p))
     {
         if (!canAct) { showMessage("You have already used both actions."); return; }
@@ -1570,7 +1640,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // During attack resolution the opponent chooses from their own hand.
     if (defenseSelectionMode && enemy)
     {
         if (!enemy->getDeck()) return;
@@ -1585,9 +1654,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         }
 
         Character* attacker = selectedCurrentCharacter();
-        // guiAttack removes both cards immediately, so copy their data before
-        // starting combat. Otherwise the effect panel can display the wrong
-        // cards (the old hand indices now refer to different cards).
         const Card attackPlayedCard =
             controller.getCurrentPlayer()->getDeck()->getHandcard(selectedCard);
         const Card defensePlayedCard = enemy->getDeck()->gethand()[defenseCard];
@@ -1622,7 +1688,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
         return;
     }
 
-    // Card click belongs to the current player's hand.
     if (current && current->getDeck())
     {
         const int card = cardView->getCardAt(p, current->getDeck()->gethandSize());
@@ -1767,9 +1832,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             }
             else
             {
-                // A human defender must first decide whether to defend.
-                // Only after YES do we enter defense-card selection; NO resolves
-                // the attack immediately with an empty defense card.
                 defenseSelectionMode = false;
                 awaitingDefenseDecision = true;
                 activeEffectPanel = EffectPanelKind::Attack;
@@ -1819,12 +1881,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 }
 
 
-// ============================================================================
-// ATTACK EFFECTS PANEL
-// Fully independent from the Scheme and Dracula panels: its own state,
-// its own update/render/click-handling.
-// ============================================================================
-
 void GameWindow::updateAttackEffectPanel()
 {
     std::string prompt;
@@ -1861,8 +1917,6 @@ void GameWindow::updateAttackEffectPanel()
         selectedEnemy = -1;
         selectedCharacter = -1;
 
-        // The second action ends the turn automatically as soon as the
-        // complete combat/effect resolution has finished.
         if (controller.getActionCount() >= 2)
         {
             activeEffectPanel = EffectPanelKind::None;
@@ -1911,8 +1965,6 @@ void GameWindow::drawAttackEffectPanel()
     drawWrapped(attackCardText.empty() ? "Resolving combat..." : attackCardText,
                 385.f, 145.f, 94.f, 13, PARCHMENT, 7);
 
-    // Live effect log: every cout-like message generated by the combat/attack
-    // effects is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 300.f;
     int shown = 0;
@@ -1944,10 +1996,6 @@ void GameWindow::drawAttackEffectPanel()
 
     if (!attackResolved)
     {
-        // Graphical input box: wherever the attack/combat effect logic calls
-        // for cin (yes/no, a numbered choice, or a typed number), the
-        // corresponding control below appears right under the effect log
-        // and its value is fed back to the Controller instead of stdin.
         if (attackYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
@@ -2013,9 +2061,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
         return;
     }
 
-    // Resolve the attack with no defense card. The attack card is still in the
-    // current player's hand until this helper calls guiAttack(), so we can
-    // safely copy its display data first.
     auto resolveWithoutDefense = [&]() -> bool
     {
         Character* attacker = selectedCurrentCharacter();
@@ -2070,8 +2115,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
                 Character* defender = controller.getCharacterAt(selectedEnemy);
                 const std::vector<int> validDefense = controller.getGuiDefenseCards(defender);
 
-                // If the defender has no legal defense card, YES cannot lead to
-                // a card-selection screen. Resolve exactly as NO instead.
                 if (validDefense.empty())
                 {
                     awaitingDefenseDecision = false;
@@ -2085,8 +2128,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
                 awaitingDefenseDecision = false;
                 attackYesNo = false;
                 attackChoices.clear();
-                // Leave the effect panel so the defender can click a card in
-                // the normal hand area. The panel reopens after selection.
                 activeEffectPanel = EffectPanelKind::None;
                 defenseSelectionMode = true;
                 Player* enemyPlayer = controller.getEnemyPlayer();
@@ -2097,7 +2138,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
                 return;
             }
 
-            // NO: immediately resolve the combat without a defense card.
             awaitingDefenseDecision = false;
             attackYesNo = false;
             defenseSelectionMode = false;
@@ -2105,7 +2145,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
             return;
         }
 
-        // Generic yes/no requested by a card effect.
         controller.submitGuiYesNo(clickedYes);
         return;
     }
@@ -2134,12 +2173,6 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
         }
     }
 }
-
-// ============================================================================
-// SCHEME EFFECTS PANEL
-// Fully independent from the Attack and Dracula panels: its own state,
-// its own update/render/click-handling.
-// ============================================================================
 
 void GameWindow::updateSchemeEffectPanel()
 {
@@ -2221,8 +2254,6 @@ void GameWindow::drawSchemeEffectPanel()
     drawWrapped(schemeCardText.empty() ? "Resolving Scheme effect..." : schemeCardText,
                 385.f, 145.f, 94.f, 13, PARCHMENT, 7);
 
-    // Live effect log: every cout-like message generated by the Scheme
-    // effect is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 300.f;
     int shown = 0;
@@ -2250,14 +2281,13 @@ void GameWindow::drawSchemeEffectPanel()
     }
 
     if (!schemePrompt.empty())
-        ui->drawText(window, schemePrompt, {385.f, 470.f}, 16, GOLD);
+    {
+        const float schemePromptY = schemeResolved ? 470.f + 30.f : 470.f;
+        ui->drawText(window, schemePrompt, {385.f, schemePromptY}, 16, GOLD);
+    }
 
     if (!schemeResolved)
     {
-        // Graphical input box: wherever the Scheme effect logic calls for
-        // cin (yes/no, a numbered choice, or a typed number), the
-        // corresponding control below appears right under the effect log
-        // and its value is fed back to the Controller instead of stdin.
         if (schemeYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
@@ -2356,13 +2386,6 @@ void GameWindow::handleSchemeEffectInput(sf::Vector2f p)
     }
 }
 
-// ============================================================================
-// DRACULA SPECIAL-ABILITY PANEL
-// Fully independent from the Attack and Scheme panels: its own state,
-// its own update/render/click-handling. Unlike the other two, its title
-// and body text are fixed, and its RETURN TO GAME button stays visible
-// (disabled) from the moment the panel opens rather than only once resolved.
-// ============================================================================
 
 void GameWindow::updateDraculaEffectPanel()
 {
@@ -2380,9 +2403,6 @@ void GameWindow::updateDraculaEffectPanel()
     if (draculaResolved)
         return;
 
-    // Always mirror the Controller's current request. There is deliberately
-    // no fake/fallback Yes/No request here: the buttons must be backed by an
-    // actual pending request so every click has a real consumer.
     std::string prompt;
     std::vector<int> choices;
     bool yesNo = false;
@@ -2420,7 +2440,7 @@ void GameWindow::drawDraculaEffectPanel()
     if (heroName == "Dracula")
     {
         abilityTitle = "DRACULA ABILITY";
-        abilityBody = "At the beginning of Dracula's turn, choose one adjacent living fighter (including a Sister) to take 1 damage. If damage is dealt, draw 1 card.";
+        abilityBody = "At the beginning of Dracula's turn, choose one adjacent living fighter (including a Sister) to take 1 damage.";
     }
     else if (heroName == "sherlock")
     {
@@ -2430,14 +2450,12 @@ void GameWindow::drawDraculaEffectPanel()
     else if (heroName == "invisible man")
     {
         abilityTitle = "INVISIBLE MAN ABILITY";
-        abilityBody = "PASSIVE: while defending on fog, defense is +1 (not a card effect). Invisible Man may also move directly between fog spaces.";
+        abilityBody = "PASSIVE: while defending on fog, defense is +1. Invisible Man may also move directly between fog spaces.";
     }
 
     ui->drawText(window, abilityTitle, {385.f, 100.f}, 24, GOLD);
     ui->drawText(window, abilityBody, {385.f, 145.f}, 14, PARCHMENT);
 
-    // Live effect log: every cout-like message generated by Dracula's
-    // ability is shown here.
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 190.f;
     int shown = 0;
@@ -2486,10 +2504,6 @@ void GameWindow::drawDraculaEffectPanel()
 
     if (!draculaResolved)
     {
-        // Graphical input box: wherever Dracula's ability calls for cin
-        // (yes/no to use the ability, or a numbered target choice), the
-        // corresponding control below appears right under the effect log
-        // and its value is fed back to the Controller instead of stdin.
         if (draculaYesNo)
         {
             ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
@@ -2524,9 +2538,6 @@ void GameWindow::drawDraculaEffectPanel()
         }
     }
 
-    // Dracula's special-ability panel keeps the return button visible from
-    // the moment the panel opens. It becomes clickable as soon as the
-    // controller says the effect may be closed.
     const bool canClose = draculaResolved && controller.guiEffectCanClose();
     ui->drawButton(window, {{565.f, 705.f}, {470.f, 58.f}},
                    "RETURN TO GAME", canClose, GOLD);
@@ -2536,7 +2547,7 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 {
     if (sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p))
     {
-        if (controller.guiEffectCanClose())
+        if (draculaResolved && controller.guiEffectCanClose())
         {
             activeEffectPanel = EffectPanelKind::None;
             draculaResolved = false;
@@ -2547,6 +2558,7 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
             draculaInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
+            advanceTurnIfTwoActionsUsed();
         }
         return;
     }
@@ -2556,19 +2568,21 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 
     if (draculaYesNo)
     {
-        const bool clickedYes = sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p);
-        const bool clickedNo  = sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p);
-
-        if (clickedYes || clickedNo)
+        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
         {
-            // Query the Controller at click time so the UI cannot submit a
-            // stale request from a previous frame.
-            std::string prompt;
-            std::vector<int> choices;
-            bool yesNo = false;
-            bool integerInput = false;
-            if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput) && yesNo)
-                controller.submitGuiYesNo(clickedYes);
+            if (controller.submitGuiYesNo(true))
+            {
+                draculaYesNo = false;
+                draculaPrompt = "Resolving Dracula's ability...";
+            }
+        }
+        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
+        {
+            if (controller.submitGuiYesNo(false))
+            {
+                draculaYesNo = false;
+                draculaPrompt = "Skipping Dracula's ability...";
+            }
         }
         return;
     }
@@ -2585,14 +2599,14 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
         {
             const int col = static_cast<int>(i % 8);
             const int row = static_cast<int>(i / 8);
-            sf::FloatRect button(
+            const sf::FloatRect button(
                 {startX + col * (bw + gap), startY + row * (bh + gap)},
                 {bw, bh});
 
             if (button.contains(p))
             {
-                controller.submitGuiInput(draculaChoices[i]);
-                return;
+                if (controller.submitGuiInput(draculaChoices[i]))
+                    return;
             }
         }
     }
@@ -2625,18 +2639,8 @@ void GameWindow::finishTurnAfterHandLimit()
     audio.playSfx(AudioManager::Sfx::TurnEnd);
     resetSelections();
     combatLog.clear();
-    if (controller.guiBeginTurn())
-    {
-        activeEffectPanel = EffectPanelKind::Dracula;
-        audio.playSfx(AudioManager::Sfx::TurnStart);
-        audio.playSfx(AudioManager::Sfx::EffectPanel);
-        draculaResolved = false;
-        draculaPrompt.clear();
-        draculaChoices.clear();
-        draculaYesNo = false;
-        draculaInteger = false;
-        draculaInputBuffer.clear();
-    }
+    controller.guiBeginTurn();
+    audio.playSfx(AudioManager::Sfx::TurnStart);
     showMessage("Turn changed.");
 }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SFML/Audio.hpp>
-
 #include <array>
 #include <string>
 
@@ -22,13 +21,13 @@ public:
 
     AudioManager();
 
-    // Background music. Only one background track is allowed to play at a time.
     void playIntroMusic();
     void playGameplayMusic();
     void playGameOverMusic();
     void stopMusic();
+    void toggleMusicMute();
+    bool isMusicMuted() const { return musicMuted; }
 
-    // Short one-shot effects.
     void playSfx(Sfx effect);
 
 private:
@@ -45,8 +44,6 @@ private:
     sf::SoundBuffer schemeBuffer;
     sf::SoundBuffer moveBuffer;
 
-    // Every SFX owns its own sf::Sound. The corresponding SoundBuffer
-    // members above outlive these objects, as required by SFML.
     sf::Sound clickSound;
     sf::Sound confirmSound;
     sf::Sound effectPanelSound;
@@ -61,6 +58,7 @@ private:
     bool introMusicLoaded = false;
     bool gameplayMusicLoaded = false;
     bool gameOverMusicLoaded = false;
+    bool musicMuted = false;
 
     void loadMusic(sf::Music& music, const std::string& path,
                    const std::string& label, bool& loaded);

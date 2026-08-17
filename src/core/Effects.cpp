@@ -357,9 +357,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Education Never Ends")
     {
-        // Sherlock's ability: cards belonging to Holmes or Watson can never
-        // be disabled by an opponent's card effect (e.g. Feint, Impossible
-        // to See). cancelEffectSH is therefore intentionally NOT checked here.
 
         cout << card.geteffect() << endl; 
         
@@ -411,8 +408,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             string oppName = opponent->getHero()->getName();
             if (oppName == "Dracula") cancelEffectDR = true;
             else if (oppName == "invisible man") cancelEffectIM = true;
-            // Sherlock/Watson cards can never be cancelled (his own passive
-            // ability), so cancelEffectSH is intentionally never set.
 
             cout << "All effects on the " << opponent->getName() << " card were removed, and its attack value was ignored.\n";
         }
@@ -429,8 +424,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Feint" && self->getHero()->getName() == "sherlock")
     {
-        // Sherlock's ability makes his (and Watson's) cards immune to being
-        // disabled by other cards' events, so cancelEffectSH is ignored here.
 
         cout << card.geteffect() << endl; 
 
@@ -497,8 +490,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     
     else if (card.getName() == "Study Methods")
     {
-        // Sherlock's ability makes his (and Watson's) cards immune to being
-        // disabled by other cards' events, so cancelEffectSH is ignored here.
 
         cout << card.geteffect() << endl; 
 
@@ -784,11 +775,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
     {
         cout << card.geteffect() << endl;
 
-        // The opponent's printed combat value is fixed at 0. This does NOT
-        // cancel the rest of their card's effect (e.g. a draw, a discard,
-        // a move) - those still happen, so the cancelEffectDR/SH/IM flags
-        // are deliberately left untouched here (those flags fully disable a
-        // card and are reserved for cards like Feint).
         enemycard.setAttack(0);
 
         cout << "The opponent's card value is now 0 and cannot be changed by card effects; its other effects still happen.\n";
@@ -973,6 +959,86 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 }    
 
 
+// Scheme-only helper: duplicates Controller::move()'s pathing/selection logic,
+// but writes its prompts to `out` (the calling Scheme card's effectCout)
+// instead of Controller::move()'s own console-bound cout. This keeps the
+// existing move() function (shared with Attack/Defense effects and the
+// normal turn-movement action) completely untouched, while making sure
+// movement performed inside a Scheme card's effect logs to the GUI panel.
+void Controller::moveCharacterForSchemeEffect(int mov, Character* selected, std::ostream& out)
+{
+    int place = selected->getSpace();
+
+    vector<int> validSpaces;
+    vector<int> currently;
+    vector<int> next;
+    vector<bool> visited(32, false);
+
+    validSpaces.push_back(place);
+    currently.push_back(place);
+    visited[place] = true;
+
+    invisible_man* imMover = dynamic_cast<invisible_man*>(selected);
+
+    while (mov--)
+    {
+        next.clear();
+        for (int currentPos : currently)
+        {
+            vector<int> neighbors = bord.getposAdjacent(currentPos);
+            vector<int> tunnel = bord.getSecretPassages(currentPos);
+            neighbors.insert(neighbors.end(), tunnel.begin(), tunnel.end());
+
+            if (imMover != nullptr && imMover->isMistPosition(currentPos))
+            {
+                for (int mistPos : imMover->getMistTokens())
+                {
+                    if (mistPos != -1 && mistPos != currentPos)
+                        neighbors.push_back(mistPos);
+                }
+            }
+
+            for (int pos : neighbors)
+            {
+                Character* target = bord.getCharacter(pos);
+                if (visited[pos])
+                    continue;
+                else if (target == nullptr)
+                {
+                    validSpaces.push_back(pos);
+                    next.push_back(pos);
+                    visited[pos] = true;
+                }
+                else if (selected->getowner() == target->getowner())
+                {
+                    next.push_back(pos);
+                    visited[pos] = true;
+                }
+                else if (selected->getowner() != target->getowner())
+                {
+                    visited[pos] = true;
+                    continue;
+                }
+            }
+        }
+        currently = next;
+    }
+
+    out << "\nAvailable spaces:   ";
+    for (int pos : validSpaces)
+        out << pos << "   ";
+    out << "\nSelect a destination: ";
+
+    aiDecisionKind = AIDecision::MoveDestination;
+    aiMovingCharacter = selected;
+    int destination = getChoice(validSpaces);
+    aiDecisionKind = AIDecision::Generic;
+    aiMovingCharacter = nullptr;
+
+    bord.deletCharacter(place);
+    bord.addCharacter(destination, selected);
+}
+
 void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , Character* attacker )
 {
     activeDecider = self;
@@ -1135,7 +1201,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         choose = getChoice(valid);
         Character* selected = choices[choose - 1];
 
-        move(2 , selected);
+        moveCharacterForSchemeEffect(2 , selected, cout);
 
         vector<int> target = bord.getCharacterAdjacent(selected);
         number = 0;
@@ -1288,8 +1354,6 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         }
         activeDecider = self;
 
-        // The card's effect targets the opposing HERO specifically, not a
-        // freely chosen fighter.
         Character* enemyHero = opponent->getHero();
         int burnBoost = burn.getBoost();
 

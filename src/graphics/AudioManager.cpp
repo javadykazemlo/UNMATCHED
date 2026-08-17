@@ -12,7 +12,7 @@ AudioManager::AudioManager()
       schemeSound(schemeBuffer),
       moveSound(moveBuffer)
 {
-    // Long-running background tracks.
+   
     loadMusic(introMusic, "assets/audio/intro_theme.ogg",
               "intro_theme.ogg", introMusicLoaded);
     loadMusic(gameplayMusic, "assets/audio/gameplay_theme.ogg",
@@ -20,7 +20,6 @@ AudioManager::AudioManager()
     loadMusic(gameOverMusic, "assets/audio/game_over_theme.ogg",
               "game_over_theme.ogg", gameOverMusicLoaded);
 
-    // Short one-shot effects.
     loadSfx(clickBuffer, "assets/audio/click.wav", "click.wav", 0);
     loadSfx(confirmBuffer, "assets/audio/confirm.wav", "confirm.wav", 2);
     loadSfx(effectPanelBuffer, "assets/audio/effect_panel_open.wav",
@@ -33,7 +32,6 @@ AudioManager::AudioManager()
             "scheme_panel_open.wav", 7);
     loadSfx(moveBuffer, "assets/audio/move.wav", "move.wav", 8);
 
-    // SFML streams Music independently; loop the three background themes.
     introMusic.setLooping(true);
     gameplayMusic.setLooping(true);
     gameOverMusic.setLooping(true);
@@ -75,20 +73,26 @@ bool AudioManager::loadSfx(sf::SoundBuffer& buffer,
     return true;
 }
 
+void AudioManager::toggleMusicMute()
+{
+    musicMuted = !musicMuted;
+    const float volume = musicMuted ? 0.f : 100.f;
+    introMusic.setVolume(volume);
+    gameplayMusic.setVolume(volume);
+    gameOverMusic.setVolume(volume);
+}
+
 void AudioManager::stopMusic()
 {
     introMusic.stop();
     gameplayMusic.stop();
     gameOverMusic.stop();
-    //hasActiveMusic = false;
 }
 
 void AudioManager::playMusic(sf::Music& target,
                              bool loaded,
                              const std::string& label)
 {
-    // Stop every background stream first. This guarantees that two
-    // background tracks can never play simultaneously.
     introMusic.stop();
     gameplayMusic.stop();
     gameOverMusic.stop();
@@ -101,6 +105,7 @@ void AudioManager::playMusic(sf::Music& target,
     }
 
     target.setLooping(true);
+    target.setVolume(musicMuted ? 0.f : 100.f);
     target.play();
 }
 

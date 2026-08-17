@@ -23,6 +23,10 @@ public:
         SidekickPlacement,
         Ready
     };
+    void guiLogEffect(const std::string& text);
+    std::vector<std::string> getGuiEffectLog() const;
+    void clearGuiEffectLog();
+    bool guiEffectCanClose() const;
 
 private:
     Bord bord;
@@ -95,6 +99,11 @@ private:
     void runDraculaAbility();
 
     void move(int mov, Character* selected);
+    // Scheme-only helper: same movement logic as move(), but writes its
+    // prompts to the supplied stream (the Scheme effect's effectCout)
+    // instead of Controller::move()'s console-bound cout, so the text
+    // shows up in the Scheme effect log panel instead of the console.
+    void moveCharacterForSchemeEffect(int mov, Character* selected, std::ostream& out);
     int boost();
     void Scheme();
     void startCombat();
@@ -154,13 +163,6 @@ private:
     bool submitGuiInput(int value);
     bool submitGuiYesNo(bool value);
 
-public:
-    void guiLogEffect(const std::string& text);
-    std::vector<std::string> getGuiEffectLog() const;
-    void clearGuiEffectLog();
-    bool guiEffectCanClose() const;
-
-private:
     bool guiSaveGame(const std::string& filename = "save.json");
     std::vector<std::string> getGuiCombatLog() const;
     void clearGuiCombatLog();

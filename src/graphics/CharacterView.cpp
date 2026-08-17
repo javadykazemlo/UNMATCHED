@@ -6,9 +6,19 @@
 CharacterView::CharacterView(const sf::Font& font_, const TextureManager& textures_)
     : font(font_), textures(textures_) {}
 
-sf::Color CharacterView::ownerColor(int owner) const
+sf::Color CharacterView::characterColor(const std::string& name) const
 {
-    return owner == 1 ? sf::Color(145, 35, 39) : sf::Color(38, 82, 124);
+    // Sidekicks use the same color as their hero.
+    if (name == "Dracula" || name.find("Sister") != std::string::npos)
+        return sf::Color(145, 35, 39);
+
+    if (name == "sherlock" || name == "Dr_watson")
+        return sf::Color(211, 178, 104);
+
+    if (name == "invisible man")
+        return sf::Color(86, 101, 115);
+
+    return sf::Color(145, 35, 39);
 }
 
 std::string CharacterView::shortName(const std::string& name) const
@@ -36,7 +46,7 @@ void CharacterView::draw(sf::RenderTarget& target, Character* character,
 {
     if (!character || !character->checkalive()) return;
 
-    const sf::Color accent = ownerColor(character->getowner());
+    const sf::Color accent = characterColor(character->getName());
     sf::CircleShape token(27.f);
     token.setOrigin({27.f,27.f});
     token.setPosition(position);

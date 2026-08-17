@@ -809,8 +809,6 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
         }
         else
         {
-            // In GUI mode the same guess is requested through the graphical
-            // effect panel instead of silently failing the effect.
             activeDecider = enemy;
             cout << enemy->getName() << ", guess the attack value of your opponent's card.\n";
             const int number = getInt();
@@ -1351,7 +1349,7 @@ bool Controller::beginGuiSetup(Player players[2])
     current = nullptr;
     enemy = nullptr;
     activeDecider = nullptr;
-    guiMode = false;
+    guiMode = true;
     guiCombatLog.clear();
 
     gamerand = 0;
@@ -1944,9 +1942,6 @@ bool Controller::guiScheme(Character* fighter, int cardIndex)
         : (card.issideKick() || card.isAnyowner());
     if (!ownerOK || !card.isScheme()) return false;
 
-    // Scheme effects resolved through this GUI entry point must always talk
-    // to the graphical panel (never the console), regardless of how guiMode
-    // happened to be left set beforehand.
     guiMode = true;
 
     {

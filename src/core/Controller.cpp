@@ -2146,35 +2146,66 @@ bool Controller::guiUseHeroAbility()
             }
             else
             {
+                // Ask the graphical UI to choose the target instead of falling
+                // back to the old console-based getChoice().
                 std::vector<int> choices;
                 for (int i = 0; i < static_cast<int>(targets.size()); ++i)
+                {
                     choices.push_back(i + 1);
-
-                int choice = getChoice(choices);
-                Character* target = targets[choice - 1];
-                target->takeDamage(1);
-                guiLogEffect("1 damage dealt to " + target->getName() + ".");
-
-                if (!target->checkalive())
-                {
-                    bord.deletCharacter(target->getSpace());
-                    target->setSpace(-1);
-                    guiLogEffect(target->getName() + " was defeated.");
+                    guiLogEffect(std::to_string(i + 1) + ". " + targets[i]->getName());
                 }
 
-                try
                 {
-                    current->getDeck()->draw();
-                    guiLogEffect("1 card added to " + current->getName() + " hand.");
+                    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+                    gGuiEffect.requestType = GuiEffectBridge::RequestType::Choice;
+                    gGuiEffect.prompt = "Choose an adjacent living fighter to take 1 damage.";
+                    gGuiEffect.choices = choices;
+                    gGuiEffect.value = 0;
+                    gGuiEffect.ready = false;
                 }
-                catch (const std::runtime_error& e)
+                gGuiEffect.cv.notify_all();
+
+                int choice = 0;
                 {
-                    guiLogEffect(e.what());
-                    for (Character* fighter : current->getCharacters())
-                        if (fighter && fighter->checkalive()) fighter->takeDamage(2);
-                    guiLogEffect("All characters on the team took 2 damage.");
+                    std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
+                    gGuiEffect.cv.wait(lock, []
+                    {
+                        return gGuiEffect.ready;
+                    });
+                    choice = gGuiEffect.value;
+                    gGuiEffect.requestType = GuiEffectBridge::RequestType::None;
+                    gGuiEffect.prompt.clear();
+                    gGuiEffect.choices.clear();
+                    gGuiEffect.ready = false;
                 }
-                guiLogEffect("Ability used successfully.");
+
+                if (choice >= 1 && choice <= static_cast<int>(targets.size()))
+                {
+                    Character* target = targets[choice - 1];
+                    target->takeDamage(1);
+                    guiLogEffect("1 damage dealt to " + target->getName() + ".");
+
+                    if (!target->checkalive())
+                    {
+                        bord.deletCharacter(target->getSpace());
+                        target->setSpace(-1);
+                        guiLogEffect(target->getName() + " was defeated.");
+                    }
+
+                    try
+                    {
+                        current->getDeck()->draw();
+                        guiLogEffect("1 card added to " + current->getName() + " hand.");
+                    }
+                    catch (const std::runtime_error& e)
+                    {
+                        guiLogEffect(e.what());
+                        for (Character* fighter : current->getCharacters())
+                            if (fighter && fighter->checkalive()) fighter->takeDamage(2);
+                        guiLogEffect("All characters on the team took 2 damage.");
+                    }
+                    guiLogEffect("Ability used successfully.");
+                }
             }
         }
         else

@@ -2530,7 +2530,7 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 {
     if (sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p))
     {
-        if (controller.guiEffectCanClose())
+        if (draculaResolved && controller.guiEffectCanClose())
         {
             activeEffectPanel = EffectPanelKind::None;
             draculaResolved = false;
@@ -2541,6 +2541,7 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
             draculaInputBuffer.clear();
             controller.clearGuiEffectLog();
             checkGameOver();
+            advanceTurnIfTwoActionsUsed();
         }
         return;
     }
@@ -2550,17 +2551,21 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
 
     if (draculaYesNo)
     {
-        const bool clickedYes = sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p);
-        const bool clickedNo  = sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p);
-
-        if (clickedYes || clickedNo)
+        if (sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p))
         {
-            std::string prompt;
-            std::vector<int> choices;
-            bool yesNo = false;
-            bool integerInput = false;
-            if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput) && yesNo)
-                controller.submitGuiYesNo(clickedYes);
+            if (controller.submitGuiYesNo(true))
+            {
+                draculaYesNo = false;
+                draculaPrompt = "Resolving Dracula's ability...";
+            }
+        }
+        else if (sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p))
+        {
+            if (controller.submitGuiYesNo(false))
+            {
+                draculaYesNo = false;
+                draculaPrompt = "Skipping Dracula's ability...";
+            }
         }
         return;
     }
@@ -2577,14 +2582,14 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
         {
             const int col = static_cast<int>(i % 8);
             const int row = static_cast<int>(i / 8);
-            sf::FloatRect button(
+            const sf::FloatRect button(
                 {startX + col * (bw + gap), startY + row * (bh + gap)},
                 {bw, bh});
 
             if (button.contains(p))
             {
-                controller.submitGuiInput(draculaChoices[i]);
-                return;
+                if (controller.submitGuiInput(draculaChoices[i]))
+                    return;
             }
         }
     }

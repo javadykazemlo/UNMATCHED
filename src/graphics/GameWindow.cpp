@@ -964,8 +964,8 @@ void GameWindow::drawGame()
         }
     };
 
-    drawPlayerPanel(current, {{18.f, 70.f}, {385.f, 580.f}}, RED);
-    drawPlayerPanel(enemy, {{1197.f, 70.f}, {385.f, 580.f}}, BLUE);
+    drawPlayerPanel(current, {{18.f, 73.f}, {385.f, 570.f}}, RED);
+    drawPlayerPanel(enemy, {{1197.f, 73.f}, {385.f, 570.f}}, BLUE);
 
     std::vector<int> highlights;
     Character* selected = selectedCurrentCharacter();
@@ -1019,8 +1019,8 @@ void GameWindow::drawGame()
         characterView->draw(window, c, boardView->getPosition(i), isSelected);
     }
 
-    ui->drawPanel(window, {{18.f, 650.f}, {385.f, 232.f}}, RED);
-    ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, RED);
+    ui->drawPanel(window, {{18.f, 657.f}, {385.f, 226.f}}, GOLD);
+    ui->drawText(window, "ACTIONS", {35.f, 665.f}, 17, GOLD);
     const bool canAct = controller.getActionCount() < 2;
     ui->drawButton(window, {{35.f, 700.f}, {78.f, 43.f}}, "MOVE", moveMode, GREEN);
     ui->drawButton(window, {{120.f, 700.f}, {78.f, 43.f}}, "ATTACK", attackMode, RED);
@@ -1096,9 +1096,8 @@ void GameWindow::drawGame()
                          {440.f, 863.f}, 9, GOLD);
     }
 
-    // Right player/deck/turn panel.
-    ui->drawPanel(window, {{1197.f, 650.f}, {385.f, 232.f}}, BLUE);
-    ui->drawText(window, "TURN / DECK", {1215.f, 665.f}, 17, BLUE);
+    ui->drawPanel(window, {{1197.f, 657.f}, {385.f, 226.f}}, GOLD);
+    ui->drawText(window, "TURN / DECK", {1215.f, 665.f}, 17, GOLD);
     if (current)
     {
         ui->drawText(window, current->getName(), {1215.f, 700.f}, 13, PARCHMENT);

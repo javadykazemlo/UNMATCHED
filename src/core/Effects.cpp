@@ -252,8 +252,11 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
         if(woncombat)
         {
-            int place = defender->getSpace();
-    
+            // Thirst for Sustenance moves Dracula (the attacker), not the
+            // defending fighter. The destination is still chosen from the
+            // empty spaces adjacent to the defender.
+            int place = attacker->getSpace();
+
             vector<int> validSpaces = bord.getEmptyAdjacent(defender);
 
             cout << "\nAvailable spaces:   ";
@@ -267,9 +270,8 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             int destination = getChoice(validSpaces);
 
             bord.deletCharacter(place);
-            bord.addCharacter(destination, defender);
-        }
-        
+            bord.addCharacter(destination, attacker);
+        }        
         return;
 
     }

@@ -163,7 +163,37 @@ void GameWindow::processEvents()
             continue;
         }
 
-        if (screen == Screen::Game && rulesView && rulesView->isOpen())
+        if (const auto* mouse = event->getIf<sf::Event::MouseMoved>())
+        {
+            const sf::Vector2f mp = window.mapPixelToCoords(mouse->position);
+            if (screen == Screen::MainMenu && !exitConfirmPopup &&
+                !(rulesView && rulesView->isOpen()))
+            {
+                int newHover = -1;
+                for (int i = 0; i < 4; ++i)
+                {
+                    if (sf::FloatRect({575.f, 425.f + i * 80.f},
+                                      {450.f, 60.f}).contains(mp))
+                    {
+                        newHover = i;
+                        break;
+                    }
+                }
+
+                if (newHover != hoveredMenuItem)
+                {
+                    if (newHover >= 0)
+                        audio.playSfx(AudioManager::Sfx::Hover);
+                    hoveredMenuItem = newHover;
+                }
+            }
+            else if (screen != Screen::MainMenu)
+            {
+                hoveredMenuItem = -1;
+            }
+        }
+
+        if (rulesView && rulesView->isOpen())
         {
             sf::Vector2f mousePosition{0.f, 0.f};
             if (const auto* mouse = event->getIf<sf::Event::MouseMoved>())
@@ -332,7 +362,7 @@ void GameWindow::processEvents()
             audio.playSfx(AudioManager::Sfx::Click);
             const sf::Vector2f p = window.mapPixelToCoords(mouse->position);
 
-            if (screen == Screen::Game && rulesView && rulesView->isOpen())
+            if (rulesView && rulesView->isOpen())
             {
                 rulesView->handleEvent(*event, p);
                 continue;
@@ -344,11 +374,28 @@ void GameWindow::processEvents()
             else if (screen == Screen::Game) handleGameClick(p);
             else if (screen == Screen::GameOver)
             {
-                if (sf::FloatRect({610.f, 545.f}, {380.f, 50.f}).contains(p))
+                if (exitConfirmPopup)
+                {
+                    if (sf::FloatRect({650.f, 520.f}, {130.f, 48.f}).contains(p))
+                    {
+                        window.close();
+                        return;
+                    }
+                    if (sf::FloatRect({820.f, 520.f}, {130.f, 48.f}).contains(p))
+                    {
+                        exitConfirmPopup = false;
+                        return;
+                    }
+                }
+                else if (sf::FloatRect({610.f, 545.f}, {380.f, 50.f}).contains(p))
                 {
                     screen = Screen::MainMenu;
                     audio.playIntroMusic();
                     audio.playSfx(AudioManager::Sfx::Confirm);
+                }
+                else if (sf::FloatRect({610.f, 610.f}, {380.f, 50.f}).contains(p))
+                {
+                    exitConfirmPopup = true;
                 }
             }
         }
@@ -386,7 +433,7 @@ void GameWindow::render()
     else if (screen == Screen::GameOver) drawGameOver();
     else drawGame();
 
-    if (screen == Screen::Game && rulesView && rulesView->isOpen())
+    if (rulesView && rulesView->isOpen())
         rulesView->draw(window, {1600.f, 900.f});
 }
 
@@ -404,16 +451,68 @@ void GameWindow::drawMainMenu()
     overlay.setFillColor(sf::Color(0, 0, 0, 85));
     window.draw(overlay);
 
+    const float t = menuAnimationClock.getElapsedTime().asSeconds();
+    for (int i = 0; i < 8; ++i)
+    {
+        const float phase = t * (0.35f + i * 0.025f) + i * 0.9f;
+        sf::CircleShape glow(3.f + (std::sin(phase) + 1.f) * 2.f);
+        glow.setOrigin({glow.getRadius(), glow.getRadius()});
+        glow.setPosition({
+            190.f + i * 175.f + std::sin(phase * 0.8f) * 35.f,
+            150.f + (i % 4) * 170.f + std::cos(phase) * 28.f
+        });
+        glow.setFillColor(sf::Color(211, 178, 104, 45));
+        window.draw(glow);
+    }
+
     ui->drawText(window, "THE ETERNAL BATTLE OF SHADOWS", {670.f, 270.f}, 14,
                  sf::Color(157, 126, 69));
     ui->drawText(window, "UNMATCHED", {600.f, 305.f}, 58, GOLD);
 
-    ui->drawButton(window, {{575.f, 425.f}, {450.f, 60.f}}, "START GAME", true, RED);
-    ui->drawButton(window, {{575.f, 505.f}, {450.f, 60.f}}, "LOAD GAME", false, GOLD);
-    ui->drawButton(window, {{575.f, 585.f}, {450.f, 60.f}}, "EXIT", false, GOLD);
+    const std::vector<std::string> labels = {"START GAME", "LOAD GAME", "RULES", "EXIT"};
+    const std::vector<sf::Color> accents = {GOLD, RED, RED, RED};
+    const float baseY = 425.f;
 
-    ui->drawText(window, "created & Developed by", {700.f, 700.f}, 14, sf::Color(170, 162, 150));
-    ui->drawText(window, "Mahdi Dehnavi & Mohammd Javad Kazemlo", {640.f, 722.f}, 14, sf::Color(170, 162, 150));
+    for (int i = 0; i < 4; ++i)
+    {
+        const bool hovered = hoveredMenuItem == i;
+        const float scale = hovered ? 1.045f : 1.f;
+        const float w = 450.f * scale;
+        const float h = 60.f * scale;
+        const float x = 800.f - w / 2.f;
+        const float y = baseY + i * 80.f - (h - 60.f) / 2.f - (hovered ? 3.f : 0.f);
+
+        sf::FloatRect rect({x, y}, {w, h});
+        ui->drawButton(window, rect, labels[i], true, accents[i]);
+
+        if (hovered)
+        {
+            sf::RectangleShape lift({w + 10.f, h + 10.f});
+            lift.setPosition({x - 5.f, y - 5.f});
+            lift.setFillColor(sf::Color::Transparent);
+            lift.setOutlineColor(sf::Color(211, 178, 104, 70));
+            lift.setOutlineThickness(2.f);
+            window.draw(lift);
+        }
+    }
+
+    ui->drawText(window, "created & Developed by", {700.f, 750.f}, 14,
+                 sf::Color(170, 162, 150));
+    ui->drawText(window, "Mahdi Dehnavi & Mohammd Javad Kazemlo",
+                 {640.f, 772.f}, 14, sf::Color(170, 162, 150));
+
+    if (exitConfirmPopup)
+    {
+        sf::RectangleShape dim({1600.f, 900.f});
+        dim.setFillColor(sf::Color(0, 0, 0, 150));
+        window.draw(dim);
+
+        ui->drawPanel(window, {{500.f, 365.f}, {600.f, 245.f}}, GOLD);
+        ui->drawText(window, "ARE YOU SURE YOU WANT TO EXIT?",
+                     {605.f, 415.f}, 20, PARCHMENT);
+        ui->drawButton(window, {{650.f, 520.f}, {130.f, 48.f}}, "YES", true, RED);
+        ui->drawButton(window, {{820.f, 520.f}, {130.f, 48.f}}, "NO", true, GOLD);
+    }
 }
 
 void GameWindow::refreshSaveEntries()
@@ -901,6 +1000,7 @@ void GameWindow::drawGame()
     ui->drawButton(window, {{1375.f, 12.f}, {90.f, 42.f}}, "RULES",
                    rulesView && rulesView->isOpen(), GOLD);
     ui->drawButton(window, {{1472.f, 12.f}, {105.f, 42.f}}, "EXIT", false, GOLD);
+    
 
     auto drawPlayerPanel = [&](Player* player, sf::FloatRect rect, sf::Color accent)
     {
@@ -1029,8 +1129,6 @@ void GameWindow::drawGame()
     drawPlayerPanel(enemy, {{1197.f, 73.f}, {385.f, 570.f}},
                     characterColor(enemy ? enemy->getHero() : nullptr));
 
-    // Highlight the panel of whichever player's turn it currently is,
-    // so it's immediately clear whose turn it is.
     {
         const sf::FloatRect activeTurnRect = {{18.f, 73.f}, {385.f, 570.f}};
 
@@ -1208,11 +1306,11 @@ void GameWindow::drawGame()
         overlay.setFillColor(sf::Color(0, 0, 0, 170));
         window.draw(overlay);
 
-        const sf::FloatRect panel({390.f, 300.f}, {820.f, 300.f});
+        const sf::FloatRect panel({390.f, 250.f}, {820.f, 300.f});
         ui->drawPanel(window, panel, GOLD);
 
-        ui->drawText(window, "SAVE GAME", {700.f, 335.f}, 28, GOLD);
-        ui->drawText(window, "SELECT SAVE SLOT", {685.f, 375.f}, 12, PARCHMENT);
+        ui->drawText(window, "SAVE GAME", {700.f, 280.f}, 28, GOLD);
+        ui->drawText(window, "SELECT SAVE SLOT", {700.f, 330.f}, 12, PARCHMENT);
 
         const float slotX = 490.f;
         const float slotY = 390.f;
@@ -1230,6 +1328,18 @@ void GameWindow::drawGame()
         }
     }
 
+    if (exitConfirmPopup)
+    {
+        sf::RectangleShape dim({1600.f, 900.f});
+        dim.setFillColor(sf::Color(0, 0, 0, 150));
+        window.draw(dim);
+
+        ui->drawPanel(window, {{500.f, 365.f}, {600.f, 245.f}}, GOLD);
+        ui->drawText(window, "ARE YOU SURE YOU WANT TO EXIT?",
+                     {605.f, 415.f}, 20, PARCHMENT);
+        ui->drawButton(window, {{650.f, 520.f}, {130.f, 48.f}}, "YES", true, RED);
+        ui->drawButton(window, {{820.f, 520.f}, {130.f, 48.f}}, "NO", true, GOLD);
+    }
 }
 
 void GameWindow::drawGameOver()
@@ -1240,16 +1350,30 @@ void GameWindow::drawGameOver()
     window.draw(overlay);
 
     ui->drawText(window, "THE BATTLE IS OVER", {570.f, 170.f}, 38, GOLD);
-    ui->drawPanel(window, {{390.f, 280.f}, {820.f, 350.f}}, GOLD);
+    ui->drawPanel(window, {{390.f, 280.f}, {820.f, 490.f}}, GOLD);
     ui->drawText(window, "CONGRATULATIONS", {630.f, 330.f}, 26, PARCHMENT);
     ui->drawText(window, winnerName + "", {700.f, 385.f}, 28, GOLD);
     ui->drawText(window, "has won the battle.", {675.f, 430.f}, 16, PARCHMENT);
     ui->drawText(window, "Thank you for playing UNMATCHED.", {637.f, 475.f}, 14, sf::Color(170, 162, 150));
     ui->drawText(window, "Farewell, and until the next battle...", {637.f, 505.f}, 14, sf::Color(170, 162, 150));
     ui->drawButton(window, {{610.f, 545.f}, {380.f, 50.f}}, "RETURN TO MAIN MENU", true, GOLD);
+    ui->drawButton(window, {{610.f, 610.f}, {380.f, 50.f}}, "EXIT", true, RED);
 
-    ui->drawText(window, "created & Developed by", {700.f, 700.f}, 14, sf::Color(170, 162, 150));
-    ui->drawText(window, "Mahdi Dehnavi & Mohammd Javad Kazemlo", {640.f, 722.f}, 14, sf::Color(170, 162, 150));
+    ui->drawText(window, "created & Developed by", {700.f, 800.f}, 14, sf::Color(170, 162, 150));
+    ui->drawText(window, "Mahdi Dehnavi & Mohammd Javad Kazemlo", {640.f, 822.f}, 14, sf::Color(170, 162, 150));
+    
+    if (exitConfirmPopup)
+    {
+        sf::RectangleShape dim({1600.f, 900.f});
+        dim.setFillColor(sf::Color(0, 0, 0, 150));
+        window.draw(dim);
+
+        ui->drawPanel(window, {{500.f, 365.f}, {600.f, 245.f}}, GOLD);
+        ui->drawText(window, "ARE YOU SURE YOU WANT TO EXIT?",
+                     {605.f, 415.f}, 20, PARCHMENT);
+        ui->drawButton(window, {{650.f, 520.f}, {130.f, 48.f}}, "YES", true, RED);
+        ui->drawButton(window, {{820.f, 520.f}, {130.f, 48.f}}, "NO", true, GOLD);
+    }
 
 }
 
@@ -1272,6 +1396,21 @@ void GameWindow::refreshCombatLog()
 
 void GameWindow::handleMainMenuClick(sf::Vector2f p)
 {
+    if (exitConfirmPopup)
+    {
+        if (sf::FloatRect({650.f, 520.f}, {130.f, 48.f}).contains(p))
+        {
+            window.close();
+            return;
+        }
+        if (sf::FloatRect({820.f, 520.f}, {130.f, 48.f}).contains(p))
+        {
+            exitConfirmPopup = false;
+            return;
+        }
+        return;
+    }
+
     if (sf::FloatRect({575.f, 425.f}, {450.f, 60.f}).contains(p))
     {
         players[0].reset();
@@ -1300,7 +1439,17 @@ void GameWindow::handleMainMenuClick(sf::Vector2f p)
     }
 
     if (sf::FloatRect({575.f, 585.f}, {450.f, 60.f}).contains(p))
-        window.close();
+    {
+        if (rulesView)
+            rulesView->open();
+        return;
+    }
+
+    if (sf::FloatRect({575.f, 665.f}, {450.f, 60.f}).contains(p))
+    {
+        exitConfirmPopup = true;
+        return;
+    }
 }
 
 void GameWindow::handleSetupClick(sf::Vector2f p)
@@ -1451,6 +1600,26 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     Player* enemy = controller.getEnemyPlayer();
     Character* selected = selectedCurrentCharacter();
 
+    if (sf::FloatRect({1472.f, 12.f}, {105.f, 42.f}).contains(p))
+    {
+        exitConfirmPopup = true;
+        return;
+    }
+
+    if (exitConfirmPopup)
+    {
+        if (sf::FloatRect({650.f, 520.f}, {130.f, 48.f}).contains(p))
+        {
+            window.close();
+            return;
+        }
+        if (sf::FloatRect({820.f, 520.f}, {130.f, 48.f}).contains(p))
+        {
+            exitConfirmPopup = false;
+            return;
+        }
+    }
+    
     if (activeEffectPanel != EffectPanelKind::None)
     {
         switch (activeEffectPanel)
@@ -1474,12 +1643,6 @@ void GameWindow::handleGameClick(sf::Vector2f p)
     {
         if (rulesView)
             rulesView->open();
-        return;
-    }
-
-    if (sf::FloatRect({1472.f, 12.f}, {105.f, 42.f}).contains(p))
-    {
-        window.close();
         return;
     }
 
@@ -1980,14 +2143,7 @@ void GameWindow::updateAttackEffectPanel()
         selectedEnemy = -1;
         selectedCharacter = -1;
 
-        if (controller.getActionCount() >= 2)
-        {
-            activeEffectPanel = EffectPanelKind::None;
-            attackResolved = false;
-            controller.clearGuiEffectLog();
-            checkGameOver();
-            advanceTurnIfTwoActionsUsed();
-        }
+
     }
 }
 
@@ -1997,23 +2153,59 @@ void GameWindow::drawAttackEffectPanel()
     overlay.setFillColor(sf::Color(2, 3, 7, 175));
     window.draw(overlay);
 
-    const sf::FloatRect panel({330.f, 70.f}, {940.f, 760.f});
+    const sf::FloatRect panel({300.f, 55.f}, {1000.f, 790.f});
     ui->drawPanel(window, panel, GOLD);
 
-    ui->drawText(window, attackCardName.empty() ? "ATTACK EFFECT" : attackCardName,
-                 {385.f, 100.f}, 24, GOLD);
+    if (attackResolved)
+    {
+        const Controller::GuiCombatResult result = controller.getGuiCombatResult();
 
-    auto drawWrapped = [&](const std::string& text, float x, float y0, float widthChars, int size, sf::Color color, int maxLines)
+        ui->drawText(window, "COMBAT RESULT", {660.f, 85.f}, 28, GOLD);
+
+        ui->drawText(window, "ATTACKER CARD", {480.f, 145.f}, 15, RED);
+        ui->drawText(window, "DEFENDER CARD", {975.f, 145.f}, 15, BLUE);
+
+        cardView->drawCard(window, result.attackerCard,
+                           {{460.f, 180.f}, {180.f, 250.f}}, false);
+        cardView->drawCard(window, result.defenderCard,
+                           {{950.f, 180.f}, {180.f, 250.f}}, false);
+
+        ui->drawPanel(window, {{385.f, 455.f}, {830.f, 105.f}}, GOLD);
+        ui->drawText(window,
+                     "Final Attack: " + std::to_string(result.finalAttack),
+                     {445.f, 485.f}, 18, PARCHMENT);
+        ui->drawText(window,
+                     "Final Defense: " + std::to_string(result.finalDefense),
+                     {1005.f, 485.f}, 18, PARCHMENT);
+
+        ui->drawText(window,
+                     "Winner: " + (result.winner.empty() ? "Unknown" : result.winner),
+                     {665.f, 610.f}, 22, GOLD);
+
+        const bool canClose = controller.guiEffectCanClose();
+        ui->drawButton(window, {{565.f, 715.f}, {470.f, 58.f}},
+                       "RETURN TO GAME", canClose, GOLD);
+        return;
+    }
+
+    ui->drawText(window, attackCardName.empty() ? "ATTACK EFFECT" : attackCardName,
+                 {355.f, 85.f}, 24, GOLD);
+
+    auto drawWrapped = [&](const std::string& text, float x, float y0,
+                           float widthChars, int size, sf::Color color,
+                           int maxLines)
     {
         std::string line;
         int row = 0;
         const auto flush = [&]()
         {
             if (!line.empty() && row < maxLines)
-                ui->drawText(window, line, {x, y0 + row * (size + 5.f)}, size, color);
+                ui->drawText(window, line,
+                             {x, y0 + row * (size + 7.f)}, size, color);
             line.clear();
             ++row;
         };
+
         for (char ch : text)
         {
             if (row >= maxLines) break;
@@ -2026,78 +2218,93 @@ void GameWindow::drawAttackEffectPanel()
     };
 
     drawWrapped(attackCardText.empty() ? "Resolving combat..." : attackCardText,
-                385.f, 145.f, 94.f, 13, PARCHMENT, 7);
+                355.f, 130.f, 102, 14, PARCHMENT, 7);
 
     const std::vector<std::string> logs = controller.getGuiEffectLog();
-    float y = 300.f;
-    int shown = 0;
-    for (auto it = logs.rbegin(); it != logs.rend() && shown < 11; ++it)
+    float y = 285.f;
+    int linesUsed = 0;
+    int messagesShown = 0;
+
+    for (auto it = logs.rbegin();
+         it != logs.rend() && messagesShown < 7 && linesUsed < 16; ++it)
     {
         if (it->empty()) continue;
-        std::string line = *it;
-        float lineY = y + static_cast<float>(shown) * 25.f;
+
         std::string chunk;
-        int wrapped = 0;
-        for (char c : line)
+        int wrappedLines = 0;
+        for (char c : *it)
         {
-            chunk += c;
-            if (chunk.size() >= 82)
+            if (c == '\n')
             {
-                ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+                if (!chunk.empty())
+                {
+                    ui->drawText(window, chunk,
+                                 {355.f, y + linesUsed * 22.f}, 14, PARCHMENT);
+                    ++linesUsed;
+                    chunk.clear();
+                }
+                continue;
+            }
+
+            chunk += c;
+            if (chunk.size() >= 78 && c == ' ')
+            {
+                ui->drawText(window, chunk,
+                             {355.f, y + linesUsed * 22.f}, 14, PARCHMENT);
+                ++linesUsed;
+                ++wrappedLines;
                 chunk.clear();
-                ++wrapped;
-                if (wrapped >= 2) break;
+                if (wrappedLines >= 2 || linesUsed >= 16)
+                    break;
             }
         }
-        if (!chunk.empty() && wrapped < 2)
-            ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
-        ++shown;
+
+        if (!chunk.empty() && linesUsed < 16)
+        {
+            ui->drawText(window, chunk,
+                         {355.f, y + linesUsed * 22.f}, 14, PARCHMENT);
+            ++linesUsed;
+        }
+
+        ++messagesShown;
+        if (linesUsed < 16)
+            ++linesUsed; // deliberate vertical separation between messages
     }
 
     if (!attackPrompt.empty())
-        ui->drawText(window, attackPrompt, {385.f, 470.f}, 16, GOLD);
+        ui->drawText(window, attackPrompt, {355.f, 665.f}, 17, GOLD);
 
-    if (!attackResolved)
+    if (attackYesNo)
     {
-        if (attackYesNo)
-        {
-            ui->drawButton(window, {{470.f, 520.f}, {220.f, 55.f}}, "YES", true, GREEN);
-            ui->drawButton(window, {{730.f, 520.f}, {220.f, 55.f}}, "NO", true, RED);
-        }
-        else if (!attackChoices.empty())
-        {
-            const float startX = 390.f;
-            const float startY = 520.f;
-            const float bw = 88.f;
-            const float bh = 36.f;
-            const float gap = 8.f;
+        ui->drawButton(window, {{470.f, 700.f}, {220.f, 50.f}}, "YES", true, GREEN);
+        ui->drawButton(window, {{730.f, 700.f}, {220.f, 50.f}}, "NO", true, RED);
+    }
+    else if (!attackChoices.empty())
+    {
+        const float startX = 390.f;
+        const float startY = 700.f;
+        const float bw = 88.f;
+        const float bh = 34.f;
+        const float gap = 8.f;
 
-            for (std::size_t i = 0; i < attackChoices.size() && i < 40; ++i)
-            {
-                const int col = static_cast<int>(i % 8);
-                const int row = static_cast<int>(i / 8);
-                ui->drawButton(window,
-                               {{startX + col * (bw + gap),
-                                 startY + row * (bh + gap)},
-                                {bw, bh}},
-                               std::to_string(attackChoices[i]), true, GOLD);
-            }
-        }
-        else if (attackInteger)
+        for (std::size_t i = 0; i < attackChoices.size() && i < 40; ++i)
         {
-            ui->drawPanel(window, {{470.f, 520.f}, {500.f, 55.f}}, GOLD);
-            ui->drawText(window, attackInputBuffer.empty() ? "_" : attackInputBuffer,
-                         {490.f, 534.f}, 18, PARCHMENT);
-            ui->drawText(window, "Type the number, then press ENTER.",
-                         {470.f, 585.f}, 12, PARCHMENT);
+            const int col = static_cast<int>(i % 8);
+            const int row = static_cast<int>(i / 8);
+            ui->drawButton(window,
+                           {{startX + col * (bw + gap),
+                             startY + row * (bh + gap)},
+                            {bw, bh}},
+                           std::to_string(attackChoices[i]), true, GOLD);
         }
     }
-
-    if (attackResolved)
+    else if (attackInteger)
     {
-        const bool canClose = controller.guiEffectCanClose();
-        ui->drawButton(window, {{565.f, 705.f}, {470.f, 58.f}},
-                       "RETURN TO GAME", canClose, GOLD);
+        ui->drawPanel(window, {{470.f, 690.f}, {500.f, 55.f}}, GOLD);
+        ui->drawText(window, attackInputBuffer.empty() ? "_" : attackInputBuffer,
+                     {490.f, 704.f}, 18, PARCHMENT);
+        ui->drawText(window, "Type the number, then press ENTER.",
+                     {470.f, 752.f}, 12, PARCHMENT);
     }
 }
 
@@ -2105,7 +2312,7 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
 {
     if (attackResolved)
     {
-        if (sf::FloatRect({565.f, 705.f}, {470.f, 58.f}).contains(p) && controller.guiEffectCanClose())
+        if (sf::FloatRect({565.f, 715.f}, {470.f, 58.f}).contains(p) && controller.guiEffectCanClose())
         {
             activeEffectPanel = EffectPanelKind::None;
             attackResolved = false;
@@ -2167,8 +2374,9 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
 
     if (attackYesNo)
     {
-        const bool clickedYes = sf::FloatRect({470.f, 520.f}, {220.f, 55.f}).contains(p);
-        const bool clickedNo  = sf::FloatRect({730.f, 520.f}, {220.f, 55.f}).contains(p);
+        // These hitboxes must match the buttons drawn in drawAttackEffectPanel().
+        const bool clickedYes = sf::FloatRect({470.f, 700.f}, {220.f, 50.f}).contains(p);
+        const bool clickedNo  = sf::FloatRect({730.f, 700.f}, {220.f, 50.f}).contains(p);
         if (!clickedYes && !clickedNo) return;
 
         if (awaitingDefenseDecision)
@@ -2214,10 +2422,12 @@ void GameWindow::handleAttackEffectInput(sf::Vector2f p)
 
     if (!attackChoices.empty())
     {
+        // Keep the input hitboxes in the exact same positions/sizes as the
+        // choice buttons drawn by drawAttackEffectPanel().
         const float startX = 390.f;
-        const float startY = 520.f;
+        const float startY = 700.f;
         const float bw = 88.f;
-        const float bh = 36.f;
+        const float bh = 34.f;
         const float gap = 8.f;
 
         for (std::size_t i = 0; i < attackChoices.size() && i < 40; ++i)
@@ -2319,28 +2529,53 @@ void GameWindow::drawSchemeEffectPanel()
 
     const std::vector<std::string> logs = controller.getGuiEffectLog();
     float y = 300.f;
-    int shown = 0;
-    for (auto it = logs.rbegin(); it != logs.rend() && shown < 11; ++it)
+    int linesUsed = 0;
+    int messagesShown = 0;
+
+    for (auto it = logs.rbegin();
+         it != logs.rend() && messagesShown < 5 && linesUsed < 7; ++it)
     {
         if (it->empty()) continue;
-        std::string line = *it;
-        float lineY = y + static_cast<float>(shown) * 25.f;
+
         std::string chunk;
-        int wrapped = 0;
-        for (char c : line)
+        int wrappedLines = 0;
+        for (char c : *it)
         {
-            chunk += c;
-            if (chunk.size() >= 82)
+            if (c == '\n')
             {
-                ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
+                if (!chunk.empty())
+                {
+                    ui->drawText(window, chunk,
+                                 {385.f, y + linesUsed * 22.f}, 14, PARCHMENT);
+                    ++linesUsed;
+                    chunk.clear();
+                }
+                continue;
+            }
+
+            chunk += c;
+            if (chunk.size() >= 78 && c == ' ')
+            {
+                ui->drawText(window, chunk,
+                             {385.f, y + linesUsed * 22.f}, 14, PARCHMENT);
+                ++linesUsed;
+                ++wrappedLines;
                 chunk.clear();
-                ++wrapped;
-                if (wrapped >= 2) break;
+                if (wrappedLines >= 2 || linesUsed >= 15)
+                    break;
             }
         }
-        if (!chunk.empty() && wrapped < 2)
-            ui->drawText(window, chunk, {385.f, lineY + wrapped * 20.f}, 12, PARCHMENT);
-        ++shown;
+
+        if (!chunk.empty() && linesUsed < 7)
+        {
+            ui->drawText(window, chunk,
+                         {385.f, y + linesUsed * 22.f}, 14, PARCHMENT);
+            ++linesUsed;
+        }
+
+        ++messagesShown;
+        if (linesUsed < 7)
+            ++linesUsed;
     }
 
     if (!schemePrompt.empty())
@@ -2732,8 +2967,6 @@ void GameWindow::updateAiTurnPanel()
 
     if (!controller.guiAiTurnBusy())
     {
-        // The AI has finished, but its turn is intentionally not advanced here.
-        // Keep the panel open so the human player can review the final actions.
         aiTurnSummary = true;
         aiTurnPrompt.clear();
         aiTurnChoices.clear();
@@ -2747,8 +2980,6 @@ void GameWindow::updateAiTurnPanel()
 
 void GameWindow::drawAiTurnPanel()
 {
-    // Keep the board, player panels and hand visible. Only the small AI panel is
-    // dimmed, rather than covering the whole game with a dark overlay.
     sf::RectangleShape overlay({1600.f, 900.f});
     overlay.setFillColor(sf::Color(0, 0, 0, 30));
     window.draw(overlay);
@@ -2776,8 +3007,6 @@ void GameWindow::drawAiTurnPanel()
 
     const std::vector<std::string> logs = controller.getGuiEffectLog();
 
-    // Show only the most recent useful messages. This keeps the panel focused
-    // on what the AI just did instead of exposing the entire internal log.
     std::vector<std::string> visibleLogs;
     for (auto it = logs.rbegin(); it != logs.rend() && visibleLogs.size() < 6; ++it)
     {
@@ -2786,8 +3015,6 @@ void GameWindow::drawAiTurnPanel()
         std::string clean;
         for (unsigned char c : *it)
         {
-            // Keep the AI panel strictly ASCII so the SFML font never receives
-            // unsupported emoji/symbol bytes.
             if (c >= 32 && c <= 126)
                 clean += static_cast<char>(c);
         }
@@ -2904,8 +3131,6 @@ void GameWindow::handleAiTurnInput(sf::Vector2f p)
             if (current && current->getDeck() &&
                 current->getDeck()->gethandSize() > 7)
             {
-                // AI has already performed its hand-limit step. This is only a
-                // safeguard in case a custom AI leaves the hand above the limit.
                 showMessage("AI must finish its hand limit before ending the turn.");
                 return;
             }

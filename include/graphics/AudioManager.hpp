@@ -10,6 +10,7 @@ public:
     enum class Sfx
     {
         Click,
+        Hover,
         Confirm,
         EffectPanel,
         TurnStart,
@@ -36,6 +37,7 @@ private:
     sf::Music gameOverMusic;
 
     sf::SoundBuffer clickBuffer;
+    sf::SoundBuffer hoverBuffer;
     sf::SoundBuffer confirmBuffer;
     sf::SoundBuffer effectPanelBuffer;
     sf::SoundBuffer turnStartBuffer;
@@ -45,6 +47,7 @@ private:
     sf::SoundBuffer moveBuffer;
 
     sf::Sound clickSound;
+    sf::Sound hoverSound;
     sf::Sound confirmSound;
     sf::Sound effectPanelSound;
     sf::Sound turnStartSound;

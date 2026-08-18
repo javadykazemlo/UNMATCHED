@@ -34,6 +34,18 @@ public:
     bool guiStartAiTurn();
     bool guiAiTurnBusy() const;
 
+    struct GuiCombatResult
+    {
+        Card attackerCard;
+        Card defenderCard;
+        int finalAttack = 0;
+        int finalDefense = 0;
+        std::string winner;
+        bool valid = false;
+    };
+
+    GuiCombatResult getGuiCombatResult() const;
+
 private:
     Bord bord;
 
@@ -49,6 +61,7 @@ private:
     bool guiMode = false;
     std::vector<std::string> guiCombatLog;
     std::vector<std::string> guiEffectLog;
+    GuiCombatResult guiCombatResult;
 
     Player* activeDecider = nullptr;
 

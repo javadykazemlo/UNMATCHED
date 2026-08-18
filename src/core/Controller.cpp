@@ -730,8 +730,10 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
         cout << player->getName() << " has no valid " 
              << (attack ? "attack" : "defense") << " card. Using 0 value.\n";
 
-        Card empty;
-        return empty;
+        if (attack)
+            return Card();
+        return Card("No Defense", owner::Any, CardType::Defense,
+                    0, timing::None, 0, "");
     }
 
     while (true)
@@ -888,6 +890,18 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     if(attackCard.isAfterCombat())
         applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , attackerWon);
   
+    // Capture the final values only after every combat modifier/effect has resolved.
+    if (guiMode)
+    {
+        std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        guiCombatResult.attackerCard = attackCard;
+        guiCombatResult.defenderCard = defenseCard;
+        guiCombatResult.finalAttack = attackValue;
+        guiCombatResult.finalDefense = defenseValue;
+        guiCombatResult.winner = attackerWon ? attacker->getName() : defender->getName();
+        guiCombatResult.valid = true;
+    }
+
     cancelEffectDR = false;
     cancelEffectSH = false;
     cancelEffectIM = false;
@@ -1159,6 +1173,7 @@ bool Controller::beginGuiSetup(Player players[2])
     activeDecider = nullptr;
     guiMode = true;
     guiCombatLog.clear();
+    guiCombatResult = GuiCombatResult{};
 
     gamerand = 0;
     guiCharacterPlayerIndex = -1;
@@ -1317,8 +1332,12 @@ bool Controller::guiChooseCharacter(int hero)
 
         if (guiPlayers[other].isAI())
         {
-            const auto choices = getGuiCharacterChoices();
+            auto choices = getGuiCharacterChoices();
             if (choices.empty()) return false;
+
+            static std::mt19937 rng(
+                static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count()));
+            std::shuffle(choices.begin(), choices.end(), rng);
             guiPlayers[other].chooseCharacter(choices.front(), other + 1);
         }
     }
@@ -1360,6 +1379,26 @@ bool Controller::guiChooseHeroPosition(int side)
     guiSidekicksDonePlayers = 0;
 
     guiSetupStage = GuiSetupStage::SidekickPlacement;
+
+    // AI sidekicks are placed automatically in a randomized order while
+    // still using the same legal-space validation as human placement.
+    if (guiPlayers[guiSidekickPlayerIndex].isAI())
+    {
+        while (guiSetupStage == GuiSetupStage::SidekickPlacement &&
+               guiPlayers[guiSidekickPlayerIndex].isAI())
+        {
+            const std::vector<int> valid = getGuiPlacementSpaces();
+            if (valid.empty())
+                return false;
+
+            static std::mt19937 rng(
+                static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count()));
+            std::uniform_int_distribution<std::size_t> pick(0, valid.size() - 1);
+
+            if (!guiPlaceSidekick(valid[pick(rng)]))
+                return false;
+        }
+    }
 
     return true;
 }
@@ -1425,6 +1464,24 @@ bool Controller::guiPlaceSidekick(int space)
 
         guiSidekickPlayerIndex = other;
         guiSidekickIndex = 1;
+
+        if (guiPlayers[guiSidekickPlayerIndex].isAI())
+        {
+            while (guiSetupStage == GuiSetupStage::SidekickPlacement &&
+                   guiPlayers[guiSidekickPlayerIndex].isAI())
+            {
+                const std::vector<int> aiValid = getGuiPlacementSpaces();
+                if (aiValid.empty())
+                    return false;
+
+                static std::mt19937 rng(
+                    static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count()));
+                std::uniform_int_distribution<std::size_t> pick(0, aiValid.size() - 1);
+
+                if (!guiPlaceSidekick(aiValid[pick(rng)]))
+                    return false;
+            }
+        }
     }
 
     return true;
@@ -1628,7 +1685,10 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
     if (defenseCardIndex < -1 || defenseCardIndex >= defenseDeck->gethandSize()) return false;
 
     Card attackCard = attackDeck->getHandcard(attackCardIndex);
-    Card defenseCard;
+    // A defender with no playable defense uses a real zero-value default
+    // defense card so the rest of the combat pipeline remains uniform.
+    Card defenseCard("No Defense", owner::Any, CardType::Defense,
+                     0, timing::None, 0, "");
     const bool usingDefenseCard = defenseCardIndex >= 0;
     if (usingDefenseCard)
         defenseCard = defenseDeck->getHandcard(defenseCardIndex);
@@ -1662,6 +1722,10 @@ bool Controller::guiAttack(Character* attacker, Character* defender,
         selectedDefense = defenseDeck->playCard(defenseCardIndex, defenseCard);
 
     guiCombatLog.clear();
+    {
+        std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+        guiCombatResult = GuiCombatResult{};
+    }
 
     std::thread([this, attacker, defender,
                  selectedAttack, selectedDefense]() mutable
@@ -2085,6 +2149,12 @@ std::string Controller::getGuiWinnerName() const
     if (!current->getHero()->checkalive()) return enemy->getName();
     if (!enemy->getHero()->checkalive()) return current->getName();
     return {};
+}
+
+Controller::GuiCombatResult Controller::getGuiCombatResult() const
+{
+    std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
+    return guiCombatResult;
 }
 
 bool Controller::guiDrawCard()

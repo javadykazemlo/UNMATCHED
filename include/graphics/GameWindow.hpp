@@ -112,6 +112,9 @@ private:
     std::vector<SaveEntry> saveEntries;
     float loadScroll = 0.f;
     bool saveSlotPopup = false;
+    bool exitConfirmPopup = false;
+    int hoveredMenuItem = -1;
+    sf::Clock menuAnimationClock;
     bool draculaAbilityPrompt = false;
     std::string effectInputBuffer;
     int moveBoost = 0;

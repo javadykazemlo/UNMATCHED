@@ -1029,6 +1029,19 @@ void GameWindow::drawGame()
     drawPlayerPanel(enemy, {{1197.f, 73.f}, {385.f, 570.f}},
                     characterColor(enemy ? enemy->getHero() : nullptr));
 
+    // Highlight the panel of whichever player's turn it currently is,
+    // so it's immediately clear whose turn it is.
+    {
+        const sf::FloatRect activeTurnRect = {{18.f, 73.f}, {385.f, 570.f}};
+
+        sf::RectangleShape turnHighlight({activeTurnRect.size.x + 10.f, activeTurnRect.size.y + 10.f});
+        turnHighlight.setPosition({activeTurnRect.position.x - 5.f, activeTurnRect.position.y - 5.f});
+        turnHighlight.setFillColor(sf::Color::Transparent);
+        turnHighlight.setOutlineColor(GOLD);
+        turnHighlight.setOutlineThickness(4.f);
+        window.draw(turnHighlight);
+    }
+
     std::vector<int> highlights;
     Character* selected = selectedCurrentCharacter();
     if (moveMode && selected && !awaitingMoveBoost)

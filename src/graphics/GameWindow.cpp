@@ -38,7 +38,7 @@ namespace
 }
 
 GameWindow::GameWindow()
-    : window(sf::VideoMode({1600u, 900u}), "UNMATCHED - Dark Gothic Edition")
+    : window(sf::VideoMode({1600u, 900u}), "UNMATCHED")
 {
     window.setFramerateLimit(60);
 
@@ -62,6 +62,7 @@ void GameWindow::loadAssets()
     textures.load("setup", "assets/backgrounds/setup.png");
     textures.load("game", "assets/backgrounds/game.png");
     textures.load("end", "assets/backgrounds/end.png");
+    textures.load("ready", "assets/backgrounds/ready.png");
     textures.load("board", "assets/board/board.png");
     textures.load("card_back", "assets/cards/card_back.png");
     textures.load("mute", "assets/mute.png");
@@ -109,9 +110,13 @@ void GameWindow::loadCharacterAssets()
     textures.load("sisters", "assets/characters/sisters.png");
     textures.load("invisible_man", "assets/characters/invisible_man.png");
 
-    textures.load("panel_dracul", "assets/character/dracul.png");
-    textures.load("panel_sherlok", "assets/character/sherlok.png");
-    textures.load("panel_invisible", "assets/character/invisible.png");
+    textures.load("panel_dracul", "assets/characters/panel_dracula.png");
+    textures.load("panel_sherlok", "assets/characters/panel_sherlock.png");
+    textures.load("panel_invisible", "assets/characters/panel_invisible.png");
+
+    textures.load("dracula_prof", "assets/characters/dracula_prof.png");
+    textures.load("sherlock_prof", "assets/characters/sherlock_prof.png");
+    textures.load("invisible_prof", "assets/characters/invisible_prof.png");
 }
 
 void GameWindow::drawFullscreenTexture(const std::string& id)
@@ -230,6 +235,26 @@ void GameWindow::processEvents()
                 }
             }
         }
+        else if (screen == Screen::Game && activeEffectPanel == EffectPanelKind::AiTurn && aiTurnInteger)
+        {
+            if (const auto* text = event->getIf<sf::Event::TextEntered>())
+            {
+                if (text->unicode >= '0' && text->unicode <= '9' &&
+                    aiTurnInputBuffer.size() < 3)
+                    aiTurnInputBuffer.push_back(static_cast<char>(text->unicode));
+            }
+
+            if (const auto* key = event->getIf<sf::Event::KeyPressed>())
+            {
+                if (key->code == sf::Keyboard::Key::Backspace && !aiTurnInputBuffer.empty())
+                    aiTurnInputBuffer.pop_back();
+                else if (key->code == sf::Keyboard::Key::Enter && !aiTurnInputBuffer.empty())
+                {
+                    if (controller.submitGuiInput(std::stoi(aiTurnInputBuffer)))
+                        aiTurnInputBuffer.clear();
+                }
+            }
+        }
 
         if (const auto* key = event->getIf<sf::Event::KeyPressed>())
         {
@@ -341,8 +366,12 @@ void GameWindow::update()
             case EffectPanelKind::Attack:  updateAttackEffectPanel();  break;
             case EffectPanelKind::Scheme:  updateSchemeEffectPanel();  break;
             case EffectPanelKind::Dracula: updateDraculaEffectPanel(); break;
+            case EffectPanelKind::AiTurn:  updateAiTurnPanel();        break;
             case EffectPanelKind::None:    break;
         }
+
+        if (activeEffectPanel == EffectPanelKind::None)
+            startAiTurnIfNeeded();
 
         if (!controller.guiEffectBusy() && activeEffectPanel == EffectPanelKind::None)
             checkGameOver();
@@ -599,8 +628,6 @@ void GameWindow::handleLoadGameClick(sf::Vector2f p)
         message.clear();
         messageTimer = 0;
 
-        // A loaded battle enters the gameplay state directly, so start the
-        // same audio used when a newly configured game begins.
         audio.playGameplayMusic();
         audio.playSfx(AudioManager::Sfx::TurnStart);
         return;
@@ -639,7 +666,7 @@ void GameWindow::drawSetup()
 
 void GameWindow::drawSetupPlayerInfo()
 {
-    ui->drawText(window, "THE PLAYERS", {640.f, 62.f}, 32, GOLD);
+    ui->drawText(window, "THE PLAYERS", {680.f, 62.f}, 32, GOLD);
     ui->drawPanel(window, {{245.f, 120.f}, {1110.f, 650.f}}, GOLD);
 
     auto field = [&](sf::FloatRect rect, const std::string& label,
@@ -686,23 +713,23 @@ void GameWindow::drawSetupCharacters()
     Player* current = controller.getCurrentPlayer();
     Player* enemy = controller.getEnemyPlayer();
 
-    ui->drawPanel(window, {{300.f, 125.f}, {1000.f, 640.f}}, GOLD);
+    ui->drawPanel(window, {{250.f, 125.f}, {1100.f, 555.f}}, GOLD);
     if (chooser)
     {
         ui->drawText(window, chooser->getName() + " - YOUR CHOICE",
-                     {590.f, 165.f}, 18,
+                     {660.f, 165.f}, 18,
                      chooser == current ? RED : BLUE);
     }
 
     const int heroes[] = {1, 2, 3};
     const char* names[] = {"DRACULA", "SHERLOCK", "INVISIBLE MAN"};
-    const char* portraits[] = {"dracula", "sherlock", "invisible_man"};
+    const char* portraits[] = {"dracula_prof", "sherlock_prof", "invisible_prof"};
 
     const std::vector<int> choices = controller.getGuiCharacterChoices();
     for (int i = 0; i < 3; ++i)
     {
         const bool allowed = std::find(choices.begin(), choices.end(), heroes[i]) != choices.end();
-        sf::FloatRect rect({430.f, 225.f + i * 135.f}, {740.f, 105.f});
+        sf::FloatRect rect({330.f + i * 330.f, 225.f}, {280.f, 350.f});
         ui->drawButton(window, rect, names[i], allowed, allowed ? GOLD : sf::Color(70, 65, 58));
 
         if (allowed)
@@ -711,35 +738,39 @@ void GameWindow::drawSetupCharacters()
             {
                 sf::Sprite sprite(*tex);
                 const sf::Vector2u size = tex->getSize();
-                const float scale = std::min(75.f / static_cast<float>(size.x),
-                                             75.f / static_cast<float>(size.y));
+                const float scale = std::min(280.f / static_cast<float>(size.x),
+                                             350.f / static_cast<float>(size.y));
                 sprite.setScale({scale, scale});
-                sprite.setPosition({rect.position.x + 15.f, rect.position.y + 15.f});
+                sprite.setPosition({rect.position.x, rect.position.y});
                 window.draw(sprite);
             }
         }
     }
 
-    ui->drawText(window, current ? "The older player chooses first." : "",
-                 {555.f, 650.f}, 11, sf::Color(165, 157, 145));
+    ui->drawText(window, current ? "The younger player chooses first." : "",
+                 {692.f, 620.f}, 11, sf::Color(165, 157, 145));
 }
 
 void GameWindow::drawSetupPosition()
 {
     drawFullscreenTexture("setup");
-    ui->drawText(window, "CHOOSE STARTING SIDE", {540.f, 70.f}, 30, GOLD);
+    ui->drawText(window, "CHOOSE STARTING SIDE", {600.f, 70.f}, 30, GOLD);
 
     Player* chooser = controller.getGuiSetupPlayer();
-    ui->drawPanel(window, {{250.f, 140.f}, {1100.f, 610.f}}, GOLD);
+    ui->drawPanel(window, {{250.f, 140.f}, {1100.f, 550.f}}, GOLD);
 
     if (chooser)
         ui->drawText(window, chooser->getName() + " chooses the starting side.",
-                     {555.f, 175.f}, 17, PARCHMENT);
+                     {590.f, 175.f}, 17, PARCHMENT);
 
     ui->drawButton(window, {{350.f, 270.f}, {390.f, 260.f}},
-                   "LEFT", true, RED);
+                   "", true, BLUE);
     ui->drawButton(window, {{860.f, 270.f}, {390.f, 260.f}},
-                   "RIGHT", true, BLUE);
+                   "", true, BLUE);
+
+    ui->drawText(window, "LEFT", {515.f, 390.f}, 25, BLUE);
+    ui->drawText(window, "RIGHT", {1015.f, 390.f}, 25, BLUE);
+
 
     ui->drawText(window, "Your hero starts on space 4.", {430.f, 555.f}, 12, PARCHMENT);
     ui->drawText(window, "Your opponent starts on space 15.", {430.f, 585.f}, 12, PARCHMENT);
@@ -758,7 +789,7 @@ void GameWindow::drawSetupSidekicks()
 
     ui->drawText(window,
         placingMistTokens ? "PLACE FOG TOKENS" : "PLACE YOUR FIGHTERS",
-        {600.f, 40.f}, 30, GOLD);
+        {630.f, 40.f}, 30, GOLD);
 
     ui->drawPanel(window, {{245.f, 705.f}, {1110.f, 120.f}}, GOLD);
     ui->drawText(window,
@@ -788,7 +819,7 @@ void GameWindow::drawSetupSidekicks()
 
 void GameWindow::drawSetupReady()
 {
-    drawFullscreenTexture("setup");
+    drawFullscreenTexture("ready");
     ui->drawText(window, "THE BATTLE IS READY", {590.f, 150.f}, 34, GOLD);
     ui->drawPanel(window, {{360.f, 245.f}, {880.f, 360.f}}, GOLD);
 
@@ -1155,6 +1186,7 @@ void GameWindow::drawGame()
         case EffectPanelKind::Attack:  drawAttackEffectPanel();  break;
         case EffectPanelKind::Scheme:  drawSchemeEffectPanel();  break;
         case EffectPanelKind::Dracula: drawDraculaEffectPanel(); break;
+        case EffectPanelKind::AiTurn:  drawAiTurnPanel();        break;
         case EffectPanelKind::None:    break;
     }
     if (saveSlotPopup)
@@ -1309,7 +1341,7 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
         const std::vector<int> choices = controller.getGuiCharacterChoices();
         for (int i = 0; i < 3; ++i)
         {
-            if (sf::FloatRect({430.f, 225.f + i * 135.f}, {740.f, 105.f}).contains(p) &&
+            if (sf::FloatRect({330.f + i * 330.f, 225.f}, {280.f, 350.f}).contains(p) &&
                 std::find(choices.begin(), choices.end(), i + 1) != choices.end())
             {
                 controller.guiChooseCharacter(i + 1);
@@ -1413,6 +1445,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             case EffectPanelKind::Attack:  handleAttackEffectInput(p);  break;
             case EffectPanelKind::Scheme:  handleSchemeEffectInput(p);  break;
             case EffectPanelKind::Dracula: handleDraculaEffectInput(p); break;
+            case EffectPanelKind::AiTurn:  handleAiTurnInput(p);        break;
             case EffectPanelKind::None:    break;
         }
         return;
@@ -2629,6 +2662,298 @@ void GameWindow::handleDraculaEffectInput(sf::Vector2f p)
     }
 }
 
+void GameWindow::startAiTurnIfNeeded()
+{
+    if (screen != Screen::Game) return;
+    if (activeEffectPanel != EffectPanelKind::None) return;
+    if (handLimitMode) return;
+    if (controller.guiAiTurnBusy()) return;
+
+    Player* player = controller.getCurrentPlayer();
+    if (!player || !player->isAI()) return;
+
+    resetSelections();
+    combatLog.clear();
+    controller.clearGuiCombatLog();
+    controller.clearGuiEffectLog();
+
+    aiTurnPrompt.clear();
+    aiTurnChoices.clear();
+    aiTurnYesNo = false;
+    aiTurnInteger = false;
+    aiTurnInputBuffer.clear();
+    aiTurnSummary = false;
+
+    if (controller.guiStartAiTurn())
+    {
+        activeEffectPanel = EffectPanelKind::AiTurn;
+        showMessage(player->getName() + " is taking its turn...");
+    }
+}
+
+void GameWindow::updateAiTurnPanel()
+{
+    if (aiTurnSummary)
+        return;
+
+    std::string prompt;
+    std::vector<int> choices;
+    bool yesNo = false;
+    bool integerInput = false;
+
+    if (controller.getGuiInputRequest(prompt, choices, yesNo, integerInput))
+    {
+        aiTurnPrompt = prompt;
+        aiTurnChoices = choices;
+        aiTurnYesNo = yesNo;
+        aiTurnInteger = integerInput;
+    }
+    else
+    {
+        aiTurnPrompt.clear();
+        aiTurnChoices.clear();
+        aiTurnYesNo = false;
+        aiTurnInteger = false;
+        aiTurnInputBuffer.clear();
+    }
+
+    if (!controller.guiAiTurnBusy())
+    {
+        // The AI has finished, but its turn is intentionally not advanced here.
+        // Keep the panel open so the human player can review the final actions.
+        aiTurnSummary = true;
+        aiTurnPrompt.clear();
+        aiTurnChoices.clear();
+        aiTurnYesNo = false;
+        aiTurnInteger = false;
+        aiTurnInputBuffer.clear();
+        refreshCombatLog();
+        checkGameOver();
+    }
+}
+
+void GameWindow::drawAiTurnPanel()
+{
+    // Keep the board, player panels and hand visible. Only the small AI panel is
+    // dimmed, rather than covering the whole game with a dark overlay.
+    sf::RectangleShape overlay({1600.f, 900.f});
+    overlay.setFillColor(sf::Color(0, 0, 0, 30));
+    window.draw(overlay);
+
+    const sf::FloatRect panel({425.f, 82.f}, {750.f, 330.f});
+
+    sf::RectangleShape panelBackground(panel.size);
+    panelBackground.setPosition(panel.position);
+    panelBackground.setFillColor(sf::Color(10, 11, 17, 218));
+    panelBackground.setOutlineColor(GOLD);
+    panelBackground.setOutlineThickness(1.5f);
+    window.draw(panelBackground);
+
+    sf::RectangleShape header({panel.size.x, 46.f});
+    header.setPosition(panel.position);
+    header.setFillColor(sf::Color(16, 16, 23, 235));
+    header.setOutlineColor(sf::Color(75, 62, 45));
+    header.setOutlineThickness(1.f);
+    window.draw(header);
+
+    Player* player = controller.getCurrentPlayer();
+    const std::string title = player ? player->getName() + " - AI TURN" : "AI TURN";
+    ui->drawText(window, title, {panel.position.x + 22.f, panel.position.y + 12.f},
+                 20, GOLD);
+
+    const std::vector<std::string> logs = controller.getGuiEffectLog();
+
+    // Show only the most recent useful messages. This keeps the panel focused
+    // on what the AI just did instead of exposing the entire internal log.
+    std::vector<std::string> visibleLogs;
+    for (auto it = logs.rbegin(); it != logs.rend() && visibleLogs.size() < 6; ++it)
+    {
+        if (it->empty()) continue;
+
+        std::string clean;
+        for (unsigned char c : *it)
+        {
+            // Keep the AI panel strictly ASCII so the SFML font never receives
+            // unsupported emoji/symbol bytes.
+            if (c >= 32 && c <= 126)
+                clean += static_cast<char>(c);
+        }
+
+        if (!clean.empty())
+            visibleLogs.push_back(clean);
+    }
+
+    std::reverse(visibleLogs.begin(), visibleLogs.end());
+
+    float y = panel.position.y + 64.f;
+    for (const std::string& line : visibleLogs)
+    {
+        std::string shown = line;
+        if (shown.size() > 92)
+            shown = shown.substr(0, 89) + "...";
+
+        ui->drawText(window, shown,
+                     {panel.position.x + 22.f, y},
+                     12, PARCHMENT);
+        y += 27.f;
+    }
+
+    if (aiTurnSummary)
+    {
+        ui->drawText(window, "AI TURN COMPLETE", 
+                     {panel.position.x + 22.f, panel.position.y + 232.f},
+                     15, GOLD);
+        ui->drawText(window, "Review the final actions, then press END TURN.",
+                     {panel.position.x + 22.f, panel.position.y + 258.f},
+                     11, PARCHMENT);
+
+        ui->drawButton(window,
+                       {{panel.position.x + 505.f, panel.position.y + 248.f},
+                        {195.f, 52.f}},
+                       "END TURN", true, GOLD);
+        return;
+    }
+
+    if (!aiTurnPrompt.empty())
+    {
+        std::string prompt = aiTurnPrompt;
+        if (prompt.size() > 90)
+            prompt = prompt.substr(0, 87) + "...";
+
+        ui->drawText(window, prompt,
+                     {panel.position.x + 22.f, panel.position.y + 232.f},
+                     13, GOLD);
+
+        if (aiTurnYesNo)
+        {
+            ui->drawButton(window,
+                           {{panel.position.x + 300.f, panel.position.y + 270.f},
+                            {150.f, 42.f}},
+                           "YES", true, GREEN);
+            ui->drawButton(window,
+                           {{panel.position.x + 465.f, panel.position.y + 270.f},
+                            {150.f, 42.f}},
+                           "NO", true, RED);
+        }
+        else if (!aiTurnChoices.empty())
+        {
+            const float startX = panel.position.x + 22.f;
+            const float startY = panel.position.y + 266.f;
+            const float bw = 70.f;
+            const float bh = 34.f;
+            const float gap = 6.f;
+
+            for (std::size_t i = 0; i < aiTurnChoices.size() && i < 16; ++i)
+            {
+                const int col = static_cast<int>(i % 8);
+                const int row = static_cast<int>(i / 8);
+                ui->drawButton(window,
+                               {{startX + col * (bw + gap),
+                                 startY + row * (bh + gap)},
+                                {bw, bh}},
+                               std::to_string(aiTurnChoices[i]), true, GOLD);
+            }
+        }
+        else if (aiTurnInteger)
+        {
+            ui->drawPanel(window,
+                          {{panel.position.x + 250.f, panel.position.y + 266.f},
+                           {250.f, 42.f}},
+                          GOLD);
+            ui->drawText(window,
+                         aiTurnInputBuffer.empty() ? "_" : aiTurnInputBuffer,
+                         {panel.position.x + 270.f, panel.position.y + 275.f},
+                         16, PARCHMENT);
+        }
+    }
+    else
+    {
+        ui->drawText(window, "AI is deciding...",
+                     {panel.position.x + 22.f, panel.position.y + 232.f},
+                     13, PARCHMENT);
+    }
+}
+
+void GameWindow::handleAiTurnInput(sf::Vector2f p)
+{
+    const sf::FloatRect panel({425.f, 82.f}, {750.f, 330.f});
+
+    if (aiTurnSummary)
+    {
+        const sf::FloatRect endButton(
+            {panel.position.x + 505.f, panel.position.y + 248.f},
+            {195.f, 52.f});
+
+        if (endButton.contains(p))
+        {
+            Player* current = controller.getCurrentPlayer();
+
+            if (current && current->getDeck() &&
+                current->getDeck()->gethandSize() > 7)
+            {
+                // AI has already performed its hand-limit step. This is only a
+                // safeguard in case a custom AI leaves the hand above the limit.
+                showMessage("AI must finish its hand limit before ending the turn.");
+                return;
+            }
+
+            controller.guiEndTurn();
+            audio.playSfx(AudioManager::Sfx::TurnEnd);
+
+            aiTurnSummary = false;
+            activeEffectPanel = EffectPanelKind::None;
+            resetSelections();
+            combatLog.clear();
+
+            controller.guiBeginTurn();
+            audio.playSfx(AudioManager::Sfx::TurnStart);
+            showMessage("Turn changed.");
+        }
+        return;
+    }
+
+    if (aiTurnYesNo)
+    {
+        const sf::FloatRect yesButton(
+            {panel.position.x + 300.f, panel.position.y + 270.f},
+            {150.f, 42.f});
+        const sf::FloatRect noButton(
+            {panel.position.x + 465.f, panel.position.y + 270.f},
+            {150.f, 42.f});
+
+        if (yesButton.contains(p))
+            controller.submitGuiYesNo(true);
+        else if (noButton.contains(p))
+            controller.submitGuiYesNo(false);
+        return;
+    }
+
+    if (!aiTurnChoices.empty())
+    {
+        const float startX = panel.position.x + 22.f;
+        const float startY = panel.position.y + 266.f;
+        const float bw = 70.f;
+        const float bh = 34.f;
+        const float gap = 6.f;
+
+        for (std::size_t i = 0; i < aiTurnChoices.size() && i < 16; ++i)
+        {
+            const int col = static_cast<int>(i % 8);
+            const int row = static_cast<int>(i / 8);
+            const sf::FloatRect button(
+                {startX + col * (bw + gap),
+                 startY + row * (bh + gap)},
+                {bw, bh});
+
+            if (button.contains(p))
+            {
+                controller.submitGuiInput(aiTurnChoices[i]);
+                return;
+            }
+        }
+    }
+}
+
 void GameWindow::advanceTurnIfTwoActionsUsed()
 {
     if (controller.getActionCount() < 2)
@@ -2722,6 +3047,7 @@ void GameWindow::resetSelections()
     draculaInputBuffer.clear();
 
     handLimitMode = false;
+    aiTurnSummary = false;
 }
 
 Character* GameWindow::selectedCurrentCharacter() const

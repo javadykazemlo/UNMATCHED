@@ -5,6 +5,7 @@
 #include <string>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
+#include "core/GameAI.hpp"
 #include "entities/Character.hpp"
 #include "cards/Deck.hpp"
 #include "cards/Card.hpp"
@@ -15,6 +16,8 @@ class Controller
 {
 public:
     friend class GameWindow;
+    friend class GameAI;
+
     enum class GuiSetupStage
     {
         PlayerInfo,
@@ -27,6 +30,9 @@ public:
     std::vector<std::string> getGuiEffectLog() const;
     void clearGuiEffectLog();
     bool guiEffectCanClose() const;
+
+    bool guiStartAiTurn();
+    bool guiAiTurnBusy() const;
 
 private:
     Bord bord;
@@ -46,24 +52,7 @@ private:
 
     Player* activeDecider = nullptr;
 
-    enum class AIDecision
-    {
-        Generic,        
-        ActionChoice,   
-        FighterSelect,  
-        MoveDestination,
-        AttackTarget,   
-        CardSelect,     
-        BoostChoice
-    };
-    enum class AICardPurpose { Attack, Defense, Boost, Scheme };
-
-    AIDecision aiDecisionKind = AIDecision::Generic;
-    AICardPurpose aiCardPurpose = AICardPurpose::Attack;
-    std::vector<Character*> aiCharacterOptions;
-    Character* aiMovingCharacter = nullptr;
-    Character* aiCardFighter = nullptr;
-
+    GameAI ai;
 
     GuiSetupStage guiSetupStage = GuiSetupStage::PlayerInfo;
     Player* guiPlayers = nullptr;
@@ -77,17 +66,6 @@ private:
     int boardDistance(int from, int to);
     void damageAllFighters(Player* p, int damage);
 
-    int aiScoreAction(int action, Player* decider);
-    int aiScoreFighter(int idx, Player* decider);
-    int aiScoreMove(int destination, Player* decider);
-    int aiScoreAttackTarget(int idx, Player* decider);
-    int aiScoreCardChoice(int idx, Player* decider);
-
-    int aiChoose(const std::vector<int>& valid, Player* decider);
-    bool aiYesNo(Player* decider);
-    int aiInt(Player* decider);
-    void aiThink(Player* decider);
-
     Controller() = default;
     
     void startMenu(Player player[2]);
@@ -96,16 +74,15 @@ private:
     void plaseSidekicks(Player& player);
 
     void playTurn();
-    void runDraculaAbility();
+    void playSingleTurn(bool allowSave);
+
+    void performHandLimitDiscard();
 
     void move(int mov, Character* selected);
-    // Scheme-only helper: same movement logic as move(), but writes its
-    // prompts to the supplied stream (the Scheme effect's effectCout)
-    // instead of Controller::move()'s console-bound cout, so the text
-    // shows up in the Scheme effect log panel instead of the console.
     void moveCharacterForSchemeEffect(int mov, Character* selected, std::ostream& out);
     int boost();
     void Scheme();
+
     void startCombat();
     Card chooseCombatCard(Player* player, Character* fighter, bool attack);
     void resolveCombat(Card& attackCard, Card& defenseCard, Character* attacker, Character* defender);

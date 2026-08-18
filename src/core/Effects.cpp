@@ -1029,11 +1029,11 @@ void Controller::moveCharacterForSchemeEffect(int mov, Character* selected, std:
         out << pos << "   ";
     out << "\nSelect a destination: ";
 
-    aiDecisionKind = AIDecision::MoveDestination;
-    aiMovingCharacter = selected;
+    ai.decisionKind = GameAI::Decision::MoveDestination;
+    ai.movingCharacter = selected;
     int destination = getChoice(validSpaces);
-    aiDecisionKind = AIDecision::Generic;
-    aiMovingCharacter = nullptr;
+    ai.decisionKind = GameAI::Decision::Generic;
+    ai.movingCharacter = nullptr;
 
     bord.deletCharacter(place);
     bord.addCharacter(destination, selected);

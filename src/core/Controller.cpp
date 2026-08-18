@@ -267,7 +267,6 @@ void Controller::plaseSidekicks(Player& player)
 
 void Controller::playTurn()
 {
-    int Todo = 0;
     while(!end_game())
     {
         
@@ -282,155 +281,166 @@ void Controller::playTurn()
 
         while(gamerand < 2)
         {
-            activeDecider = current;
-
-            cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn\n 5.Save Game";
-            cout << "\nChoose a action: ";
-
-            aiDecisionKind = AIDecision::ActionChoice;
-            Todo = getChoice({1,2,3,4,5});
-            aiDecisionKind = AIDecision::Generic;
-
-            
-            switch(Todo)
-            {
-                case 1:
-                {
-                    cout << "\n══════════════════════════════════════════════════════════════════" << endl;
-                    cout << "                          Maneuver\n"; 
-
-                    try
-                    {
-                        current->getDeck()->draw();
-                        cout << "✅1 card added to " << current->getName() << " hand\n\n";
-                    }
-                    catch(const runtime_error& e)
-                    {
-                        cout << e.what() << endl;
-                        damageAllFighters(current, 2);
-                        cout << "All character on team took 2 damage";
-                    }
-
-                    int mov = 0;
-                    mov += boost();
-
-                    int choose = 0;
-                    vector<Character*> choices;
-                    vector<int> valid;
-                    int number = 1;
-
-                    cout << "Your Characters:\n";
-                    for (Character* ch : current->getCharacters())
-                    {
-                        if(ch->checkalive())
-                        {
-                            cout << number << "." << ch->getName() << endl;
-                            choices.push_back(ch);
-                            valid.push_back(number);
-                            number++;
-                        }
-                    }
-                    cout << "Choose a character to move: ";
-                    aiDecisionKind = AIDecision::FighterSelect;
-                    aiCharacterOptions = choices;
-
-                    choose = getChoice(valid);
-
-                    aiDecisionKind = AIDecision::Generic;
-                    Character* selected = choices[choose - 1];
-
-                    mov += selected->getMove();
-
-                    move(mov , selected);
-
-                    break;
-    
-                }
-                case 2:
-                {
-
-                    Scheme();
-
-                    break;
-
-                }
-                case 3:
-                {
-                    
-                    startCombat();
-
-                    break;
-
-                }
-                case 4:
-                {
-                    break;
-                }
-                case 5:
-                {
-                    cout << "\nChoose a save slot (1-3): ";
-                    int slot = getChoice({1, 2, 3});
-                    string slotFile = "save" + to_string(slot) + ".json";
-                    SaveGame(slotFile);
-                    continue;
-                }
-                default:
-                {
-                    break;
-                }
-
-                
-            }
-
-            for(Character* c : current->getCharacters())
-            {
-                if(c && !c->checkalive() && c->getSpace() != -1)
-                {
-                    bord.deletCharacter(c->getSpace());
-                    c->setSpace(-1);
-                }
-            }
-
-            for(Character* c : enemy->getCharacters())
-            {
-                if(c && !c->checkalive() && c->getSpace() != -1)
-                {
-                    bord.deletCharacter(c->getSpace());
-                    c->setSpace(-1);
-                }
-            }
-            
-            gamerand++;
+            playSingleTurn(true);
 
             if(end_game()) 
             break;
         }
 
-        int index;
-        int HandSize;
-        HandSize = current->getDeck()->gethandSize();
-        while(HandSize > 7)
-        {
-            cout << endl << "Enter the card number to remove: ";
-            index = getInt();
-
-            while(index <= 0 || index > HandSize)
-            {
-                cout << "Invalid card number. Try again: ";
-                index = getInt();
-            }
-
-            Card deletcadr;
-            deletcadr = current->getDeck()->playCard(index - 1 , deletcadr);
-            cout << endl << deletcadr.getName() << " was removed from your hand.\n";
-
-            HandSize = current->getDeck()->gethandSize();
-        }
-
+        performHandLimitDiscard();
 
         swap(current, enemy);
     }
 
+}
+
+void Controller::playSingleTurn(bool allowSave)
+{
+    activeDecider = current;
+
+    cout << "\nActions:  \n 1.Maneuver\n 2.Scheme\n 3.Attack\n 4.End Turn";
+    if(allowSave)
+        cout << "\n 5.Save Game";
+    cout << "\nChoose a action: ";
+
+    ai.decisionKind = GameAI::Decision::ActionChoice;
+    int Todo = getChoice(allowSave ? vector<int>{1,2,3,4,5} : vector<int>{1,2,3,4});
+    ai.decisionKind = GameAI::Decision::Generic;
+
+
+    switch(Todo)
+    {
+        case 1:
+        {
+            cout << "\n══════════════════════════════════════════════════════════════════" << endl;
+            cout << "                          Maneuver\n"; 
+
+            try
+            {
+                current->getDeck()->draw();
+                cout << "✅1 card added to " << current->getName() << " hand\n\n";
+            }
+            catch(const runtime_error& e)
+            {
+                cout << e.what() << endl;
+                damageAllFighters(current, 2);
+                cout << "All character on team took 2 damage";
+            }
+
+            int mov = 0;
+            mov += boost();
+
+            int choose = 0;
+            vector<Character*> choices;
+            vector<int> valid;
+            int number = 1;
+
+            cout << "Your Characters:\n";
+            for (Character* ch : current->getCharacters())
+            {
+                if(ch->checkalive())
+                {
+                    cout << number << "." << ch->getName() << endl;
+                    choices.push_back(ch);
+                    valid.push_back(number);
+                    number++;
+                }
+            }
+            cout << "Choose a character to move: ";
+            ai.decisionKind = GameAI::Decision::FighterSelect;
+            ai.characterOptions = choices;
+
+            choose = getChoice(valid);
+
+            ai.decisionKind = GameAI::Decision::Generic;
+            Character* selected = choices[choose - 1];
+
+            mov += selected->getMove();
+
+            move(mov , selected);
+
+            break;
+
+        }
+        case 2:
+        {
+
+            Scheme();
+
+            break;
+
+        }
+        case 3:
+        {
+            
+            startCombat();
+
+            break;
+
+        }
+        case 4:
+        {
+            break;
+        }
+        case 5:
+        {
+            cout << "\nChoose a save slot (1-3): ";
+            int slot = getChoice({1, 2, 3});
+            string slotFile = "save" + to_string(slot) + ".json";
+            SaveGame(slotFile);
+            return;
+        }
+        default:
+        {
+            break;
+        }
+
+        
+    }
+
+    for(Character* c : current->getCharacters())
+    {
+        if(c && !c->checkalive() && c->getSpace() != -1)
+        {
+            bord.deletCharacter(c->getSpace());
+            c->setSpace(-1);
+        }
+    }
+
+    for(Character* c : enemy->getCharacters())
+    {
+        if(c && !c->checkalive() && c->getSpace() != -1)
+        {
+            bord.deletCharacter(c->getSpace());
+            c->setSpace(-1);
+        }
+    }
+    
+    gamerand++;
+}
+
+void Controller::performHandLimitDiscard()
+{
+    int index;
+    int HandSize;
+    HandSize = current->getDeck()->gethandSize();
+    while(HandSize > 7)
+    {
+        cout << endl << "Enter the card number to remove: ";
+        index = getInt();
+
+        while(index <= 0 || index > HandSize)
+        {
+            cout << "Invalid card number. Try again: ";
+            index = getInt();
+        }
+
+        Card deletcadr;
+        deletcadr = current->getDeck()->playCard(index - 1 , deletcadr);
+        cout << endl << deletcadr.getName() << " was removed from your hand.\n";
+
+        HandSize = current->getDeck()->gethandSize();
+    }
 }
 
 
@@ -499,11 +509,11 @@ void Controller::move(int mov ,Character* selected)
         cout << pos << "   ";
     cout << "\nSelect a destination: ";
 
-    aiDecisionKind = AIDecision::MoveDestination;
-    aiMovingCharacter = selected;
+    ai.decisionKind = GameAI::Decision::MoveDestination;
+    ai.movingCharacter = selected;
     int destination = getChoice(validSpaces);
-    aiDecisionKind = AIDecision::Generic;
-    aiMovingCharacter = nullptr;
+    ai.decisionKind = GameAI::Decision::Generic;
+    ai.movingCharacter = nullptr;
 
     bord.deletCharacter(place);
     bord.addCharacter(destination, selected);
@@ -515,9 +525,9 @@ int Controller::boost()
 {
     cout << "Do you want to use Boost? (y/n): ";
 
-    aiDecisionKind = AIDecision::BoostChoice;
+    ai.decisionKind = GameAI::Decision::BoostChoice;
     bool useBoost = getYesNo();
-    aiDecisionKind = AIDecision::Generic;
+    ai.decisionKind = GameAI::Decision::Generic;
 
     if (!useBoost)
     {
@@ -531,10 +541,10 @@ int Controller::boost()
         valid.push_back(i);
 
     cout << "Selected card: ";
-    aiDecisionKind = AIDecision::CardSelect;
-    aiCardPurpose = AICardPurpose::Boost;
+    ai.decisionKind = GameAI::Decision::CardSelect;
+    ai.cardPurpose = GameAI::CardPurpose::Boost;
     int select = getChoice(valid);
-    aiDecisionKind = AIDecision::Generic;
+    ai.decisionKind = GameAI::Decision::Generic;
 
     Card selectedCard;
     selectedCard = current->getDeck()->playCard(select - 1, selectedCard);
@@ -578,19 +588,19 @@ void Controller::Scheme()
             }
         }
         cout << "Choose a character: ";
-        aiDecisionKind = AIDecision::FighterSelect;
-        aiCharacterOptions = choices;
+        ai.decisionKind = GameAI::Decision::FighterSelect;
+        ai.characterOptions = choices;
         choose = getChoice(valid);
-        aiDecisionKind = AIDecision::Generic;
+        ai.decisionKind = GameAI::Decision::Generic;
         selected = choices[choose - 1];
 
         cout << "\nChoose a card: ";
-        aiDecisionKind = AIDecision::CardSelect;
-        aiCardPurpose = AICardPurpose::Scheme;
-        aiCardFighter = selected;
+        ai.decisionKind = GameAI::Decision::CardSelect;
+        ai.cardPurpose = GameAI::CardPurpose::Scheme;
+        ai.cardFighter = selected;
         index = getChoice(choos);
-        aiDecisionKind = AIDecision::Generic;
-        aiCardFighter = nullptr;
+        ai.decisionKind = GameAI::Decision::Generic;
+        ai.cardFighter = nullptr;
         
         bool ownerOK = false;
         const vector<Card>& hand = current->getDeck()->gethand();
@@ -653,10 +663,10 @@ void Controller::startCombat()
         return;
     }
     cout << "Choose a character to attack with: ";
-    aiDecisionKind = AIDecision::FighterSelect;
-    aiCharacterOptions = choices;
+    ai.decisionKind = GameAI::Decision::FighterSelect;
+    ai.characterOptions = choices;
     choose = getChoice(valid);
-    aiDecisionKind = AIDecision::Generic;
+    ai.decisionKind = GameAI::Decision::Generic;
     Character* attacker = choices[choose - 1];
 
     valid.clear();
@@ -678,10 +688,10 @@ void Controller::startCombat()
     if(number != 1)
     {
         cout << "Choose a character to attack: ";
-        aiDecisionKind = AIDecision::AttackTarget;
-        aiCharacterOptions = choices;
+        ai.decisionKind = GameAI::Decision::AttackTarget;
+        ai.characterOptions = choices;
         choose = getChoice(valid);
-        aiDecisionKind = AIDecision::Generic;
+        ai.decisionKind = GameAI::Decision::Generic;
         Character* defender = choices[choose - 1];
 
         Card attackCard = chooseCombatCard(current , attacker , true);
@@ -735,12 +745,12 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
         cout << "\n> ";
 
         int choice;
-        aiDecisionKind = AIDecision::CardSelect;
-        aiCardPurpose = attack ? AICardPurpose::Attack : AICardPurpose::Defense;
-        aiCardFighter = fighter;
+        ai.decisionKind = GameAI::Decision::CardSelect;
+        ai.cardPurpose = attack ? GameAI::CardPurpose::Attack : GameAI::CardPurpose::Defense;
+        ai.cardFighter = fighter;
         choice = getChoice(myhandcard);
-        aiDecisionKind = AIDecision::Generic;
-        aiCardFighter = nullptr;
+        ai.decisionKind = GameAI::Decision::Generic;
+        ai.cardFighter = nullptr;
         choice--;
 
         const vector<Card>& hand = player->getDeck()->gethand();
@@ -888,7 +898,7 @@ int Controller::getInt()
 {
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
-        return aiInt(decider);
+        return ai.chooseInt(*this, decider);
 
     if (guiMode)
     {
@@ -931,7 +941,7 @@ int Controller::getChoice(std::vector<int> valid)
 {
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
-        return aiChoose(valid, decider);
+        return ai.choose(*this, valid, decider);
 
     if (guiMode)
     {
@@ -968,7 +978,7 @@ bool Controller::getYesNo()
 {
     Player* decider = activeDecider ? activeDecider : current;
     if(decider && decider->isAI())
-        return aiYesNo(decider);
+        return ai.yesNo(*this, decider);
 
     if (guiMode)
     {
@@ -1029,208 +1039,6 @@ int Controller::boardDistance(int from, int to)
         currently = next;
     }
     return 99;
-}
-
-int Controller::aiScoreAction(int action, Player* decider)
-{
-    bool canAttackAny = false;
-    for(Character* ch : decider->getCharacters())
-        if(ch && ch->checkalive() && bord.canAttack(ch->getAttacktype() , ch->getSpace()))
-            canAttackAny = true;
-
-    bool hasAttackCard = !decider->getDeck()->getAttackCardIndices().empty();
-    bool hasSchemeCard = !decider->getDeck()->getSchemeCardIndices().empty();
-
-    switch(action)
-    {
-        case 3:
-            return (canAttackAny && hasAttackCard) ? 100 : -50;
-        case 2: 
-            return hasSchemeCard ? 55 : -50;
-        case 1:
-            return 40;
-        case 4:
-            return 5;
-    }
-    return 0;
-}
-
-int Controller::aiScoreFighter(int idx, Player* decider)
-{
-    if(idx < 1 || idx > (int)aiCharacterOptions.size())
-        return -1000;
-
-    Character* ch = aiCharacterOptions[idx - 1];
-    if(!ch) return -1000;
-
-    int score = ch->getHp();
-    if(ch->isHero())
-        score += 5;
-    return score;
-}
-
-int Controller::aiScoreMove(int destination, Player* decider)
-{
-    Player* opp = (decider == current) ? enemy : current;
-    Character* mover = aiMovingCharacter;
-    Character* enemyHero = opp ? opp->getHero() : nullptr;
-
-    if(!mover || !enemyHero || enemyHero->getSpace() == -1)
-        return 0;
-
-    int dist = boardDistance(destination, enemyHero->getSpace());
-    bool lowHp = mover->getHp() <= mover->getMaxhp() / 3;
-
-    if(lowHp)
-        return min(dist, 6) * 10; 
-
-    int score = 100 - min(dist, 10) * 8; 
-    if(bord.canAttack(mover->getAttacktype() , destination))
-        score += 30; 
-
-    return score;
-}
-
-int Controller::aiScoreAttackTarget(int idx, Player* decider)
-{
-    if(idx < 1 || idx > (int)aiCharacterOptions.size())
-        return -1000;
-
-    Character* target = aiCharacterOptions[idx - 1];
-    if(!target) return -1000;
-
-    int score = 0;
-    if(target->isHero())
-        score += 60; 
-    score += (target->getMaxhp() - target->getHp()) * 3; 
-    score += max(0 , 20 - target->getHp());
-
-    return score;
-}
-
-int Controller::aiScoreCardChoice(int idx, Player* decider)
-{
-    const vector<Card>& hand = decider->getDeck()->gethand();
-    if(idx < 1 || idx > (int)hand.size())
-        return -1000;
-
-    const Card& c = hand[idx - 1];
-
-    if(aiCardFighter)
-    {
-        bool ownerOK = aiCardFighter->isHero() ? (c.isHero() || c.isAnyowner())
-                                                : (c.issideKick() || c.isAnyowner());
-        if(!ownerOK)
-            return -1000;
-
-        if(aiCardPurpose == AICardPurpose::Attack && !(c.isAttack() || c.isVersatile()))
-            return -1000;
-        if(aiCardPurpose == AICardPurpose::Defense && !(c.isDefense() || c.isVersatile()))
-            return -1000;
-    }
-
-    switch(aiCardPurpose)
-    {
-        case AICardPurpose::Attack:
-            return c.getAttack() * 10; 
-        case AICardPurpose::Defense:
-            return c.getAttack() * 10;
-        case AICardPurpose::Boost:
-            return c.getBoost() * 6 - c.getAttack() * 4;
-        case AICardPurpose::Scheme:
-            return c.getBoost() * 8 + c.getAttack() * 2;
-    }
-    return 0;
-}
-
-void Controller::aiThink(Player* decider)
-{
-    cout << "🤖 " << decider->getName() << " is thinking";
-    cout.flush();
-
-    int ms = 2500 + (rand() % 1500);
-    int dots = 4;
-    for(int i = 0 ; i < dots ; i++)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(ms / dots));
-        cout << ".";
-        cout.flush();
-    }
-    cout << "\n";
-}
-
-int Controller::aiChoose(const std::vector<int>& valid, Player* decider)
-{
-    if(valid.empty())
-        return 0;
-
-    aiThink(decider);
-
-    int bestScore = std::numeric_limits<int>::min();
-    vector<int> best;
-
-    for(int v : valid)
-    {
-        int score;
-        switch(aiDecisionKind)
-        {
-            case AIDecision::ActionChoice:       score = aiScoreAction(v, decider);       break;
-            case AIDecision::FighterSelect:      score = aiScoreFighter(v, decider);      break;
-            case AIDecision::MoveDestination:    score = aiScoreMove(v, decider);         break;
-            case AIDecision::AttackTarget:       score = aiScoreAttackTarget(v, decider); break;
-            case AIDecision::CardSelect:         score = aiScoreCardChoice(v, decider);   break;
-            default:                             score = rand() % 100;                    break;
-        }
-
-        if(score > bestScore)
-        {
-            bestScore = score;
-            best.clear();
-            best.push_back(v);
-        }
-        else if(score == bestScore)
-        {
-            best.push_back(v);
-        }
-    }
-
-    int pick = best[rand() % best.size()];
-    cout << "🤖 " << decider->getName() << " (AI) chooses: " << pick << "\n";
-    return pick;
-}
-
-bool Controller::aiYesNo(Player* decider)
-{
-    aiThink(decider);
-
-    bool yes;
-
-    if(aiDecisionKind == AIDecision::BoostChoice)
-    {
-        const vector<Card>& hand = decider->getDeck()->gethand();
-        bool handFull = hand.size() >= 6;
-        bool hasSpareCard = false;
-        for(const Card& c : hand)
-            if(c.getAttack() <= 1) { hasSpareCard = true; break; }
-
-        yes = handFull || hasSpareCard;
-    }
-    else
-    {
-        yes = (rand() % 2) == 0;
-    }
-
-    cout << "🤖 " << decider->getName() << " (AI) answers: " << (yes ? "yes" : "no") << "\n";
-    return yes;
-}
-
-int Controller::aiInt(Player* decider)
-{
-    aiThink(decider);
-
-    int x = rand() % 7 + 1;
-    cout << "🤖 " << decider->getName() << " (AI) enters: " << x << "\n";
-    return x;
 }
 
 void Controller::damageAllFighters(Player* p, int damage)
@@ -1388,7 +1196,6 @@ bool Controller::guiFinishPlayerSetup(const std::string& player1Name, int player
         guiPlayers[1].setAge(player2Age);
     }
 
-    // Exactly the same starting-player rule as choosePlayers().
     if (player2AI || guiPlayers[0].getAge() <= guiPlayers[1].getAge())
     {
         current = &guiPlayers[0];
@@ -1404,7 +1211,6 @@ bool Controller::guiFinishPlayerSetup(const std::string& player1Name, int player
     guiCharacterPlayerIndex = (current == &guiPlayers[0]) ? 0 : 1;
     guiSetupStage = GuiSetupStage::CharacterSelection;
 
-    // In case an AI is ever the first player, let the core choose automatically.
     if (current->isAI())
     {
         const auto choices = getGuiCharacterChoices();
@@ -2020,6 +1826,16 @@ bool Controller::guiEffectCanClose() const
            gGuiEffect.requestType == GuiEffectBridge::RequestType::None;
 }
 
+bool Controller::guiStartAiTurn()
+{
+    return ai.guiStartTurn(*this);
+}
+
+bool Controller::guiAiTurnBusy() const
+{
+    return ai.guiTurnBusy();
+}
+
 bool Controller::guiBeginTurn()
 {
     if (!current || !current->getHero()) return false;
@@ -2104,8 +1920,6 @@ bool Controller::guiUseHeroAbility()
             }
             else
             {
-                // Ask the graphical UI to choose the target instead of falling
-                // back to the old console-based getChoice().
                 std::vector<int> choices;
                 for (int i = 0; i < static_cast<int>(targets.size()); ++i)
                 {

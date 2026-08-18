@@ -60,7 +60,7 @@ private:
     bool awaitingDefenseDecision = false;
     bool awaitingMoveBoost = false;
     bool moveBoostPrompt = false;
-    enum class EffectPanelKind { None, Attack, Scheme, Dracula };
+    enum class EffectPanelKind { None, Attack, Scheme, Dracula, AiTurn };
     EffectPanelKind activeEffectPanel = EffectPanelKind::None;
 
     std::string attackCardName;
@@ -89,6 +89,13 @@ private:
     std::string draculaInputBuffer;
 
     bool handLimitMode = false;
+
+    std::string aiTurnPrompt;
+    std::vector<int> aiTurnChoices;
+    bool aiTurnYesNo = false;
+    bool aiTurnInteger = false;
+    std::string aiTurnInputBuffer;
+    bool aiTurnSummary = false;
 
     struct SaveEntry
     {
@@ -154,8 +161,11 @@ private:
     void drawDraculaEffectPanel();
     void handleDraculaEffectInput(sf::Vector2f p);
 
+    void updateAiTurnPanel();
+    void drawAiTurnPanel();
+    void handleAiTurnInput(sf::Vector2f p);
+    void startAiTurnIfNeeded();
+
     void advanceTurnIfTwoActionsUsed();
     void finishTurnAfterHandLimit();
-    void completeCurrentAction();
-    void openNextTurnIfReady();
 };

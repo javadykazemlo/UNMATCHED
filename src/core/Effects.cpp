@@ -960,13 +960,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
 }    
 
-
-// Scheme-only helper: duplicates Controller::move()'s pathing/selection logic,
-// but writes its prompts to `out` (the calling Scheme card's effectCout)
-// instead of Controller::move()'s own console-bound cout. This keeps the
-// existing move() function (shared with Attack/Defense effects and the
-// normal turn-movement action) completely untouched, while making sure
-// movement performed inside a Scheme card's effect logs to the GUI panel.
 void Controller::moveCharacterForSchemeEffect(int mov, Character* selected, std::ostream& out)
 {
     int place = selected->getSpace();
@@ -1200,6 +1193,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
         }
         cout << "Choose a character to move: ";
+        setGuiChoiceContext("character");
         choose = getChoice(valid);
         Character* selected = choices[choose - 1];
 
@@ -1420,6 +1414,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
         }
         cout << "Choose a character to swap positions with: ";
+        setGuiChoiceContext("character");
         choose = getChoice(valid);
         Character* Rival = choices[choose - 1];
 
@@ -1488,6 +1483,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         }
 
         cout << "Choose a target: ";
+        setGuiChoiceContext("character");
         choose = getChoice(valid);
         Character* target = choices[choose - 1];
 

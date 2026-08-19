@@ -22,7 +22,7 @@ AudioManager::AudioManager()
               "game_over_theme.ogg", gameOverMusicLoaded);
 
     loadSfx(clickBuffer, "assets/audio/click.wav", "click.wav", 0);
-    loadSfx(hoverBuffer, "assets/audio/Bing.wav", "Hover.wav", 1);
+    loadSfx(hoverBuffer, "assets/audio/Hover.wav", "Hover.wav", 1);
     loadSfx(confirmBuffer, "assets/audio/confirm.wav", "confirm.wav", 2);
     loadSfx(effectPanelBuffer, "assets/audio/effect_panel_open.wav",
             "effect_panel_open.wav", 3);

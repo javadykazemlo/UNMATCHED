@@ -35,6 +35,52 @@ namespace
     const sf::Color BLUE(40, 82, 123);
     const sf::Color GREEN(62, 121, 77);
     const sf::Color PURPLE(91, 61, 118);
+
+    std::string cardChoiceLabel(const Player* player, int choice, bool oneBased)
+    {
+        if (!player || !player->getDeck()) return std::to_string(choice);
+
+        const int index = oneBased ? choice - 1 : choice;
+        if (index < 0 || index >= player->getDeck()->gethandSize())
+            return std::to_string(choice);
+
+        return player->getDeck()->getHandcard(index).getName();
+    }
+
+    std::string characterChoiceLabel(Player* player, int choice)
+    {
+        if (!player || choice < 1) return std::to_string(choice);
+
+        int aliveIndex = 0;
+        for (Character* character : player->getCharacters())
+        {
+            if (!character || !character->checkalive()) continue;
+            ++aliveIndex;
+            if (aliveIndex == choice)
+                return character->getName();
+        }
+
+        return std::to_string(choice);
+    }
+
+    std::string choiceContextLabel(const std::string& context,
+                                     Player* player,
+                                    int choice)
+    {
+        std::string lower = context;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        if (lower.find("card") != std::string::npos)
+            return cardChoiceLabel(player, choice, true);
+
+        if (lower.find("character") != std::string::npos ||
+            lower.find("fighter") != std::string::npos ||
+            lower.find("target") != std::string::npos)
+            return characterChoiceLabel(player, choice);
+
+        return std::to_string(choice);
+    }
 }
 
 GameWindow::GameWindow()
@@ -174,6 +220,28 @@ void GameWindow::processEvents()
                 {
                     if (sf::FloatRect({575.f, 425.f + i * 80.f},
                                       {450.f, 60.f}).contains(mp))
+                    {
+                        newHover = i;
+                        break;
+                    }
+                }
+
+                if (newHover != hoveredMenuItem)
+                {
+                    if (newHover >= 0)
+                        audio.playSfx(AudioManager::Sfx::Hover);
+                    hoveredMenuItem = newHover;
+                }
+            }
+            else if (screen == Screen::Setup &&
+                     controller.getGuiSetupStage() ==
+                         Controller::GuiSetupStage::CharacterSelection)
+            {
+                int newHover = -1;
+                for (int i = 0; i < 3; ++i)
+                {
+                    if (sf::FloatRect({330.f + i * 330.f, 225.f},
+                                      {280.f, 350.f}).contains(mp))
                     {
                         newHover = i;
                         break;
@@ -828,8 +896,29 @@ void GameWindow::drawSetupCharacters()
     for (int i = 0; i < 3; ++i)
     {
         const bool allowed = std::find(choices.begin(), choices.end(), heroes[i]) != choices.end();
-        sf::FloatRect rect({330.f + i * 330.f, 225.f}, {280.f, 350.f});
-        ui->drawButton(window, rect, names[i], allowed, allowed ? GOLD : sf::Color(70, 65, 58));
+        const sf::FloatRect baseRect({330.f + i * 330.f, 225.f}, {280.f, 350.f});
+        const bool hovered = allowed && hoveredMenuItem == i;
+
+        const float scale = hovered ? 1.045f : 1.f;
+        const float w = baseRect.size.x * scale;
+        const float h = baseRect.size.y * scale;
+        const float x = baseRect.position.x - (w - baseRect.size.x) / 2.f;
+        const float y = baseRect.position.y - (h - baseRect.size.y) / 2.f -
+                        (hovered ? 3.f : 0.f);
+        const sf::FloatRect rect({x, y}, {w, h});
+
+        ui->drawButton(window, rect, names[i], allowed,
+                       allowed ? GOLD : sf::Color(70, 65, 58));
+
+        if (hovered)
+        {
+            sf::RectangleShape lift({w + 10.f, h + 10.f});
+            lift.setPosition({x - 5.f, y - 5.f});
+            lift.setFillColor(sf::Color::Transparent);
+            lift.setOutlineColor(sf::Color(211, 178, 104, 70));
+            lift.setOutlineThickness(2.f);
+            window.draw(lift);
+        }
 
         if (allowed)
         {
@@ -837,9 +926,10 @@ void GameWindow::drawSetupCharacters()
             {
                 sf::Sprite sprite(*tex);
                 const sf::Vector2u size = tex->getSize();
-                const float scale = std::min(280.f / static_cast<float>(size.x),
-                                             350.f / static_cast<float>(size.y));
-                sprite.setScale({scale, scale});
+                const float portraitScale =
+                    std::min(rect.size.x / static_cast<float>(size.x),
+                             rect.size.y / static_cast<float>(size.y));
+                sprite.setScale({portraitScale, portraitScale});
                 sprite.setPosition({rect.position.x, rect.position.y});
                 window.draw(sprite);
             }
@@ -847,7 +937,7 @@ void GameWindow::drawSetupCharacters()
     }
 
     ui->drawText(window, current ? "The younger player chooses first." : "",
-                 {692.f, 620.f}, 11, sf::Color(165, 157, 145));
+                 {692.f, 650.f}, 11, sf::Color(165, 157, 145));
 }
 
 void GameWindow::drawSetupPosition()
@@ -919,15 +1009,13 @@ void GameWindow::drawSetupSidekicks()
 void GameWindow::drawSetupReady()
 {
     drawFullscreenTexture("ready");
-    ui->drawText(window, "THE BATTLE IS READY", {590.f, 150.f}, 34, GOLD);
-    ui->drawPanel(window, {{360.f, 245.f}, {880.f, 360.f}}, GOLD);
 
     ui->drawText(window, "Players, characters and starting positions are set.",
-                 {505.f, 315.f}, 15, PARCHMENT);
+                 {550.f, 350.f}, 17, sf::Color(224, 218, 200));
     ui->drawText(window, "The game board is now controlled by the real Controller.",
-                 {490.f, 350.f}, 13, sf::Color(170, 162, 150));
+                 {580.f, 385.f}, 13, sf::Color(170, 162, 150));
 
-    ui->drawButton(window, {{520.f, 470.f}, {560.f, 62.f}},
+    ui->drawButton(window, {{520.f, 550.f}, {560.f, 62.f}},
                    "ENTER THE BATTLE", true, GOLD);
 }
 
@@ -1306,7 +1394,7 @@ void GameWindow::drawGame()
         overlay.setFillColor(sf::Color(0, 0, 0, 170));
         window.draw(overlay);
 
-        const sf::FloatRect panel({390.f, 250.f}, {820.f, 300.f});
+        const sf::FloatRect panel({390.f, 250.f}, {820.f, 350.f});
         ui->drawPanel(window, panel, GOLD);
 
         ui->drawText(window, "SAVE GAME", {700.f, 280.f}, 28, GOLD);
@@ -1326,6 +1414,9 @@ void GameWindow::drawGame()
                  {slotW, slotH}},
                 std::to_string(slot), true, GOLD);
         }
+
+        ui->drawButton(window, {{565.f, 510.f}, {470.f, 58.f}},
+                   "RETURN TO GAME", true, GOLD);
     }
 
     if (exitConfirmPopup)
@@ -1545,7 +1636,7 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 
     if (stage == Controller::GuiSetupStage::Ready)
     {
-        if (sf::FloatRect({520.f, 470.f}, {560.f, 62.f}).contains(p))
+        if (sf::FloatRect({520.f, 550.f}, {560.f, 62.f}).contains(p))
         {
             screen = Screen::Game;
             resetSelections();
@@ -1562,6 +1653,12 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 {
     if (saveSlotPopup)
     {
+        if (sf::FloatRect({565.f, 510.f}, {470.f, 58.f}).contains(p))
+        {
+            saveSlotPopup = false;
+            return;
+        }
+
         const float slotX = 490.f;
         const float slotY = 390.f;
         const float slotW = 180.f;
@@ -2607,7 +2704,10 @@ void GameWindow::drawSchemeEffectPanel()
                                {{startX + col * (bw + gap),
                                  startY + row * (bh + gap)},
                                 {bw, bh}},
-                               std::to_string(schemeChoices[i]), true, GOLD);
+                               choiceContextLabel(schemeCardText + " " + schemePrompt,
+                                                  controller.getCurrentPlayer(),
+                                                  schemeChoices[i]),
+                               true, GOLD);
             }
         }
         else if (schemeInteger)
@@ -2823,7 +2923,9 @@ void GameWindow::drawDraculaEffectPanel()
                                {{startX + col * (bw + gap),
                                  startY + row * (bh + gap)},
                                 {bw, bh}},
-                               std::to_string(draculaChoices[i]), true, GOLD);
+                               characterChoiceLabel(controller.getCurrentPlayer(),
+                                                     draculaChoices[i]),
+                               true, GOLD);
             }
         }
         else if (draculaInteger)
@@ -3091,7 +3193,11 @@ void GameWindow::drawAiTurnPanel()
                                {{startX + col * (bw + gap),
                                  startY + row * (bh + gap)},
                                 {bw, bh}},
-                               std::to_string(aiTurnChoices[i]), true, GOLD);
+                               choiceContextLabel(
+                                   controller.getGuiAiDecisionContext(),
+                                   controller.getCurrentPlayer(),
+                                   aiTurnChoices[i]),
+                               true, GOLD);
             }
         }
         else if (aiTurnInteger)

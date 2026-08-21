@@ -6,7 +6,6 @@ class Controller;
 class Player;
 class Character;
 
-
 class GameAI
 {
 public:
@@ -25,7 +24,13 @@ public:
         CardSelect,
         BoostChoice
     };
-    enum class CardPurpose { Attack, Defense, Boost, Scheme };
+    enum class CardPurpose
+    {
+        Attack,
+        Defense,
+        Boost,
+        Scheme
+    };
 
     Decision decisionKind = Decision::Generic;
     CardPurpose cardPurpose = CardPurpose::Attack;

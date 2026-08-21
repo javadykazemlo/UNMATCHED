@@ -1,16 +1,15 @@
-#include <fstream>
-#include <iostream>
-#include <vector>
-#include <filesystem>
-#include <chrono>
-#include <ctime>
-#include <iomanip>
-#include <sstream>
-#include <algorithm>
-#include <system_error>
-
 #include "Save/SaveManager.hpp"
 #include "entities/invisible_man.hpp"
+
+#include <chrono>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <system_error>
+#include <vector>
 
 using json = nlohmann::json;
 using namespace std;
@@ -50,7 +49,8 @@ namespace
 
         const auto now = chrono::system_clock::now();
         const time_t tt = chrono::system_clock::to_time_t(now);
-        const auto millis = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+        const auto millis =
+            chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
 
         string base = directory + "/save_" + formatDate(tt) + "_" + formatTime(tt);
         ostringstream suffix;

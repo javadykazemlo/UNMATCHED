@@ -22,7 +22,14 @@ public:
     void run();
 
 private:
-    enum class Screen { MainMenu, LoadGame, Setup, Game, GameOver };
+    enum class Screen
+    {
+        MainMenu,
+        LoadGame,
+        Setup,
+        Game,
+        GameOver
+    };
 
     sf::RenderWindow window;
     sf::Font font;
@@ -60,7 +67,14 @@ private:
     bool awaitingDefenseDecision = false;
     bool awaitingMoveBoost = false;
     bool moveBoostPrompt = false;
-    enum class EffectPanelKind { None, Attack, Scheme, Dracula, AiTurn };
+    enum class EffectPanelKind
+    {
+        None,
+        Attack,
+        Scheme,
+        Dracula,
+        AiTurn
+    };
     EffectPanelKind activeEffectPanel = EffectPanelKind::None;
 
     std::string attackCardName;

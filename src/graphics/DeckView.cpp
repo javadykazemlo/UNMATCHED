@@ -1,7 +1,10 @@
 #include "graphics/DeckView.hpp"
 #include "graphics/TextureManager.hpp"
 
-DeckView::DeckView(const sf::Font& font_, const TextureManager* textures_) : font(font_), textures(textures_) {}
+DeckView::DeckView(const sf::Font& font_, const TextureManager* textures_)
+    : font(font_), textures(textures_)
+{
+}
 
 void DeckView::draw(sf::RenderTarget& target, sf::Vector2f position,
                     int deckSize, int handSize, int discardSize) const

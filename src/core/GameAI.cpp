@@ -1,20 +1,16 @@
 #include "core/GameAI.hpp"
-
-#include <algorithm>
-#include <chrono>
-#include <cstdlib>
-#include <iostream>
-#include <limits>
-#include <sstream>
-#include <streambuf>
-#include <string>
-#include <thread>
-
+#include "cards/Card.hpp"
+#include "cards/Deck.hpp"
 #include "core/Controller.hpp"
 #include "core/Player.hpp"
 #include "entities/Character.hpp"
-#include "cards/Card.hpp"
-#include "cards/Deck.hpp"
+
+#include <chrono>
+#include <iostream>
+#include <limits>
+#include <streambuf>
+#include <string>
+#include <thread>
 
 using std::cout;
 using std::endl;

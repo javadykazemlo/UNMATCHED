@@ -1,18 +1,17 @@
-#include <iostream>
-#include <string>
-#include <iomanip>
-#include <limits>
-#include <stdexcept>
-#include <algorithm>
-#include <random>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <sstream>
 #include "core/Controller.hpp"
 #include "entities/invisible_man.hpp"
 #include "Save/SaveManager.hpp"
+
+#include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <iostream>
+#include <limits>
+#include <mutex>
+#include <random>
+#include <stdexcept>
+#include <string>
+#include <thread>
 
 using namespace std;
 
@@ -26,7 +25,13 @@ namespace
         bool busy = false;
         bool finished = false;
 
-        enum class RequestType { None, Integer, Choice, YesNo };
+        enum class RequestType
+        {
+            None,
+            Integer,
+            Choice,
+            YesNo
+        };
         RequestType requestType = RequestType::None;
         std::string prompt;
         std::vector<int> choices;
@@ -129,7 +134,7 @@ void Controller::chooseCharacters()
     cout << " 1. Dracula" << endl;
     cout << " 2. Sherlock" << endl;
     cout << " 3. invisible man" << endl;
-    
+
     activeDecider = current;
 
     int cha_cur;
@@ -152,7 +157,7 @@ void Controller::chooseCharacters()
         cout << " 3. Invisible Man" << endl;
         available.push_back(3);
     }
-    
+
     activeDecider = enemy;
 
     int cha_enm;
@@ -191,9 +196,9 @@ void Controller::plaseSidekicks(Player& player)
     Character* hero = player.getHero();
     vector<int> zone = bord.getCharacterZone(hero);
     vector<int> space  = bord.getEmptyZone(zone);
-    vector<int> choose; 
+    vector<int> choose;
     int s;
-    
+
     if(hero->getName() == "sherlock")
     {
         cout << "\n══════════════════════════════════════════════════════════════════" << endl;
@@ -202,7 +207,7 @@ void Controller::plaseSidekicks(Player& player)
         {
             if(!bord.getSpaceStatus(space[j]))
             {
-                cout << "   " << space[j];  
+                cout << "   " << space[j];
                 choose.push_back(space[j]);
             }
         }
@@ -225,7 +230,7 @@ void Controller::plaseSidekicks(Player& player)
             {
                 if(!bord.getSpaceStatus(space[j]))
                 {
-                    cout << "   " << space[j];  
+                    cout << "   " << space[j];
                     choose.push_back(space[j]);
                 }
             }
@@ -251,7 +256,7 @@ void Controller::plaseSidekicks(Player& player)
             {
                 if(!bord.getSpaceStatus(space[j]) && !im->isMistPosition(space[j]))
                 {
-                    cout << "   " << space[j];  
+                    cout << "   " << space[j];
                     choose.push_back(space[j]);
                 }
             }
@@ -269,7 +274,7 @@ void Controller::playTurn()
 {
     while(!end_game())
     {
-        
+
         gamerand = 0;
         activeDecider = current;
 
@@ -283,7 +288,7 @@ void Controller::playTurn()
         {
             playSingleTurn(true);
 
-            if(end_game()) 
+            if(end_game())
             break;
         }
 
@@ -313,7 +318,7 @@ void Controller::playSingleTurn(bool allowSave)
         case 1:
         {
             cout << "\n══════════════════════════════════════════════════════════════════" << endl;
-            cout << "                          Maneuver\n"; 
+            cout << "                          Maneuver\n";
 
             try
             {
@@ -372,7 +377,7 @@ void Controller::playSingleTurn(bool allowSave)
         }
         case 3:
         {
-            
+
             startCombat();
 
             break;
@@ -395,7 +400,7 @@ void Controller::playSingleTurn(bool allowSave)
             break;
         }
 
-        
+
     }
 
     for(Character* c : current->getCharacters())
@@ -415,7 +420,7 @@ void Controller::playSingleTurn(bool allowSave)
             c->setSpace(-1);
         }
     }
-    
+
     gamerand++;
 }
 
@@ -448,7 +453,7 @@ void Controller::performHandLimitDiscard()
 void Controller::move(int mov ,Character* selected)
 {
     int place = selected->getSpace();
-    
+
     vector<int> validSpaces;
     vector<int> currently;
     vector<int> next;
@@ -477,7 +482,7 @@ void Controller::move(int mov ,Character* selected)
                         neighbors.push_back(mistPos);
                 }
             }
-            
+
             for(int pos : neighbors)
             {
                 Character* target = bord.getCharacter(pos);
@@ -558,8 +563,8 @@ int Controller::boost()
 void Controller::Scheme()
 {
     cout << "\n══════════════════════════════════════════════════════════════════════════" << endl;
-    cout << "                                Scheme\n"; 
-    
+    cout << "                                Scheme\n";
+
     vector<int> choos = current->getDeck()->getSchemeCardIndices();
     if(choos.empty())
     {
@@ -601,7 +606,7 @@ void Controller::Scheme()
         index = getChoice(choos);
         ai.decisionKind = GameAI::Decision::Generic;
         ai.cardFighter = nullptr;
-        
+
         bool ownerOK = false;
         const vector<Card>& hand = current->getDeck()->gethand();
         Card card = hand[index - 1];
@@ -610,7 +615,7 @@ void Controller::Scheme()
             ownerOK = card.isHero() || card.isAnyowner();
         else
             ownerOK = card.issideKick() || card.isAnyowner();
-    
+
         if(ownerOK)
             break;
         cout << "This fighter can't use this card.\n";
@@ -645,7 +650,7 @@ void Controller::startCombat()
     int number = 1;
 
     cout << "\n══════════════════════════════════════════════════════════════════════════" << endl;
-    cout << "                                Attack\n"; 
+    cout << "                                Attack\n";
 
     for (Character* ch : current->getCharacters())
     {
@@ -696,8 +701,8 @@ void Controller::startCombat()
 
         Card attackCard = chooseCombatCard(current , attacker , true);
         Card defenseCard = chooseCombatCard(enemy , defender , false);
-    
-        if(attackCard.getAttack() == 0) 
+
+        if(attackCard.getAttack() == 0)
         {
             cout << "You have no attack cards. Cannot attack this turn.\n";
             return;
@@ -708,7 +713,7 @@ void Controller::startCombat()
     {
         cout << "\nThere are no enemies you can attack.\n";
     }
-} 
+}
 
 Card Controller::chooseCombatCard(Player* player , Character* fighter, bool attack)
 {
@@ -718,16 +723,16 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
     if(attack)
     {
         myhandcard = player->getDeck()->getAttackCardIndices();
-        
+
     }
     else
     {
         myhandcard = player->getDeck()->getDefenseCardIndices();
     }
-    
+
     if(myhandcard.empty())
     {
-        cout << player->getName() << " has no valid " 
+        cout << player->getName() << " has no valid "
              << (attack ? "attack" : "defense") << " card. Using 0 value.\n";
 
         if (attack)
@@ -741,7 +746,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
         cout << "\nChoose a card: ";
 
         cout << "Available cards: ";
-        for(int idx : myhandcard) 
+        for(int idx : myhandcard)
         cout << idx<< "  ";
 
         cout << "\n> ";
@@ -771,7 +776,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
         else
             ownerOK = card.issideKick() || card.isAnyowner();
 
-        for(int idx : myhandcard) 
+        for(int idx : myhandcard)
         {
             if(ownerOK)
             {
@@ -782,7 +787,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
             return empty;
         }
 
-        
+
         if(!ownerOK)
         {
             cout << "This fighter can't use this card.\n";
@@ -806,7 +811,7 @@ Card Controller::chooseCombatCard(Player* player , Character* fighter, bool atta
     }
 }
 
-void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender) 
+void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* attacker , Character* defender)
 {
     if(defenseCard.getName() == "Elementary")
     {
@@ -828,11 +833,11 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
             activeDecider = current;
         }
     }
-    
+
     cout << "\n═══════════════════════════════════════════════════════════════════\n";
     cout << "                 ⚔️ RESOLVING COMBAT ⚔️\n";
     cout << "═════════════════════════════════════════════════════════════════════\n";
-    
+
     if(defenseCard.isBeforeCombat())
         applyEffect(defenseCard , attackCard , enemy , current , attacker , defender , false);
     if(attackCard.isBeforeCombat())
@@ -862,7 +867,7 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
     bool attackerWon = false;
     bool defenderWon = false;
 
-    if (attackValue > defenseValue) 
+    if (attackValue > defenseValue)
     {
         int damage = attackValue - defenseValue;
         cout << "\n💥 " << current->getName() << " deals " << damage << " damage to " << defender->getName() << "!\n";
@@ -874,11 +879,11 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
             defender->setSpace(-1);
         }
 
-        cout << "  " << defender->getName() << " HP: " << defender->getHp() 
+        cout << "  " << defender->getName() << " HP: " << defender->getHp()
         << "/" << defender->getMaxhp() << "\n";
         attackerWon = true;
     }
-    else 
+    else
     {
         cout << "\n🛡️ " << enemy->getName() << " blocks the attack!\n";
         defenderWon = true;
@@ -886,11 +891,10 @@ void Controller::resolveCombat(Card& attackCard, Card& defenseCard , Character* 
 
     if(defenseCard.isAfterCombat())
         applyEffect(defenseCard , attackCard , enemy , current , attacker , defender , defenderWon);
-  
+
     if(attackCard.isAfterCombat())
         applyEffect(attackCard , defenseCard , current , enemy , attacker , defender , attackerWon);
-  
-    // Capture the final values only after every combat modifier/effect has resolved.
+
     if (guiMode)
     {
         std::lock_guard<std::mutex> lock(gGuiEffect.mutex);
@@ -2208,8 +2212,16 @@ bool Controller::guiPlayCard(int index)
     return true;
 }
 
-int Controller::getActionCount() const { return gamerand; }
-void Controller::guiEndAction() { if (gamerand < 2) ++gamerand; }
+int Controller::getActionCount() const
+{
+    return gamerand;
+}
+
+void Controller::guiEndAction()
+{
+    if (gamerand < 2)
+        ++gamerand;
+}
 void Controller::guiEndTurn()
 {
     if (current && current->getDeck() && current->getDeck()->gethandSize() > 7)

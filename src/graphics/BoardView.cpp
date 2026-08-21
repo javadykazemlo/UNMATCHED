@@ -2,8 +2,8 @@
 #include "core/Bord.hpp"
 #include "entities/Character.hpp"
 #include "graphics/TextureManager.hpp"
+
 #include <cmath>
-#include <string>
 
 namespace
 {
@@ -41,8 +41,9 @@ void BoardView::buildLayout()
 
 sf::Color BoardView::zoneColor(int zone) const
 {
-    if (zone >= 1 && zone <= 7) return ZONE_COLORS[zone - 1];
-    return sf::Color(70,70,70,90);
+    if (zone >= 1 && zone <= 7)
+        return ZONE_COLORS[zone - 1];
+    return sf::Color(70, 70, 70, 90);
 }
 
 int BoardView::primaryZone(const Bord& board, int space) const

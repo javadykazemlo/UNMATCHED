@@ -1,4 +1,5 @@
 #include "graphics/UI.hpp"
+
 #include <algorithm>
 
 UI::UI(const sf::Font& font_) : font(font_) {}

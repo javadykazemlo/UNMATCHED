@@ -1,6 +1,7 @@
 #include "graphics/CardView.hpp"
 #include "cards/Card.hpp"
 #include "graphics/TextureManager.hpp"
+
 #include <algorithm>
 #include <sstream>
 

@@ -2,7 +2,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <string>
 #include "core/Bord.hpp"
 #include "core/Player.hpp"
 #include "core/GameAI.hpp"
@@ -55,7 +54,7 @@ private:
     bool cancelEffectDR = false;
     bool cancelEffectSH = false;
     bool cancelEffectIM = false;
-    
+
     int gamerand = 0;
     bool GuessElementary = false;
     bool guiMode = false;
@@ -81,7 +80,7 @@ private:
     void damageAllFighters(Player* p, int damage);
 
     Controller() = default;
-    
+
     void startMenu(Player player[2]);
     void choosePlayers(Player player[2]);
     void chooseCharacters();
@@ -104,13 +103,13 @@ private:
     int getInt();
     int getChoice(std::vector<int> valid);
     bool getYesNo();
-    
+
     Bord& getBord();
     Player* getCurrentPlayer() const;
     Player* getEnemyPlayer();
     Character* getCharacterAt(int position);
     bool isGameOver();
-    
+
     void SaveGame(const std::string& filename = "save.json");
     bool LoadGame(Player player[2], const std::string& filename = "save.json");
     bool end_game() const;

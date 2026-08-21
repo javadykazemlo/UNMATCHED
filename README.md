@@ -1,12 +1,11 @@
 # ⚔️ UNMATCHED
 
-[![C++](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
-[![CMake](https://img.shields.io/badge/CMake-3.10+-green.svg)](https://cmake.org/)
-[![FTXUI](https://img.shields.io/badge/UI-FTXUI-orange.svg)](https://github.com/ArthurSonzogni/FTXUI)
-[![Platform](https://img.shields.io/badge/Platform-Terminal-lightgrey.svg)]()
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://isocpp.org/)
+[![CMake](https://img.shields.io/badge/CMake-3.10%2B-green.svg)](https://cmake.org/)
+[![SFML](https://img.shields.io/badge/SFML-3-orange.svg)](https://www.sfml-dev.org/)
+[![Platform](https://img.shields.io/badge/Platform-Desktop-lightgrey.svg)]()
 
-> A C++ implementation of the popular board game **Unmatched**, developed as the final project for the **Advanced Programming** course at **Bu-Ali Sina University**.
+> A C++ implementation of the board game **Unmatched**, developed as a final project for the Advanced Programming course at Bu-Ali Sina University.
 
 ---
 
@@ -20,6 +19,8 @@
   - [📂 Project Structure](#-project-structure)
   - [📥 Installation](#-installation)
     - [Prerequisites](#prerequisites)
+    - [Build](#build)
+    - [Run](#run)
   - [🎮 How to Play](#-how-to-play)
   - [🛠️ Technologies Used](#️-technologies-used)
   - [🎯 Programming Concepts](#-programming-concepts)
@@ -30,15 +31,11 @@
 
 # 📖 About the Game
 
-**UNMATCHED** is a digital implementation of the famous strategy board game developed by **Restoration Games**.
+**UNMATCHED** is a digital implementation of the strategy board game developed by **Restoration Games**.
 
-The game brings legendary characters from literature and mythology into exciting one-on-one battles. Every hero owns a completely different deck of cards, unique abilities, and loyal sidekicks, making every match feel different and highly strategic.
+The project recreates a two-player Unmatched-style match with heroes, sidekicks, cards, movement, combat, schemes, hero abilities, and a graphical game interface. The current implementation includes **Dracula**, **Sherlock Holmes**, and **Invisible Man**, together with their supported sidekicks.
 
-This project was developed in **Modern C++** as the final project for the **Advanced Programming** course. It focuses on applying object-oriented programming principles, modular software design, and clean architecture while recreating the gameplay experience inside a terminal interface.
-
-Unlike traditional action games, every decision matters. Players must carefully choose how to move, when to attack, and which cards to play in order to defeat their opponent.
-
-The current version focuses on recreating the battle between **Sherlock Holmes** and **Dracula**, each with their own cards, abilities, and companions.
+The project is implemented in **C++17** with a modular object-oriented architecture. Game rules and state are handled by the core classes, while the graphical layer is responsible for presenting the game and collecting GUI input.
 
 ---
 
@@ -47,65 +44,59 @@ The current version focuses on recreating the battle between **Sherlock Holmes**
 | Property | Description |
 |----------|-------------|
 | **Genre** | Strategy Board Game |
-| **Mode** | Local Multiplayer |
+| **Mode** | Local Multiplayer / Player vs AI |
 | **Players** | 2 Players |
-| **Interface** | Terminal (FTXUI) |
+| **Interface** | SFML graphical interface |
 | **Language** | C++17 |
 | **Build System** | CMake |
-| **Library** | FTXUI |
+| **Graphics / Audio** | SFML 3 |
 
 ---
 
-
 # ✨ Features
-
-The project recreates the core gameplay mechanics of **Unmatched** while emphasizing clean C++ design and modular development.
 
 ## 🎮 Gameplay Features
 
 | Feature | Description |
 |---------|-------------|
-| ⚔️ Turn-Based Gameplay | Players alternate turns throughout the game |
-| 🃏 Card-Based Combat | Every action is driven by hero cards |
-| 👥 Two Unique Heroes | Sherlock Holmes and Dracula |
-| 🤝 Sidekick Support | Heroes fight alongside their companions |
-| 🗺️ Interactive Board | Characters move across the battlefield |
-| ❤️ Health System | Heroes and sidekicks have independent health |
-| 🎯 Tactical Decisions | Movement, attacks and card management determine victory |
+| ⚔️ Turn-Based Gameplay | Players alternate turns and take actions during their turn |
+| 🃏 Card-Based Combat | Attack, defense, boost, and scheme cards drive the main gameplay |
+| 🧛 Multiple Heroes | Dracula, Sherlock Holmes, and Invisible Man are supported |
+| 🤝 Sidekicks | Heroes can fight together with their associated sidekicks |
+| 🗺️ Interactive Board | Fighters move through the board's connected spaces and zones |
+| ❤️ Health System | Heroes and sidekicks have independent health values |
+| 🎯 Combat Effects | Card effects and combat modifiers are resolved by the game logic |
+| 🧩 Hero Abilities | Supported heroes can use their implemented special abilities |
+| 🤖 AI Opponent | A built-in AI can make gameplay decisions for the second player |
+| 💾 Save / Load | Games can be saved and loaded through JSON save files |
 
----
+## 🖥️ Graphical Features
 
-## 💻 Technical Features
+The game uses **SFML 3** for its graphical interface.
 
-- Modern C++17
-- Object-Oriented Programming
-- Modular Project Structure
-- Separation of Headers and Source Files
-- CMake Build System
-- Terminal User Interface using FTXUI
-- Cross-platform support
-- Easy-to-extend architecture
-- Clean class hierarchy
-- Reusable game components
+The current GUI includes:
 
----
+- Main menu and new-game flow
+- Player information setup
+- Hero selection
+- Hero starting-position selection
+- Sidekick placement
+- Interactive game board
+- Character and sidekick tokens
+- Character and card information panels
+- Hand/deck/discard visualization
+- Move, attack, scheme, save, and turn controls
+- Attack and scheme interaction panels
+- Dracula ability interaction panel
+- AI turn panel
+- Game-over screen
+- Save/load screen
+- Rules screen
+- Hover and click feedback
+- Background music and sound effects
+- Music mute control
 
-## 🎨 User Interface
-
-The project uses **FTXUI** to provide a modern terminal interface.
-
-Features include:
-
-- Interactive menus
-- Colored interface
-- Game dashboard
-- Board visualization
-- Player information
-- Hero statistics
-- Card visualization
-- Turn information
-
-The interface is completely terminal-based while remaining clean and user-friendly.
+The graphical layer communicates with the controller through dedicated GUI methods instead of replacing the underlying game rules.
 
 ---
 
@@ -116,22 +107,17 @@ The interface is completely terminal-based while remaining clean and user-friend
 | **Mahdi Dehnavi** | 40412358018 | https://github.com/mahdidehnavi |
 | **Mohammad Javad Kazemlo** | 40412358038 | https://github.com/javadykazemlo |
 
-
-
 ---
 
 # 📂 Project Structure
 
-The project follows a clean modular architecture that separates the game into different logical components.
+The project is organized into separate modules for game rules, entities, cards, graphics, AI, and save/load functionality.
 
 ```text
 .
 ├── CMakeLists.txt
 ├── README.md
-├── .gitignore
 ├── include
-│   ├── GameTUI.hpp
-│   │
 │   ├── cards
 │   │   ├── Card.hpp
 │   │   └── Deck.hpp
@@ -139,19 +125,37 @@ The project follows a clean modular architecture that separates the game into di
 │   ├── core
 │   │   ├── Bord.hpp
 │   │   ├── Controller.hpp
+│   │   ├── GameAI.hpp
+│   │   ├── GuiEffectLogger.hpp
 │   │   └── Player.hpp
 │   │
-│   └── entities
-│       ├── Character.hpp
-│       ├── Sherlock.hpp
-│       ├── Dr_watson.hpp
-│       ├── Dracula.hpp
-│       └── Sister.hpp
+│   ├── entities
+│   │   ├── Character.hpp
+│   │   ├── Dracula.hpp
+│   │   ├── Dr_watson.hpp
+│   │   ├── invisible_man.hpp
+│   │   ├── Sherlock.hpp
+│   │   └── Sister.hpp
+│   │
+│   ├── graphics
+│   │   ├── AudioManager.hpp
+│   │   ├── BoardView.hpp
+│   │   ├── CardView.hpp
+│   │   ├── CharacterView.hpp
+│   │   ├── DeckView.hpp
+│   │   ├── GameWindow.hpp
+│   │   ├── RulesView.hpp
+│   │   ├── TextureManager.hpp
+│   │   └── UI.hpp
+│   │
+│   ├── Save
+│   │   └── SaveManager.hpp
+│   │
+│   └── nlohmann
+│       └── json.hpp
 │
 ├── src
-│   ├── GameTUI.cpp
 │   ├── main.cpp
-│   │
 │   ├── cards
 │   │   ├── Card.cpp
 │   │   └── Deck.cpp
@@ -160,30 +164,51 @@ The project follows a clean modular architecture that separates the game into di
 │   │   ├── Bord.cpp
 │   │   ├── Controller.cpp
 │   │   ├── Effects.cpp
+│   │   ├── GameAI.cpp
 │   │   └── Player.cpp
 │   │
-│   └── entities
-│       ├── Character.cpp
-│       ├── Sherlock.cpp
-│       ├── Dr_watson.cpp
-│       ├── Dracula.cpp
-│       └── Sister.cpp
+│   ├── entities
+│   │   ├── Character.cpp
+│   │   ├── Dracula.cpp
+│   │   ├── Dr_watson.cpp
+│   │   ├── invisible_man.cpp
+│   │   ├── Sherlock.cpp
+│   │   └── Sister.cpp
+│   │
+│   ├── graphics
+│   │   ├── AudioManager.cpp
+│   │   ├── BoardView.cpp
+│   │   ├── CardView.cpp
+│   │   ├── CharacterView.cpp
+│   │   ├── DeckView.cpp
+│   │   ├── GameWindow.cpp
+│   │   ├── RulesView.cpp
+│   │   ├── TextureManager.cpp
+│   │   └── UI.cpp
+│   │
+│   └── Save
+│       └── SaveManager.cpp
 │
-└── external
-    └── ftxui
+└── assets
+    ├── images
+    ├── audio
+    └── fonts
 ```
+
+---
 
 # 📥 Installation
 
 ## Prerequisites
 
-Before building the project, make sure the following software is installed.
+Install the following:
 
-- C++17 Compiler
-- CMake 3.10+
+- C++17-compatible compiler
+- CMake 3.10 or newer
+- SFML 3 with Graphics, Window, System, and Audio components
 - Git
 
-The project automatically builds with **FTXUI** through CMake.
+The project expects the `assets` directory to be present beside the source tree when the executable is run. The repository's CMake configuration also copies `assets` next to the built executable after a successful build.
 
 ---
 
@@ -191,18 +216,74 @@ The project automatically builds with **FTXUI** through CMake.
 
 ```bash
 git clone https://github.com/javadykazemlo/UNMATCHED.git
+cd UNMATCHED
 ```
-# 🎮 How to Play
 
-UNMATCHED is a **two-player strategy game** where each player controls a legendary hero with a unique deck of cards and loyal sidekicks.
+## Build
 
-The objective is simple:
+Create a separate build directory:
 
-> Defeat the opposing hero before your own hero is eliminated.
+```bash
+cmake -S . -B build
+cmake --build build
+```
 
-Every decision during the game matters. Players must carefully manage movement, attacks, defense, and card usage to gain the upper hand.
+On systems where SFML is installed in a custom location, provide its CMake prefix:
+
+```bash
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/SFML
+cmake --build build
+```
+
+On Windows, the current CMake configuration also supports the SFML installation path used by the project and copies required SFML DLLs beside the executable when that installation exists.
+
+## Run
+
+After a successful build, run the generated executable from the build directory:
+
+```bash
+./build/a
+```
+
+The exact executable location can differ depending on the generator and platform.
 
 ---
+
+# 🎮 How to Play
+
+UNMATCHED is a two-player strategy game. Each player controls a Hero and their associated Sidekick(s).
+
+The general objective is:
+
+> Defeat the opposing Hero before your own Hero is defeated.
+
+### Game Setup
+
+1. Enter the player information.
+2. Select the Heroes.
+3. Select each Hero's starting position.
+4. Place the Sidekicks in their available starting spaces.
+5. Start the match.
+
+### During a Turn
+
+A player has two actions. The available GUI actions are:
+
+- **MOVE** — perform a maneuver and handle the movement flow.
+- **ATTACK** — select an attacker, target, and combat cards, then resolve combat.
+- **SCHEME** — play an eligible Scheme card and resolve its effect.
+- **SAVE GAME** — save the current game state.
+- **END ACTION / END TURN** — finish the current action or turn according to the current game state.
+
+Card effects may request additional choices or input. These requests are presented through the appropriate GUI panel.
+
+### AI
+
+If the second player is configured as an AI player, the game starts the AI turn automatically. The AI evaluates available actions, fighters, destinations, targets, and cards through the `GameAI` component.
+
+### Save / Load
+
+The save system stores game state in JSON files. The load screen displays available saves and allows a saved game to be resumed.
 
 ---
 
@@ -210,29 +291,32 @@ Every decision during the game matters. Players must carefully manage movement, 
 
 | Technology | Purpose |
 |------------|---------|
-| C++17 | Programming Language |
-| CMake | Build System |
-| FTXUI | Terminal User Interface |
-| Git | Version Control |
-| GitHub | Source Code Hosting |
+| C++17 | Programming language |
+| CMake | Build system |
+| SFML 3 | Graphics, windowing, input, and audio |
+| nlohmann/json | JSON serialization for save/load |
+| Git | Version control |
+| GitHub | Source code hosting |
 
 ---
 
 # 🎯 Programming Concepts
 
-This project applies many important software engineering concepts, including:
+The project applies several important software-engineering concepts:
 
-- Object-Oriented Programming (OOP)
-- Inheritance
-- Polymorphism
+- Object-Oriented Programming
+- Inheritance and polymorphism
 - Encapsulation
-- Modular Design
-- Separation of Concerns
-- Class Hierarchy
-- STL Containers
-- CMake Project Structure
+- Separation of game logic and presentation
+- Modular project structure
+- Header/source separation
+- STL containers and algorithms
+- CMake-based builds
+- JSON serialization
+- Threading and synchronization for GUI/AI interaction
+- Resource management through dedicated graphics and audio managers
 
-These concepts were used to create a maintainable and extensible implementation of the game.
+The architecture keeps the core game state in the controller and domain classes while the `graphics` module handles rendering and user interaction.
 
 ---
 
@@ -240,24 +324,21 @@ These concepts were used to create a maintainable and extensible implementation 
 
 Possible future extensions include:
 
-- Additional Heroes
-- Additional Maps
-- Artificial Intelligence (AI)
-- Save & Load Game
-- Sound Effects
-- Animations
-- Online Multiplayer
-- Improved Card Effects
-- Expanded Hero Decks
-- Better Terminal Graphics
-
-The modular architecture makes adding new content significantly easier.
+- Additional Heroes and Sidekicks
+- Additional battlefields
+- More complete AI strategies
+- More card effects
+- More animations and visual effects
+- Expanded audio feedback
+- Online multiplayer
+- More save-management options
+- Additional UI customization
 
 ---
 
 # 👭 Contributing
 
-Contributions are welcome!
+Contributions are welcome.
 
 If you would like to improve the project:
 
@@ -268,10 +349,12 @@ If you would like to improve the project:
 git checkout -b feature/YourFeature
 ```
 
-3. Commit your changes.
-4. 
-## ⭐ If you like this project...
+3. Make your changes.
+4. Build and test the project.
+5. Commit your changes and open a pull request.
+
+---
+
+## ⭐ If you like this project
 
 Give it a ⭐ on GitHub and help others discover it.
-
-Happy Coding! 🚀

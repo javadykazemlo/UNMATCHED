@@ -13,7 +13,6 @@ AudioManager::AudioManager()
       schemeSound(schemeBuffer),
       moveSound(moveBuffer)
 {
-   
     loadMusic(introMusic, "assets/audio/intro_theme.ogg",
               "intro_theme.ogg", introMusicLoaded);
     loadMusic(gameplayMusic, "assets/audio/gameplay_theme.ogg",

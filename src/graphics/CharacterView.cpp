@@ -1,6 +1,7 @@
 #include "graphics/CharacterView.hpp"
-#include "graphics/TextureManager.hpp"
 #include "entities/Character.hpp"
+#include "graphics/TextureManager.hpp"
+
 #include <algorithm>
 
 CharacterView::CharacterView(const sf::Font& font_, const TextureManager& textures_)

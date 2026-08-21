@@ -1,29 +1,25 @@
 #include "graphics/GameWindow.hpp"
 #include "graphics/BoardView.hpp"
-#include "graphics/CharacterView.hpp"
 #include "graphics/CardView.hpp"
+#include "graphics/CharacterView.hpp"
 #include "graphics/DeckView.hpp"
-#include "graphics/UI.hpp"
 #include "graphics/RulesView.hpp"
+#include "graphics/UI.hpp"
 #include "entities/Character.hpp"
 #include "entities/invisible_man.hpp"
-#include "cards/Deck.hpp"
 #include "cards/Card.hpp"
+#include "cards/Deck.hpp"
 
 #include <algorithm>
-#include <string>
-#include <vector>
-#include <optional>
-#include <cmath>
-#include <stdexcept>
-#include <cctype>
-#include <filesystem>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
 #include <chrono>
 #include <ctime>
-#include <unordered_set>
+#include <filesystem>
+#include <fstream>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 #include <nlohmann/json.hpp>
 
 namespace
@@ -1119,14 +1115,14 @@ void GameWindow::drawGame()
     if (texture)
     {
         sf::Sprite logo(*texture);
-    
+
         logo.setPosition({40.f, 0.f});
-    
+
         const float targetWidth = 120.f;
         const float scale = targetWidth / texture->getSize().x;
-    
+
         logo.setScale({scale, scale});
-    
+
         window.draw(logo);
     }
 
@@ -1183,7 +1179,7 @@ void GameWindow::drawGame()
     ui->drawButton(window, {{1375.f, 12.f}, {90.f, 42.f}}, "RULES",
                    rulesView && rulesView->isOpen(), GOLD);
     ui->drawButton(window, {{1472.f, 12.f}, {105.f, 42.f}}, "EXIT", false, GOLD);
-    
+
 
     auto drawPlayerPanel = [&](Player* player, sf::FloatRect rect, sf::Color accent)
     {
@@ -1547,7 +1543,7 @@ void GameWindow::drawGameOver()
 
     ui->drawText(window, "created & Developed by", {700.f, 800.f}, 14, sf::Color(170, 162, 150));
     ui->drawText(window, "Mahdi Dehnavi & Mohammd Javad Kazemlo", {640.f, 822.f}, 14, sf::Color(170, 162, 150));
-    
+
     if (exitConfirmPopup)
     {
         sf::RectangleShape dim({1600.f, 900.f});
@@ -1811,7 +1807,7 @@ void GameWindow::handleGameClick(sf::Vector2f p)
             return;
         }
     }
-    
+
     if (activeEffectPanel != EffectPanelKind::None)
     {
         switch (activeEffectPanel)
@@ -3237,7 +3233,7 @@ void GameWindow::drawAiTurnPanel()
 
     if (aiTurnSummary)
     {
-        ui->drawText(window, "AI TURN COMPLETE", 
+        ui->drawText(window, "AI TURN COMPLETE",
                      {panel.position.x + 22.f, panel.position.y + 232.f},
                      15, GOLD);
         ui->drawText(window, "Review the final actions, then press END TURN.",

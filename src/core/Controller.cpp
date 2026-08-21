@@ -959,9 +959,14 @@ int Controller::getChoice(std::vector<int> valid)
 
     if (guiMode)
     {
+        const std::string context = guiChoiceContext;
+        guiChoiceContext.clear();
+
         std::unique_lock<std::mutex> lock(gGuiEffect.mutex);
         gGuiEffect.requestType = GuiEffectBridge::RequestType::Choice;
-        gGuiEffect.prompt = "Choose one of the available options:";
+        gGuiEffect.prompt = context.empty()
+            ? "Choose one of the available options:"
+            : context;
         gGuiEffect.choices = std::move(valid);
         gGuiEffect.ready = false;
         gGuiEffect.cv.notify_all();
@@ -1918,6 +1923,27 @@ bool Controller::guiBeginTurn()
 
     guiHeroAbilityUsed = false;
     return true;
+}
+
+void Controller::setGuiChoiceContext(const std::string& context)
+{
+    guiChoiceContext = context;
+}
+
+std::string Controller::getGuiAiDecisionContext() const
+{
+    switch (ai.decisionKind)
+    {
+        case GameAI::Decision::FighterSelect:
+        case GameAI::Decision::AttackTarget:
+            return "fighter";
+
+        case GameAI::Decision::CardSelect:
+            return "card";
+
+        default:
+            return "";
+    }
 }
 
 bool Controller::guiHeroAbilityAvailable() const

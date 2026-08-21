@@ -35,6 +35,52 @@ namespace
     const sf::Color BLUE(40, 82, 123);
     const sf::Color GREEN(62, 121, 77);
     const sf::Color PURPLE(91, 61, 118);
+
+    std::string cardChoiceLabel(const Player* player, int choice, bool oneBased)
+    {
+        if (!player || !player->getDeck()) return std::to_string(choice);
+
+        const int index = oneBased ? choice - 1 : choice;
+        if (index < 0 || index >= player->getDeck()->gethandSize())
+            return std::to_string(choice);
+
+        return player->getDeck()->getHandcard(index).getName();
+    }
+
+    std::string characterChoiceLabel(Player* player, int choice)
+    {
+        if (!player || choice < 1) return std::to_string(choice);
+
+        int aliveIndex = 0;
+        for (Character* character : player->getCharacters())
+        {
+            if (!character || !character->checkalive()) continue;
+            ++aliveIndex;
+            if (aliveIndex == choice)
+                return character->getName();
+        }
+
+        return std::to_string(choice);
+    }
+
+    std::string choiceContextLabel(const std::string& context,
+                                     Player* player,
+                                    int choice)
+    {
+        std::string lower = context;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        if (lower.find("card") != std::string::npos)
+            return cardChoiceLabel(player, choice, true);
+
+        if (lower.find("character") != std::string::npos ||
+            lower.find("fighter") != std::string::npos ||
+            lower.find("target") != std::string::npos)
+            return characterChoiceLabel(player, choice);
+
+        return std::to_string(choice);
+    }
 }
 
 GameWindow::GameWindow()
@@ -66,6 +112,9 @@ void GameWindow::loadAssets()
     textures.load("board", "assets/board/board.png");
     textures.load("card_back", "assets/cards/card_back.png");
     textures.load("mute", "assets/mute.png");
+    textures.load("logo", "assets/logo.png");
+    textures.load("start1", "assets/board/startpos1.png");
+    textures.load("start2", "assets/board/startpos2.png");
 
     loadCharacterAssets();
     loadCardAssets();
@@ -179,6 +228,45 @@ void GameWindow::processEvents()
                         break;
                     }
                 }
+
+                if (newHover != hoveredMenuItem)
+                {
+                    if (newHover >= 0)
+                        audio.playSfx(AudioManager::Sfx::Hover);
+                    hoveredMenuItem = newHover;
+                }
+            }
+            else if (screen == Screen::Setup &&
+                     controller.getGuiSetupStage() ==
+                         Controller::GuiSetupStage::CharacterSelection)
+            {
+                int newHover = -1;
+                for (int i = 0; i < 3; ++i)
+                {
+                    if (sf::FloatRect({330.f + i * 330.f, 225.f},
+                                      {280.f, 350.f}).contains(mp))
+                    {
+                        newHover = i;
+                        break;
+                    }
+                }
+
+                if (newHover != hoveredMenuItem)
+                {
+                    if (newHover >= 0)
+                        audio.playSfx(AudioManager::Sfx::Hover);
+                    hoveredMenuItem = newHover;
+                }
+            }
+            else if (screen == Screen::Setup &&
+                     controller.getGuiSetupStage() ==
+                         Controller::GuiSetupStage::HeroPosition)
+            {
+                int newHover = -1;
+                if (sf::FloatRect({365.f, 250.f}, {360.f, 360.f}).contains(mp))
+                    newHover = 0;
+                else if (sf::FloatRect({875.f, 250.f}, {360.f, 360.f}).contains(mp))
+                    newHover = 1;
 
                 if (newHover != hoveredMenuItem)
                 {
@@ -828,8 +916,29 @@ void GameWindow::drawSetupCharacters()
     for (int i = 0; i < 3; ++i)
     {
         const bool allowed = std::find(choices.begin(), choices.end(), heroes[i]) != choices.end();
-        sf::FloatRect rect({330.f + i * 330.f, 225.f}, {280.f, 350.f});
-        ui->drawButton(window, rect, names[i], allowed, allowed ? GOLD : sf::Color(70, 65, 58));
+        const sf::FloatRect baseRect({330.f + i * 330.f, 225.f}, {280.f, 350.f});
+        const bool hovered = allowed && hoveredMenuItem == i;
+
+        const float scale = hovered ? 1.045f : 1.f;
+        const float w = baseRect.size.x * scale;
+        const float h = baseRect.size.y * scale;
+        const float x = baseRect.position.x - (w - baseRect.size.x) / 2.f;
+        const float y = baseRect.position.y - (h - baseRect.size.y) / 2.f -
+                        (hovered ? 3.f : 0.f);
+        const sf::FloatRect rect({x, y}, {w, h});
+
+        ui->drawButton(window, rect, names[i], allowed,
+                       allowed ? GOLD : sf::Color(70, 65, 58));
+
+        if (hovered)
+        {
+            sf::RectangleShape lift({w + 10.f, h + 10.f});
+            lift.setPosition({x - 5.f, y - 5.f});
+            lift.setFillColor(sf::Color::Transparent);
+            lift.setOutlineColor(sf::Color(211, 178, 104, 70));
+            lift.setOutlineThickness(2.f);
+            window.draw(lift);
+        }
 
         if (allowed)
         {
@@ -837,17 +946,21 @@ void GameWindow::drawSetupCharacters()
             {
                 sf::Sprite sprite(*tex);
                 const sf::Vector2u size = tex->getSize();
-                const float scale = std::min(280.f / static_cast<float>(size.x),
-                                             350.f / static_cast<float>(size.y));
-                sprite.setScale({scale, scale});
+                const float portraitScale =
+                    std::min(rect.size.x / static_cast<float>(size.x),
+                             rect.size.y / static_cast<float>(size.y));
+                sprite.setScale({portraitScale, portraitScale});
                 sprite.setPosition({rect.position.x, rect.position.y});
                 window.draw(sprite);
             }
         }
+        ui->drawText(window, names[i],
+             {x + w / 2.f - 50.f, y + h + 10.f},
+             20, GOLD);
     }
 
     ui->drawText(window, current ? "The younger player chooses first." : "",
-                 {692.f, 620.f}, 11, sf::Color(165, 157, 145));
+                 {692.f, 650.f}, 11, sf::Color(165, 157, 145));
 }
 
 void GameWindow::drawSetupPosition()
@@ -856,23 +969,81 @@ void GameWindow::drawSetupPosition()
     ui->drawText(window, "CHOOSE STARTING SIDE", {600.f, 70.f}, 30, GOLD);
 
     Player* chooser = controller.getGuiSetupPlayer();
-    ui->drawPanel(window, {{250.f, 140.f}, {1100.f, 550.f}}, GOLD);
+    ui->drawPanel(window, {{250.f, 130.f}, {1100.f, 590.f}}, GOLD);
 
     if (chooser)
         ui->drawText(window, chooser->getName() + " chooses the starting side.",
-                     {590.f, 175.f}, 17, PARCHMENT);
+                     {600.f, 175.f}, 17, PARCHMENT);
 
-    ui->drawButton(window, {{350.f, 270.f}, {390.f, 260.f}},
-                   "", true, BLUE);
-    ui->drawButton(window, {{860.f, 270.f}, {390.f, 260.f}},
-                   "", true, BLUE);
+    const bool leftHovered = hoveredMenuItem == 0;
+    const bool rightHovered = hoveredMenuItem == 1;
 
-    ui->drawText(window, "LEFT", {515.f, 390.f}, 25, BLUE);
-    ui->drawText(window, "RIGHT", {1015.f, 390.f}, 25, BLUE);
+    const sf::FloatRect leftBase({365.f, 250.f}, {360.f, 360.f});
+    const sf::FloatRect rightBase({875.f, 250.f}, {360.f, 360.f});
 
+    auto hoveredRect = [](const sf::FloatRect& base, bool hovered)
+    {
+        const float scale = hovered ? 1.045f : 1.f;
+        const float w = base.size.x * scale;
+        const float h = base.size.y * scale;
+        const float x = base.position.x - (w - base.size.x) / 2.f;
+        const float y = base.position.y - (h - base.size.y) / 2.f -
+                        (hovered ? 3.f : 0.f);
+        return sf::FloatRect({x, y}, {w, h});
+    };
 
-    ui->drawText(window, "Your hero starts on space 4.", {430.f, 555.f}, 12, PARCHMENT);
-    ui->drawText(window, "Your opponent starts on space 15.", {430.f, 585.f}, 12, PARCHMENT);
+    const sf::FloatRect leftRect = hoveredRect(leftBase, leftHovered);
+    const sf::FloatRect rightRect = hoveredRect(rightBase, rightHovered);
+
+    ui->drawButton(window, leftRect, "left", true, BLUE);
+    ui->drawButton(window, rightRect, "right", true, BLUE);
+
+    const sf::Texture* strat1Texture = textures.get("start1");
+    const sf::Texture* strat2Texture = textures.get("start2");
+
+    auto drawStartTexture = [&](const sf::Texture* texture,
+                                const sf::FloatRect& base,
+                                const sf::FloatRect& rect)
+    {
+        if (!texture)
+            return;
+
+        sf::Sprite sprite(*texture);
+        const float scale = base.size.x / texture->getSize().x;
+        const float finalScale = scale * (rect.size.x / base.size.x);
+        sprite.setScale({finalScale, finalScale});
+        sprite.setPosition(rect.position);
+        window.draw(sprite);
+    };
+
+    drawStartTexture(strat1Texture, leftBase, leftRect);
+    drawStartTexture(strat2Texture, rightBase, rightRect);
+
+    if (leftHovered)
+    {
+        sf::RectangleShape lift({leftRect.size.x + 10.f, leftRect.size.y + 10.f});
+        lift.setPosition({leftRect.position.x - 5.f, leftRect.position.y - 5.f});
+        lift.setFillColor(sf::Color::Transparent);
+        lift.setOutlineColor(sf::Color(211, 178, 104, 70));
+        lift.setOutlineThickness(2.f);
+        window.draw(lift);
+    }
+
+    if (rightHovered)
+    {
+        sf::RectangleShape lift({rightRect.size.x + 10.f, rightRect.size.y + 10.f});
+        lift.setPosition({rightRect.position.x - 5.f, rightRect.position.y - 5.f});
+        lift.setFillColor(sf::Color::Transparent);
+        lift.setOutlineColor(sf::Color(211, 178, 104, 70));
+        lift.setOutlineThickness(2.f);
+        window.draw(lift);
+    }
+
+    ui->drawText(window, "LEFT", {515.f, 210.f}, 25, BLUE);
+    ui->drawText(window, "RIGHT", {1015.f, 210.f}, 25, BLUE);
+
+    ui->drawText(window, "Your hero starts on space 4.", {430.f, 635.f}, 12, PARCHMENT);
+    ui->drawText(window, "Your opponent starts on space 15.", {430.f, 665.f}, 12, PARCHMENT);
 }
 
 void GameWindow::drawSetupSidekicks()
@@ -919,15 +1090,13 @@ void GameWindow::drawSetupSidekicks()
 void GameWindow::drawSetupReady()
 {
     drawFullscreenTexture("ready");
-    ui->drawText(window, "THE BATTLE IS READY", {590.f, 150.f}, 34, GOLD);
-    ui->drawPanel(window, {{360.f, 245.f}, {880.f, 360.f}}, GOLD);
 
     ui->drawText(window, "Players, characters and starting positions are set.",
-                 {505.f, 315.f}, 15, PARCHMENT);
+                 {550.f, 350.f}, 17, sf::Color(224, 218, 200));
     ui->drawText(window, "The game board is now controlled by the real Controller.",
-                 {490.f, 350.f}, 13, sf::Color(170, 162, 150));
+                 {580.f, 385.f}, 13, sf::Color(170, 162, 150));
 
-    ui->drawButton(window, {{520.f, 470.f}, {560.f, 62.f}},
+    ui->drawButton(window, {{520.f, 550.f}, {560.f, 62.f}},
                    "ENTER THE BATTLE", true, GOLD);
 }
 
@@ -945,7 +1114,21 @@ void GameWindow::drawGame()
     top.setOutlineThickness(1.f);
     window.draw(top);
 
-    ui->drawText(window, "UNMATCHED", {22.f, 16.f}, 26, GOLD);
+    const sf::Texture* texture = textures.get("logo");
+
+    if (texture)
+    {
+        sf::Sprite logo(*texture);
+    
+        logo.setPosition({40.f, 0.f});
+    
+        const float targetWidth = 120.f;
+        const float scale = targetWidth / texture->getSize().x;
+    
+        logo.setScale({scale, scale});
+    
+        window.draw(logo);
+    }
 
     const sf::FloatRect muteRect({305.f, 13.f}, {42.f, 42.f});
     if (const sf::Texture* muteTexture = textures.get("mute"))
@@ -986,7 +1169,7 @@ void GameWindow::drawGame()
         if (name == "Dracula" || name.find("Sister") != std::string::npos)
             return RED;
         if (name == "sherlock" || name == "Dr_watson")
-            return GOLD;
+            return sf::Color(40, 80, 140);
         if (name == "invisible man")
             return sf::Color(86, 101, 115);
 
@@ -1306,7 +1489,7 @@ void GameWindow::drawGame()
         overlay.setFillColor(sf::Color(0, 0, 0, 170));
         window.draw(overlay);
 
-        const sf::FloatRect panel({390.f, 250.f}, {820.f, 300.f});
+        const sf::FloatRect panel({390.f, 250.f}, {820.f, 350.f});
         ui->drawPanel(window, panel, GOLD);
 
         ui->drawText(window, "SAVE GAME", {700.f, 280.f}, 28, GOLD);
@@ -1326,6 +1509,9 @@ void GameWindow::drawGame()
                  {slotW, slotH}},
                 std::to_string(slot), true, GOLD);
         }
+
+        ui->drawButton(window, {{565.f, 510.f}, {470.f, 58.f}},
+                   "RETURN TO GAME", true, GOLD);
     }
 
     if (exitConfirmPopup)
@@ -1515,12 +1701,12 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 
     if (stage == Controller::GuiSetupStage::HeroPosition)
     {
-        if (sf::FloatRect({350.f, 270.f}, {390.f, 260.f}).contains(p))
+        if (sf::FloatRect({365.f, 250.f}, {360.f, 360.f}).contains(p))
         {
             controller.guiChooseHeroPosition(1);
             return;
         }
-        if (sf::FloatRect({860.f, 270.f}, {390.f, 260.f}).contains(p))
+        if (sf::FloatRect({875.f, 250.f}, {360.f, 360.f}).contains(p))
         {
             controller.guiChooseHeroPosition(2);
             return;
@@ -1545,7 +1731,7 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 
     if (stage == Controller::GuiSetupStage::Ready)
     {
-        if (sf::FloatRect({520.f, 470.f}, {560.f, 62.f}).contains(p))
+        if (sf::FloatRect({520.f, 550.f}, {560.f, 62.f}).contains(p))
         {
             screen = Screen::Game;
             resetSelections();
@@ -1562,6 +1748,12 @@ void GameWindow::handleGameClick(sf::Vector2f p)
 {
     if (saveSlotPopup)
     {
+        if (sf::FloatRect({565.f, 510.f}, {470.f, 58.f}).contains(p))
+        {
+            saveSlotPopup = false;
+            return;
+        }
+
         const float slotX = 490.f;
         const float slotY = 390.f;
         const float slotW = 180.f;
@@ -2607,7 +2799,10 @@ void GameWindow::drawSchemeEffectPanel()
                                {{startX + col * (bw + gap),
                                  startY + row * (bh + gap)},
                                 {bw, bh}},
-                               std::to_string(schemeChoices[i]), true, GOLD);
+                               choiceContextLabel(schemeCardText + " " + schemePrompt,
+                                                  controller.getCurrentPlayer(),
+                                                  schemeChoices[i]),
+                               true, GOLD);
             }
         }
         else if (schemeInteger)
@@ -2823,7 +3018,9 @@ void GameWindow::drawDraculaEffectPanel()
                                {{startX + col * (bw + gap),
                                  startY + row * (bh + gap)},
                                 {bw, bh}},
-                               std::to_string(draculaChoices[i]), true, GOLD);
+                               characterChoiceLabel(controller.getCurrentPlayer(),
+                                                     draculaChoices[i]),
+                               true, GOLD);
             }
         }
         else if (draculaInteger)
@@ -3091,7 +3288,11 @@ void GameWindow::drawAiTurnPanel()
                                {{startX + col * (bw + gap),
                                  startY + row * (bh + gap)},
                                 {bw, bh}},
-                               std::to_string(aiTurnChoices[i]), true, GOLD);
+                               choiceContextLabel(
+                                   controller.getGuiAiDecisionContext(),
+                                   controller.getCurrentPlayer(),
+                                   aiTurnChoices[i]),
+                               true, GOLD);
             }
         }
         else if (aiTurnInteger)

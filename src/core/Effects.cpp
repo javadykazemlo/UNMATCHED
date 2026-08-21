@@ -145,17 +145,12 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
             {
                 int handSize = self->getDeck()->gethandSize();
     
-                int choice;
-                while (true)
-                {
-                    cout << "choice a card: ";
-                    choice = getInt();
-                    if(choice > 0 && choice <= handSize)
-                    {
-                        break;
-                    }
-                    cout << "Invalid input.";
-                }
+                vector<int> cardChoices;
+                for (int i = 1; i <= handSize; ++i)
+                    cardChoices.push_back(i);
+
+                setGuiChoiceContext("Choose a card:");
+                int choice = getChoice(cardChoices);
 
                 Card selected;
                 selected = self->getDeck()->playCard(choice - 1 , selected);
@@ -548,23 +543,21 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         }
 
         int handSize = self->getDeck()->gethandSize();
-        cout << "Choose the first card to put on top of your deck: ";
-        int first = getInt();
-        while(first <= 0 || first > handSize)
-        {
-            cout << "Invalid card number. Try again: ";
-            first = getInt();
-        }
+        vector<int> firstChoices;
+        for (int i = 1; i <= handSize; ++i)
+            firstChoices.push_back(i);
+
+        setGuiChoiceContext("Choose the first card to put on top of your deck:");
+        int first = getChoice(firstChoices);
         Card firstCard = self->getDeck()->removeFromHand(first - 1);
 
         handSize = self->getDeck()->gethandSize();
-        cout << "Choose the second card to put on top of your deck: ";
-        int second = getInt();
-        while(second <= 0 || second > handSize)
-        {
-            cout << "Invalid card number. Try again: ";
-            second = getInt();
-        }
+        vector<int> secondChoices;
+        for (int i = 1; i <= handSize; ++i)
+            secondChoices.push_back(i);
+
+        setGuiChoiceContext("Choose the second card to put on top of your deck:");
+        int second = getChoice(secondChoices);
         Card secondCard = self->getDeck()->removeFromHand(second - 1);
 
         self->getDeck()->putOnTop(secondCard);
@@ -593,14 +586,12 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
         if (willDiscard)
         {
             int handSize = opponent->getDeck()->gethandSize();
+            vector<int> cardChoices;
+            for (int i = 1; i <= handSize; ++i)
+                cardChoices.push_back(i);
 
-            cout << "Choose a card to discard: ";
-            int idx = getInt();
-            while(idx <= 0 || idx > handSize)
-            {
-                cout << "Invalid card number. Try again: ";
-                idx = getInt();
-            }
+            setGuiChoiceContext("Choose a card to discard:");
+            int idx = getChoice(cardChoices);
 
             Card discarded;
             discarded = opponent->getDeck()->playCard(idx - 1 , discarded);
@@ -960,13 +951,6 @@ void Controller::applyEffect(Card& card , Card& enemycard ,Player* self, Player*
 
 }    
 
-
-// Scheme-only helper: duplicates Controller::move()'s pathing/selection logic,
-// but writes its prompts to `out` (the calling Scheme card's effectCout)
-// instead of Controller::move()'s own console-bound cout. This keeps the
-// existing move() function (shared with Attack/Defense effects and the
-// normal turn-movement action) completely untouched, while making sure
-// movement performed inside a Scheme card's effect logs to the GUI panel.
 void Controller::moveCharacterForSchemeEffect(int mov, Character* selected, std::ostream& out)
 {
     int place = selected->getSpace();
@@ -1059,19 +1043,18 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
         cout << "\nEffect >> " << card.geteffect() << endl;
 
-        int pos;
-        while(true)
+        vector<int> positionChoices;
+        for (int pos = 0; pos <= 31; ++pos)
         {
-            cout << "Choose a space for Dracula: ";
-            pos = getInt();
-            if(pos >= 0 && pos <= 31 && bord.isEmpty(pos))
-            {
-                bord.deletCharacter(self->getHero()->getSpace());
-                bord.addCharacter(pos , self->getHero());
-                break;
-            }
-            cout << "Invaliad input. Plase try again." << endl;
+            if (bord.isEmpty(pos))
+                positionChoices.push_back(pos);
         }
+
+        setGuiChoiceContext("Choose a space for Dracula:");
+        const int pos = getChoice(positionChoices);
+
+        bord.deletCharacter(self->getHero()->getSpace());
+        bord.addCharacter(pos, self->getHero());
         cout << "Dracula was placed\n" ;
         cout << "You have gained an extra action.\n";
 
@@ -1200,6 +1183,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
         }
         cout << "Choose a character to move: ";
+        setGuiChoiceContext("character");
         choose = getChoice(valid);
         Character* selected = choices[choose - 1];
 
@@ -1310,18 +1294,18 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         cout << "\nEffect >> " << card.geteffect() << endl; 
 
-        cout << "Choose a number: ";
-        int number = getInt();
-
-        bool isExist = false;
-        for(int i = 0 ; i < opponent->getDeck()->gethandSize() ; i++)
+        vector<int> numberChoices;
+        for (int i = 0; i < opponent->getDeck()->gethandSize(); ++i)
         {
-            if(number == opponent->getDeck()->getHandcard(i).getAttack())
-            {
-                isExist = true;
-                break;
-            }
+            const int value = opponent->getDeck()->getHandcard(i).getAttack();
+            if (find(numberChoices.begin(), numberChoices.end(), value) == numberChoices.end())
+                numberChoices.push_back(value);
         }
+
+        setGuiChoiceContext("Choose a number:");
+        const int number = getChoice(numberChoices);
+
+        bool isExist = !numberChoices.empty();
 
         if(!isExist)
         {
@@ -1340,20 +1324,17 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         
         Card burn;
         activeDecider = opponent;
-        while (true)
+        vector<int> matchingCards;
+        for (int i = 1; i <= opponent->getDeck()->gethandSize(); ++i)
         {
-            cout << opponent->getName() << ", choose a card with " << number << " attack or defense to discard: ";
-            int select = getInt();
-            if(select > 0 && select < (opponent->getDeck()->gethandSize() + 1))
-            {
-                if(number == opponent->getDeck()->getHandcard(select - 1).getAttack())
-                {
-                    burn = opponent->getDeck()->playCard(select - 1 , burn);
-                    break;
-                }
-            }
-            cout << "Invalid input.\n";
+            const Card& candidate = opponent->getDeck()->getHandcard(i - 1);
+            if (candidate.getAttack() == number)
+                matchingCards.push_back(i);
         }
+
+        setGuiChoiceContext("Choose a matching card to discard:");
+        const int select = getChoice(matchingCards);
+        burn = opponent->getDeck()->playCard(select - 1, burn);
         activeDecider = self;
 
         Character* enemyHero = opponent->getHero();
@@ -1377,18 +1358,12 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
     {
         cout << "\nEffect >> " << card.geteffect() << endl; 
 
-        int index;
-        while (true)
-        {
-            cout << "Choose a card to burn: ";
-            index = getInt();
-            if(index > 0 && index < (opponent->getDeck()->gethandSize() + 1))
-            {
-                break;
-            }
-            cout << "invalid input.";
-        }
-        
+        vector<int> cardChoices;
+        for (int i = 1; i <= opponent->getDeck()->gethandSize(); ++i)
+            cardChoices.push_back(i);
+
+        setGuiChoiceContext("Choose a card to burn:");
+        const int index = getChoice(cardChoices);
 
         Card burned;
         burned = opponent->getDeck()->playCard(index - 1 , burned);
@@ -1420,6 +1395,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
             }
         }
         cout << "Choose a character to swap positions with: ";
+        setGuiChoiceContext("character");
         choose = getChoice(valid);
         Character* Rival = choices[choose - 1];
 
@@ -1488,6 +1464,7 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
         }
 
         cout << "Choose a target: ";
+        setGuiChoiceContext("character");
         choose = getChoice(valid);
         Character* target = choices[choose - 1];
 
@@ -1637,17 +1614,17 @@ void Controller::applyEffectScheme(Card& card ,Player* self, Player* opponent , 
 
         cout << "Invisible Man vanishes from the board.\n";
 
-        int pos;
-        while(true)
+        vector<int> positionChoices;
+        for (int space = 0; space < 32; ++space)
         {
-            cout << "Choose a space for Invisible Man to reappear: ";
-            pos = getInt();
-            if (pos >= 0 && pos < 32 && bord.isEmpty(pos))
-                break;
-            cout << "Invalid space. Try again.\n";
+            if (bord.isEmpty(space))
+                positionChoices.push_back(space);
         }
 
-        bord.addCharacter(pos , attacker);
+        setGuiChoiceContext("Choose a space for Invisible Man to reappear:");
+        const int pos = getChoice(positionChoices);
+
+        bord.addCharacter(pos, attacker);
         cout << "Invisible Man reappeared at " << pos << ".\n";
 
         return;

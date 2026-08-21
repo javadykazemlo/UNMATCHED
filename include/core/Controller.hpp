@@ -59,6 +59,7 @@ private:
     int gamerand = 0;
     bool GuessElementary = false;
     bool guiMode = false;
+    std::string guiChoiceContext;
     std::vector<std::string> guiCombatLog;
     std::vector<std::string> guiEffectLog;
     GuiCombatResult guiCombatResult;
@@ -144,6 +145,8 @@ private:
     bool guiScheme(Character* fighter, int cardIndex);
     bool guiBeginTurn();
     bool guiHeroAbilityAvailable() const;
+    std::string getGuiAiDecisionContext() const;
+    void setGuiChoiceContext(const std::string& context);
     bool guiUseHeroAbility();
 
     bool guiEffectBusy() const;

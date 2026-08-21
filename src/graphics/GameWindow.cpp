@@ -112,6 +112,9 @@ void GameWindow::loadAssets()
     textures.load("board", "assets/board/board.png");
     textures.load("card_back", "assets/cards/card_back.png");
     textures.load("mute", "assets/mute.png");
+    textures.load("logo", "assets/logo.png");
+    textures.load("start1", "assets/board/startpos1.png");
+    textures.load("start2", "assets/board/startpos2.png");
 
     loadCharacterAssets();
     loadCardAssets();
@@ -247,6 +250,23 @@ void GameWindow::processEvents()
                         break;
                     }
                 }
+
+                if (newHover != hoveredMenuItem)
+                {
+                    if (newHover >= 0)
+                        audio.playSfx(AudioManager::Sfx::Hover);
+                    hoveredMenuItem = newHover;
+                }
+            }
+            else if (screen == Screen::Setup &&
+                     controller.getGuiSetupStage() ==
+                         Controller::GuiSetupStage::HeroPosition)
+            {
+                int newHover = -1;
+                if (sf::FloatRect({365.f, 250.f}, {360.f, 360.f}).contains(mp))
+                    newHover = 0;
+                else if (sf::FloatRect({875.f, 250.f}, {360.f, 360.f}).contains(mp))
+                    newHover = 1;
 
                 if (newHover != hoveredMenuItem)
                 {
@@ -934,6 +954,9 @@ void GameWindow::drawSetupCharacters()
                 window.draw(sprite);
             }
         }
+        ui->drawText(window, names[i],
+             {x + w / 2.f - 50.f, y + h + 10.f},
+             20, GOLD);
     }
 
     ui->drawText(window, current ? "The younger player chooses first." : "",
@@ -946,23 +969,81 @@ void GameWindow::drawSetupPosition()
     ui->drawText(window, "CHOOSE STARTING SIDE", {600.f, 70.f}, 30, GOLD);
 
     Player* chooser = controller.getGuiSetupPlayer();
-    ui->drawPanel(window, {{250.f, 140.f}, {1100.f, 550.f}}, GOLD);
+    ui->drawPanel(window, {{250.f, 130.f}, {1100.f, 590.f}}, GOLD);
 
     if (chooser)
         ui->drawText(window, chooser->getName() + " chooses the starting side.",
-                     {590.f, 175.f}, 17, PARCHMENT);
+                     {600.f, 175.f}, 17, PARCHMENT);
 
-    ui->drawButton(window, {{350.f, 270.f}, {390.f, 260.f}},
-                   "", true, BLUE);
-    ui->drawButton(window, {{860.f, 270.f}, {390.f, 260.f}},
-                   "", true, BLUE);
+    const bool leftHovered = hoveredMenuItem == 0;
+    const bool rightHovered = hoveredMenuItem == 1;
 
-    ui->drawText(window, "LEFT", {515.f, 390.f}, 25, BLUE);
-    ui->drawText(window, "RIGHT", {1015.f, 390.f}, 25, BLUE);
+    const sf::FloatRect leftBase({365.f, 250.f}, {360.f, 360.f});
+    const sf::FloatRect rightBase({875.f, 250.f}, {360.f, 360.f});
 
+    auto hoveredRect = [](const sf::FloatRect& base, bool hovered)
+    {
+        const float scale = hovered ? 1.045f : 1.f;
+        const float w = base.size.x * scale;
+        const float h = base.size.y * scale;
+        const float x = base.position.x - (w - base.size.x) / 2.f;
+        const float y = base.position.y - (h - base.size.y) / 2.f -
+                        (hovered ? 3.f : 0.f);
+        return sf::FloatRect({x, y}, {w, h});
+    };
 
-    ui->drawText(window, "Your hero starts on space 4.", {430.f, 555.f}, 12, PARCHMENT);
-    ui->drawText(window, "Your opponent starts on space 15.", {430.f, 585.f}, 12, PARCHMENT);
+    const sf::FloatRect leftRect = hoveredRect(leftBase, leftHovered);
+    const sf::FloatRect rightRect = hoveredRect(rightBase, rightHovered);
+
+    ui->drawButton(window, leftRect, "left", true, BLUE);
+    ui->drawButton(window, rightRect, "right", true, BLUE);
+
+    const sf::Texture* strat1Texture = textures.get("start1");
+    const sf::Texture* strat2Texture = textures.get("start2");
+
+    auto drawStartTexture = [&](const sf::Texture* texture,
+                                const sf::FloatRect& base,
+                                const sf::FloatRect& rect)
+    {
+        if (!texture)
+            return;
+
+        sf::Sprite sprite(*texture);
+        const float scale = base.size.x / texture->getSize().x;
+        const float finalScale = scale * (rect.size.x / base.size.x);
+        sprite.setScale({finalScale, finalScale});
+        sprite.setPosition(rect.position);
+        window.draw(sprite);
+    };
+
+    drawStartTexture(strat1Texture, leftBase, leftRect);
+    drawStartTexture(strat2Texture, rightBase, rightRect);
+
+    if (leftHovered)
+    {
+        sf::RectangleShape lift({leftRect.size.x + 10.f, leftRect.size.y + 10.f});
+        lift.setPosition({leftRect.position.x - 5.f, leftRect.position.y - 5.f});
+        lift.setFillColor(sf::Color::Transparent);
+        lift.setOutlineColor(sf::Color(211, 178, 104, 70));
+        lift.setOutlineThickness(2.f);
+        window.draw(lift);
+    }
+
+    if (rightHovered)
+    {
+        sf::RectangleShape lift({rightRect.size.x + 10.f, rightRect.size.y + 10.f});
+        lift.setPosition({rightRect.position.x - 5.f, rightRect.position.y - 5.f});
+        lift.setFillColor(sf::Color::Transparent);
+        lift.setOutlineColor(sf::Color(211, 178, 104, 70));
+        lift.setOutlineThickness(2.f);
+        window.draw(lift);
+    }
+
+    ui->drawText(window, "LEFT", {515.f, 210.f}, 25, BLUE);
+    ui->drawText(window, "RIGHT", {1015.f, 210.f}, 25, BLUE);
+
+    ui->drawText(window, "Your hero starts on space 4.", {430.f, 635.f}, 12, PARCHMENT);
+    ui->drawText(window, "Your opponent starts on space 15.", {430.f, 665.f}, 12, PARCHMENT);
 }
 
 void GameWindow::drawSetupSidekicks()
@@ -1033,7 +1114,21 @@ void GameWindow::drawGame()
     top.setOutlineThickness(1.f);
     window.draw(top);
 
-    ui->drawText(window, "UNMATCHED", {22.f, 16.f}, 26, GOLD);
+    const sf::Texture* texture = textures.get("logo");
+
+    if (texture)
+    {
+        sf::Sprite logo(*texture);
+    
+        logo.setPosition({40.f, 0.f});
+    
+        const float targetWidth = 120.f;
+        const float scale = targetWidth / texture->getSize().x;
+    
+        logo.setScale({scale, scale});
+    
+        window.draw(logo);
+    }
 
     const sf::FloatRect muteRect({305.f, 13.f}, {42.f, 42.f});
     if (const sf::Texture* muteTexture = textures.get("mute"))
@@ -1074,7 +1169,7 @@ void GameWindow::drawGame()
         if (name == "Dracula" || name.find("Sister") != std::string::npos)
             return RED;
         if (name == "sherlock" || name == "Dr_watson")
-            return GOLD;
+            return sf::Color(40, 80, 140);
         if (name == "invisible man")
             return sf::Color(86, 101, 115);
 
@@ -1606,12 +1701,12 @@ void GameWindow::handleSetupClick(sf::Vector2f p)
 
     if (stage == Controller::GuiSetupStage::HeroPosition)
     {
-        if (sf::FloatRect({350.f, 270.f}, {390.f, 260.f}).contains(p))
+        if (sf::FloatRect({365.f, 250.f}, {360.f, 360.f}).contains(p))
         {
             controller.guiChooseHeroPosition(1);
             return;
         }
-        if (sf::FloatRect({860.f, 270.f}, {390.f, 260.f}).contains(p))
+        if (sf::FloatRect({875.f, 250.f}, {360.f, 360.f}).contains(p))
         {
             controller.guiChooseHeroPosition(2);
             return;

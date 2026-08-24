@@ -18,9 +18,9 @@ Bord::Bord()
     spaces[7].adjacent = {6, 8, 9};               
     spaces[8].adjacent = {6, 7, 9};               
     spaces[9].adjacent = {7, 8, 10, 11, 16};      
-    spaces[10].adjacent = {9, 11, 12};            
-    spaces[11].adjacent = {9, 10, 13};                
-    spaces[12].adjacent = {10};             //##                
+    spaces[10].adjacent = {9, 11};            
+    spaces[11].adjacent = {9, 10, 12, 13};                
+    spaces[12].adjacent = {11};             //##                
     spaces[13].adjacent = {11, 14, 16};           
     spaces[14].adjacent = {13, 15, 31};           
     spaces[15].adjacent = {14, 16}; //<<<<<<start             

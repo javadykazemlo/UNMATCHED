@@ -36,8 +36,7 @@ private:
     std::string effect;
 public:
     Card();
-    Card(std::string nam , owner own , CardType typ 
-        , int att , timing tim , int bos , std::string efec);
+    Card(std::string nam , owner own , CardType typ , int att , timing tim , int bos , std::string efec);
 
     bool isHero() const;
     bool issideKick() const;
